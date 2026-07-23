@@ -223,8 +223,12 @@ planejamento, nas seguintes tarefas:
 
 | Nome | Login 42 | Papel(is) | Responsabilidades |
 |------|----------|-----------|--------------------|
-| Renan | resilva | — | — |
-| Pedro | pebarbos | — | — |
+| Renan | resilva | Technical Lead | — |
+| Pedro | pebarbos | Product Owner | — |
+| Thiago | thevaris | Project Manager | -|
+| Carlos | Developer | - |    
+
+
 
 > Pendente: preencher conforme o grupo fechar (4-5 membros exigidos pelo subject).
 
