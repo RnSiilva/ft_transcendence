@@ -226,7 +226,7 @@ planejamento, nas seguintes tarefas:
 | Renan | resilva | Technical Lead | — |
 | Pedro | pebarbos | Product Owner | — |
 | Thiago | thevaris | Project Manager | -|
-| Carlos | Developer | - |    
+| Carlos | carlos-j  | Developer | - |    
 
 
 
