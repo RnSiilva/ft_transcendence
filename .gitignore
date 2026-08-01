@@ -1,0 +1,36 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+build/
+frontend/dist/
+backend/dist/
+
+# Variáveis de ambiente (nunca versionar segredos)
+.env
+
+# Certificado TLS (gerado localmente por cada um, não deve ser compartilhado)
+nginx/ssl/
+
+# Prisma (arquivos gerados automaticamente, não devem ir pro Git)
+backend/prisma/generated/
+
+# Vite (cache interno)
+frontend/.vite/
+*.local
+
+# TypeScript (cache de build incremental)
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / SO
+.DS_Store
+.vscode/
+.idea/
+
+# Docker
+*.pid
