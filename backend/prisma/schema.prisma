@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  username         String   @unique
+  passwordHash     String
+  avatarUrl        String
+  idioma           String
+  rank             Int      @default(0)
+  pontosTotais     Int      @default(0)
+  partidasJogadas  Int      @default(0)
+  vitorias         Int      @default(0)
+  criadoEm         DateTime @default(now())
+
+  friendsSent      Friend[] @relation("UserFriends")
+  friendsReceived  Friend[] @relation("FriendUser")
+  reportsReceived  Report[] @relation("Reportado")
+  reportsMade      Report[] @relation("Reporter")
+}
+
+model Friend {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  friendId  Int
+  estado    String
+  criadoEm  DateTime @default(now())
+
+  user      User @relation("UserFriends", fields: [userId], references: [id])
+  friend    User @relation("FriendUser", fields: [friendId], references: [id])
+
+  @@unique([userId, friendId])
+}
+
+model Word {
+  id           Int     @id @default(autoincrement())
+  textoPt      String  @unique
+  textoEn      String  @unique
+  textoEs      String  @unique
+  dificuldade  String?
+}
+
+model Report {
+  id           Int      @id @default(autoincrement())
+  reportadoId  Int
+  reporterId   Int
+  salaCodigo   String
+  motivo       String
+  criadoEm     DateTime @default(now())
+
+  reportado    User @relation("Reportado", fields: [reportadoId], references: [id])
+  reporter     User @relation("Reporter", fields: [reporterId], references: [id])
+
+  @@unique([reportadoId, reporterId, salaCodigo])
+}
