@@ -7,9 +7,7 @@ function Header() {
       <nav>
         <Link to="/regras">Regras do jogo</Link>
         <a href="/#about-us">About us</a>
-        <Link to="/login">
-          <button type="button">Login</button>
-        </Link>
+        <Link to="/login">Login</Link>
       </nav>
     </header>
   )

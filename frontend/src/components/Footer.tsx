@@ -8,8 +8,8 @@ function Footer() {
         ft_transcendence (42 Porto)
       </p>
       <p>
-        <Link to="/privacidade">Política de Privacidade</Link>·
-        <Link to="/termos">Termos de Serviço</Link>·
+        <Link to="/privacidade">Política de Privacidade</Link> ·{' '}
+        <Link to="/termos">Termos de Serviço</Link> ·{' '}
         <Link to="/regras">Regras do jogo</Link>
       </p>
     </footer>

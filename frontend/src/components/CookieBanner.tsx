@@ -2,14 +2,22 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 function CookieBanner() {
-  const [visivel, setVisivel] = useState(
-    () => localStorage.getItem('cookiesAceites') !== 'sim'
-  )
+  const [visivel, setVisivel] = useState(() => {
+    try {
+      return localStorage.getItem('cookiesAceites') !== 'sim'
+    } catch {
+      return true
+    }
+  })
 
   if (!visivel) return null
 
   function aceitar() {
-    localStorage.setItem('cookiesAceites', 'sim')
+    try {
+      localStorage.setItem('cookiesAceites', 'sim')
+    } catch {
+      // Ignorar erros de storage (ex.: modo privado / storage bloqueado).
+    }
     setVisivel(false)
   }
 

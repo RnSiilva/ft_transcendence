@@ -48,9 +48,7 @@ function Perfil() {
                 Sala {sala.codigo} — criada por {sala.criador} ({sala.jogadores}{' '}
                 jogadores)
               </span>
-              <Link to="/jogo">
-                <button type="button">Entrar</button>
-              </Link>
+              <Link to="/jogo">Entrar</Link>
             </li>
           ))}
         </ul>
