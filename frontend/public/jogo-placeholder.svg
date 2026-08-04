@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+  <rect x="1" y="1" width="598" height="398" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <path d="M70 310 Q130 130 195 265 T320 245 T450 270" fill="none" stroke="#2f6fdb" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="440" cy="130" r="45" fill="none" stroke="#1a1a1a" stroke-width="5"/>
+  <circle cx="425" cy="120" r="6" fill="#1a1a1a"/>
+  <circle cx="455" cy="120" r="6" fill="#1a1a1a"/>
+  <path d="M420 148 Q440 166 460 148" fill="none" stroke="#1a1a1a" stroke-width="5" stroke-linecap="round"/>
+  <text x="300" y="370" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" fill="#1a1a1a">[ Imagem de demonstração do jogo ]</text>
+</svg>
