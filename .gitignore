@@ -10,9 +10,6 @@ backend/dist/
 # Variáveis de ambiente (nunca versionar segredos)
 .env
 
-# Certificado TLS (gerado localmente por cada um, não deve ser compartilhado)
-nginx/ssl/
-
 # Prisma (arquivos gerados automaticamente, não devem ir pro Git)
 backend/prisma/generated/
 
