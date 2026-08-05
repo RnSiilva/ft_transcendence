@@ -1,33 +1,35 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function CookieBanner() {
-  const [visivel, setVisivel] = useState(() => {
+  const { t } = useTranslation()
+  const [visible, setVisible] = useState(() => {
     try {
-      return localStorage.getItem('cookiesAceites') !== 'sim'
+      return localStorage.getItem('cookiesAccepted') !== 'yes'
     } catch {
       return true
     }
   })
 
-  if (!visivel) return null
+  if (!visible) return null
 
-  function aceitar() {
+  function accept() {
     try {
-      localStorage.setItem('cookiesAceites', 'sim')
+      localStorage.setItem('cookiesAccepted', 'yes')
     } catch {
-      // Ignorar erros de storage (ex.: modo privado / storage bloqueado).
+      // Ignore storage errors (e.g. private mode).
     }
-    setVisivel(false)
+    setVisible(false)
   }
 
   return (
-    <div className="faixa-cookies">
+    <div className="cookie-banner">
       <span>
-        Este site usa apenas cookies essenciais (sessão de login).{' '}
-        <Link to="/privacidade">Saber mais</Link>
+        {t('cookies.message')}{' '}
+        <Link to="/privacy">{t('cookies.learnMore')}</Link>
       </span>
-      <button type="button" onClick={aceitar}>Aceitar</button>
+      <button type="button" onClick={accept}>{t('cookies.accept')}</button>
     </div>
   )
 }

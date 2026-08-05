@@ -4,11 +4,13 @@ import Footer from './components/Footer'
 import CookieBanner from './components/CookieBanner'
 import Home from './pages/Home'
 import Login from './pages/Login'
-import Perfil from './pages/Perfil'
-import Jogo from './pages/Jogo'
-import Regras from './pages/Regras'
-import Privacidade from './pages/Privacidade'
-import Termos from './pages/Termos'
+import Register from './pages/Register'
+import Profile from './pages/Profile'
+import Game from './pages/Game'
+import Rules from './pages/Rules'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
   return (
@@ -17,11 +19,26 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/perfil" element={<Perfil />} />
-        <Route path="/jogo" element={<Jogo />} />
-        <Route path="/regras" element={<Regras />} />
-        <Route path="/privacidade" element={<Privacidade />} />
-        <Route path="/termos" element={<Termos />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/rules" element={<Rules />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/game"
+          element={
+            <ProtectedRoute>
+              <Game />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
       <Footer />
       <CookieBanner />

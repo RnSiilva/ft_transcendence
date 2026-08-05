@@ -1,7 +1,7 @@
 :root {
-  --fundo: #ffffff;
-  --texto: #1a1a1a;
-  --destaque: #2f6fdb;
+  --bg: #ffffff;
+  --text: #1a1a1a;
+  --accent: #2f6fdb;
 }
 
 * {
@@ -11,8 +11,8 @@
 body {
   margin: 0;
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  color: var(--texto);
-  background: var(--fundo);
+  color: var(--text);
+  background: var(--bg);
   line-height: 1.5;
 }
 
@@ -23,36 +23,36 @@ h3 {
 }
 
 a {
-  color: var(--destaque);
+  color: var(--accent);
 }
 
 button {
   font: inherit;
   cursor: pointer;
-  background: var(--destaque);
-  color: var(--fundo);
-  border: 1px solid var(--destaque);
+  background: var(--accent);
+  color: var(--bg);
+  border: 1px solid var(--accent);
   padding: 8px 16px;
 }
 
 input {
   font: inherit;
   padding: 8px;
-  border: 1px solid var(--texto);
-  background: var(--fundo);
-  color: var(--texto);
+  border: 1px solid var(--text);
+  background: var(--bg);
+  color: var(--text);
 }
 
-/* Cabeçalho e rodapé */
-.cabecalho {
+/* Header & Footer */
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--texto);
+  border-bottom: 1px solid var(--text);
 }
 
-.cabecalho nav {
+.header nav {
   display: flex;
   gap: 16px;
   align-items: center;
@@ -61,51 +61,51 @@ input {
 .logo {
   font-weight: bold;
   font-size: 20px;
-  color: var(--texto);
+  color: var(--text);
   text-decoration: none;
 }
 
-.rodape {
-  border-top: 1px solid var(--texto);
+.footer {
+  border-top: 1px solid var(--text);
   padding: 16px 24px;
   text-align: center;
   font-size: 14px;
   margin-top: 48px;
 }
 
-.rodape a {
+.footer a {
   margin: 0 8px;
 }
 
-/* Estrutura das páginas */
-.pagina {
+/* Page layout */
+.page {
   max-width: 960px;
   margin: 0 auto;
   padding: 24px;
 }
 
-.pagina section {
+.page section {
   margin-top: 48px;
 }
 
-.centro {
+.center {
   text-align: center;
 }
 
-.foto-jogo {
+.game-image {
   max-width: 100%;
   width: 420px;
-  border: 1px solid var(--texto);
+  border: 1px solid var(--text);
 }
 
-/* Faixa de cookies */
-.faixa-cookies {
+/* Cookie banner */
+.cookie-banner {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--texto);
-  color: var(--fundo);
+  background: var(--text);
+  color: var(--bg);
   padding: 12px 24px;
   display: flex;
   justify-content: center;
@@ -114,12 +114,12 @@ input {
   flex-wrap: wrap;
 }
 
-.faixa-cookies a {
-  color: var(--fundo);
+.cookie-banner a {
+  color: var(--bg);
 }
 
-/* Formulários */
-.formulario {
+/* Forms */
+.form {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -127,31 +127,31 @@ input {
   margin: 32px auto;
 }
 
-.formulario label {
+.form label {
   display: flex;
   flex-direction: column;
   gap: 4px;
   text-align: left;
 }
 
-.envio {
+.submit-row {
   display: flex;
   gap: 8px;
   margin-top: 12px;
 }
 
-.envio input {
+.submit-row input {
   flex: 1;
   min-width: 0;
 }
 
-/* Perfil */
+/* Profile */
 .avatar {
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: var(--destaque);
-  color: var(--fundo);
+  background: var(--accent);
+  color: var(--bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,38 +159,38 @@ input {
   flex-shrink: 0;
 }
 
-.avatar-pequeno {
+.avatar-small {
   width: 32px;
   height: 32px;
   font-size: 14px;
 }
 
-.cartao {
-  border: 1px solid var(--texto);
+.card {
+  border: 1px solid var(--text);
   padding: 16px;
   margin: 16px 0;
 }
 
-.linha {
+.row {
   display: flex;
   gap: 24px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.linha-jogador {
+.player-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.lista-simples {
+.simple-list {
   list-style: none;
   padding: 0;
   margin: 8px 0;
 }
 
-.lista-simples li {
+.simple-list li {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -200,7 +200,7 @@ input {
 }
 
 .online {
-  color: var(--destaque);
+  color: var(--accent);
   font-size: 12px;
 }
 
@@ -209,43 +209,43 @@ input {
   font-size: 12px;
 }
 
-/* Página do jogo */
-.barra-estado {
+/* Game page */
+.status-bar {
   display: flex;
   gap: 24px;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  border: 1px solid var(--texto);
+  border: 1px solid var(--text);
   padding: 8px 16px;
   margin-bottom: 16px;
 }
 
-.area-jogo {
+.game-area {
   display: flex;
   gap: 16px;
   align-items: flex-start;
   flex-wrap: wrap;
 }
 
-.painel {
-  border: 1px solid var(--texto);
+.panel {
+  border: 1px solid var(--text);
   padding: 12px;
 }
 
-.placar {
+.scoreboard-panel {
   width: 200px;
 }
 
-.quadro {
+.canvas-panel {
   flex: 1;
   min-width: 320px;
   text-align: center;
 }
 
-.quadro canvas {
-  border: 1px solid var(--texto);
-  background: var(--fundo);
+.canvas-panel canvas {
+  border: 1px solid var(--text);
+  background: var(--bg);
   max-width: 100%;
   touch-action: none;
 }
@@ -256,7 +256,7 @@ input {
   flex-direction: column;
 }
 
-.chat-mensagens {
+.chat-messages {
   height: 300px;
   overflow-y: auto;
   border: 1px solid rgba(26, 26, 26, 0.2);
@@ -264,6 +264,6 @@ input {
   font-size: 14px;
 }
 
-.chat-mensagens p {
+.chat-messages p {
   margin: 0 0 6px;
 }

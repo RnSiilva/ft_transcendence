@@ -1,37 +1,29 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function Home() {
+  const { t } = useTranslation()
+
   return (
-    <main className="pagina centro">
-      <h1>Gartic</h1>
-      <p>
-        Gartic é um jogo multiplayer de desenhar e adivinhar em tempo real. Em
-        cada ronda, um jogador recebe uma palavra secreta e desenha-a no quadro
-        partilhado; os restantes tentam adivinhar escrevendo palpites. Quem
-        acerta mais depressa ganha mais pontos — e quem desenha também pontua
-        por cada acerto dos outros. No fim de todas as rondas, vence quem tiver
-        mais pontos.
-      </p>
+    <main className="page center">
+      <h1>{t('home.title')}</h1>
+      <p>{t('home.description')}</p>
 
       <p>
         <img
           src="/jogo-placeholder.svg"
-          alt="Imagem de demonstração do jogo"
-          className="foto-jogo"
+          alt={t('home.title')}
+          className="game-image"
         />
       </p>
 
       <Link to="/login">
-        <button type="button">Jogar</button>
+        <button type="button">{t('home.playButton')}</button>
       </Link>
 
       <section id="about-us">
-        <h2>About us</h2>
-        <p>
-          Somos a equipa do ft_transcendence da 42 Porto: Renan (resilva),
-          Pedro (pebarbos), Thiago (thevaris) e Carlos (carlos-j). Este site é
-          um projeto académico desenvolvido para fins de aprendizagem.
-        </p>
+        <h2>{t('home.aboutTitle')}</h2>
+        <p>{t('home.aboutText')}</p>
       </section>
     </main>
   )

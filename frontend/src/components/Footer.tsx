@@ -1,16 +1,16 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function Footer() {
+  const { t } = useTranslation()
+
   return (
-    <footer className="rodape">
+    <footer className="footer">
+      <p>{t('footer.copyright')}</p>
       <p>
-        © 2026 Garatuja Games, Lda. — empresa fictícia, projeto académico
-        ft_transcendence (42 Porto)
-      </p>
-      <p>
-        <Link to="/privacidade">Política de Privacidade</Link> ·{' '}
-        <Link to="/termos">Termos de Serviço</Link> ·{' '}
-        <Link to="/regras">Regras do jogo</Link>
+        <Link to="/privacy">{t('footer.privacy')}</Link> ·{' '}
+        <Link to="/terms">{t('footer.terms')}</Link> ·{' '}
+        <Link to="/rules">{t('footer.rules')}</Link>
       </p>
     </footer>
   )

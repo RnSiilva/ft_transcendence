@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  avatarUrl    String?  // Optional: defaults to null until uploaded/selected by user
+  language     String?  // Optional: user preferred language (e.g. 'pt', 'en', 'es')
+  rank         Int      @default(0)
+  totalPoints  Int      @default(0)
+  gamesPlayed  Int      @default(0)
+  wins         Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  friendsSent     Friend[] @relation("UserFriends")
+  friendsReceived Friend[] @relation("FriendUser")
+  reportsReceived Report[] @relation("Reported")
+  reportsMade     Report[] @relation("Reporter")
+}
+
+model Friend {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  friendId  Int
+  status    String
+  createdAt DateTime @default(now())
+
+  user   User @relation("UserFriends", fields: [userId], references: [id])
+  friend User @relation("FriendUser", fields: [friendId], references: [id])
+
+  @@unique([userId, friendId])
+}
+
+model Word {
+  id         Int     @id @default(autoincrement())
+  textPt     String  @unique
+  textEn     String  @unique
+  textEs     String  @unique
+  difficulty String?
+}
+
+model Report {
+  id         Int      @id @default(autoincrement())
+  reportedId Int
+  reporterId Int
+  roomCode   String
+  reason     String
+  createdAt  DateTime @default(now())
+
+  reported User @relation("Reported", fields: [reportedId], references: [id])
+  reporter User @relation("Reporter", fields: [reporterId], references: [id])
+
+  @@unique([reportedId, reporterId, roomCode])
+}
