@@ -2,13 +2,12 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<meta name= "Thiago de Paula" content="Inicio do projeto gartic">
+<meta name="author" content="Thiago, Carlos, Pedro e Renan">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gartic — preview</title>
+<title>SketchGuess — preview</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
 <style>
-    /*Cores globais, sombra e letra*/
   :root{
     --canvas:#121317;
     --canvas-2:#1B1D24;
@@ -38,7 +37,7 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  /* Estrela portifolio thevaris (5 parallax) nao esquecer te tirar meu logo */
+  /* ---------- STARFIELD (5 parallax layers) ---------- */
   .stars-layer{position:fixed;inset:0;z-index:-1;pointer-events:none;background-repeat:repeat;}
   .layer-1{
     background-image:
@@ -225,13 +224,13 @@
     .spark{animation:none;color:transparent;}
   }
 
-  /* FOOTER*/
+  /* ---------- FOOTER ---------- */
   footer.site{border-top:1px solid var(--line);margin-top:100px;padding:36px 32px 44px;text-align:center;color:var(--chalk-dim);font-size:13.5px;}
   footer.site .line2{margin-top:10px;display:flex;gap:22px;justify-content:center;flex-wrap:wrap;}
   footer.site .line2 a{opacity:.85;}
   footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underline;}
 
-  /* COOKIE BANNER */
+  /* ---------- COOKIE BANNER ---------- */
   .cookies{
     position:fixed;left:20px;right:20px;bottom:20px;z-index:60;
     background:var(--paper);color:var(--ink);border-radius:16px;
@@ -244,7 +243,7 @@
   .cookies p{margin:0;font-size:13.5px;font-weight:500;}
   .cookies a{text-decoration:underline;font-weight:700;}
 
-  /*preview , not part of the site) ---------- */
+  /* ---------- PAGE SWITCHER (preview aid, not part of the site) ---------- */
   .preview-nav{
     position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:70;
     display:flex;gap:4px;background:rgba(21,22,27,0.92);backdrop-filter:blur(8px);
@@ -265,7 +264,7 @@
 
   /* HOME */
   .hero{padding:96px 32px 60px;text-align:center;}
-  /* GARTIC NO H1 (animação contínua, paleta do placeholder)*/
+  /* ---------- GARTIC NO H1 (animação contínua, paleta do placeholder) ---------- */
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
   .hero-logo{margin:0;line-height:0;}
   .hero-logo svg{width:min(90vw,620px);height:auto;}
@@ -277,19 +276,22 @@
     background:linear-gradient(to bottom, transparent 0%, var(--canvas) 78%);
   }
   .gartic-loader path{
-    fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:9;
-    animation:dashArrayG 3.8s ease-in-out infinite, dashOffsetG 3.8s linear infinite;
+    fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:22;
+    animation:dashArrayG 4.8s ease-in-out infinite, dashOffsetG 4.8s linear infinite;
   }
   .gartic-loader .c-red{stroke:var(--red);}
   .gartic-loader .c-blue{stroke:var(--blue);}
   .gartic-loader .c-yellow{stroke:var(--yellow);}
+  .gartic-loader .c-green{stroke:var(--green);}
   @keyframes dashArrayG{
     0%{stroke-dasharray:0 1 99 0;}
-    50%{stroke-dasharray:0 99 1 0;}
+    39.58%{stroke-dasharray:0 99 1 0;}
+    79.17%{stroke-dasharray:99 1 0 0;}
     100%{stroke-dasharray:99 1 0 0;}
   }
   @keyframes dashOffsetG{
     0%{stroke-dashoffset:105;}
+    79.17%{stroke-dashoffset:5;}
     100%{stroke-dashoffset:5;}
   }
   @media (prefers-reduced-motion:reduce){
@@ -565,6 +567,30 @@
   .rank-score-box{text-align:left;}
   .rank-score-label{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;color:var(--chalk-dim);}
   .rank-score-num{font-family:var(--mono);font-weight:700;font-size:20px;color:var(--chalk);}
+
+  /* ---------- MODAL GENÉRICO (criar sala) ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:90;background:rgba(10,10,13,0.85);
+    display:none;align-items:center;justify-content:center;overflow-y:auto;padding:40px 20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-panel{
+    background:var(--canvas-2);border:1px solid var(--line-strong);border-radius:20px;
+    padding:28px 26px;max-width:420px;width:100%;text-align:left;box-shadow:var(--shadow);
+  }
+  .modal-panel h2{font-family:var(--display);font-size:24px;margin:0 0 20px;text-align:center;}
+  .field-dark{margin-bottom:16px;text-align:left;}
+  .field-dark label{display:block;font-size:12.5px;font-weight:700;color:var(--chalk-dim);margin-bottom:6px;}
+  .field-dark input[type="text"],.field-dark input[type="password"],.field-dark select{
+    width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid var(--line-strong);
+    background:var(--canvas);color:var(--chalk);font-size:14px;
+  }
+  .field-dark input:focus,.field-dark select:focus{border-color:var(--red);}
+  .field-dark input[type="range"]{width:100%;accent-color:var(--red);margin-top:4px;}
+  .field-row{display:flex;gap:12px;}
+  .field-row .field-dark{flex:1;}
+  .modal-actions{display:flex;gap:10px;margin-top:6px;}
+  .modal-actions .btn{flex:1;}
 </style>
 </head>
 <body>
@@ -587,8 +613,8 @@
 
 <header class="site">
   <div class="header-inner">
-    <button class="logo" data-goto="home" aria-label="Gartic — página inicial">
-      Gartic
+    <button class="logo" data-goto="home" aria-label="SketchGuess — página inicial">
+      SketchGuess
       <svg width="76" height="12" viewBox="0 0 76 12"><path class="stroke" d="M2 8 C 20 2, 40 12, 58 4 S 74 6, 74 6"/></svg>
     </button>
     <nav class="primary">
@@ -602,29 +628,43 @@
 
 <main>
 
-  <!--HOME-->
+  <!-- ============ HOME ============ -->
   <section class="page active" data-page="home">
     <div class="hero">
       <h1 class="hero-logo">
-        <span class="sr-only">Gartic</span>
-        <svg class="gartic-loader" viewBox="-30 0 600 130" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <g transform="translate(10,15)"><path class="c-red" pathLength="100" d="M 61,31 A 32 50 0 1 0 61,89 L 61,60 L 38,60"/></g>
-          <g transform="translate(100,15)"><path class="c-blue" pathLength="100" d="M 5,110 L 35,10 L 65,110 M 15,70 L 55,70"/></g>
-          <g transform="translate(190,15)"><path class="c-yellow" pathLength="100" d="M 10,10 L 10,110 M 10,10 L 40,10 A 20 20 0 0 1 40,50 L 10,50 M 22,50 L 55,110"/></g>
-          <g transform="translate(280,15)"><path class="c-red" pathLength="100" d="M 5,10 L 65,10 M 35,10 L 35,110"/></g>
-          <g transform="translate(370,15)"><path class="c-blue" pathLength="100" d="M 15,10 L 55,10 M 35,10 L 35,110 M 15,110 L 55,110"/></g>
-          <g transform="translate(460,15)"><path class="c-yellow" pathLength="100" d="M 61,31 A 32 50 0 1 0 61,89"/></g>
+        <span class="sr-only">SketchGuess</span>
+        <svg class="gartic-loader" viewBox="-40 -20 5985 719" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g transform="translate(0,661) scale(1,-1)">
+          <g transform="translate(0,0)"><path class="c-red" pathLength="100" d="M251 124Q300 124 320.0 140.0Q340 156 340 176Q340 196 324.0 207.5Q308 219 279 229L237 243Q179 263 134.5 285.5Q90 308 65.0 344.0Q40 380 40 438Q40 523 105.5 574.0Q171 625 289 625Q347 625 392.0 614.0Q437 603 463.0 580.5Q489 558 489 523Q489 498 477.0 479.0Q465 460 448 447Q426 461 389.0 471.5Q352 482 308 482Q263 482 242.0 469.5Q221 457 221 438Q221 423 234.5 413.5Q248 404 273 396L326 379Q421 349 471.0 301.5Q521 254 521 174Q521 89 453.5 35.5Q386 -18 257 -18Q196 -18 147.0 -5.0Q98 8 69.0 34.0Q40 60 40 97Q40 126 57.0 146.5Q74 167 94 178Q122 156 162.5 140.0Q203 124 251 124Z"/></g>
+          <g transform="translate(551,0)"><path class="c-blue" pathLength="100" d="M295 186 171 263 396 493Q448 493 479.5 470.0Q511 447 511 412Q511 382 490.0 359.0Q469 336 425 298ZM179 239 316 298 527 88Q523 42 500.0 16.5Q477 -9 434 -9Q403 -9 377.5 6.5Q352 22 323 59ZM54 264H224V1Q213 -2 192.5 -5.0Q172 -8 148 -8Q99 -8 76.5 9.0Q54 26 54 72ZM224 175H54V652Q65 655 85.5 658.0Q106 661 130 661Q180 661 202.0 644.5Q224 628 224 581Z"/></g>
+          <g transform="translate(1106,0)"><path class="c-yellow" pathLength="100" d="M134 167 128 279 359 317Q357 337 339.0 357.0Q321 377 283 377Q243 377 216.5 351.0Q190 325 188 277L194 193Q204 147 239.5 129.0Q275 111 319 111Q361 111 399.0 122.0Q437 133 460 146Q476 136 487.0 118.0Q498 100 498 80Q498 47 473.5 25.5Q449 4 406.0 -6.0Q363 -16 307 -16Q229 -16 166.5 13.5Q104 43 67.5 102.0Q31 161 31 250Q31 316 52.5 364.0Q74 412 110.0 442.0Q146 472 190.5 486.5Q235 501 282 501Q353 501 406.0 473.5Q459 446 489.0 398.5Q519 351 519 289Q519 255 500.0 237.0Q481 219 447 214Z"/></g>
+          <g transform="translate(1655,0)"><path class="c-green" pathLength="100" d="M54 264H222V167Q222 142 238.5 130.5Q255 119 285 119Q300 119 316.0 121.5Q332 124 344 128Q353 118 359.5 104.0Q366 90 366 71Q366 34 337.5 9.5Q309 -15 237 -15Q149 -15 101.5 25.0Q54 65 54 155ZM164 345V475H353Q359 465 364.5 448.0Q370 431 370 411Q370 376 354.5 360.5Q339 345 313 345ZM222 240H54V599Q65 602 85.5 605.5Q106 609 129 609Q178 609 200.0 592.0Q222 575 222 529Z"/></g>
+          <g transform="translate(2052,0)"><path class="c-red" pathLength="100" d="M326 367Q276 367 239.5 335.0Q203 303 203 241Q203 179 238.0 149.0Q273 119 325 119Q355 119 378.5 126.5Q402 134 418 142Q437 128 446.5 112.0Q456 96 456 73Q456 33 416.5 9.0Q377 -15 304 -15Q221 -15 159.5 14.0Q98 43 64.5 100.5Q31 158 31 241Q31 329 68.0 386.5Q105 444 166.0 472.5Q227 501 299 501Q370 501 409.5 475.0Q449 449 449 408Q449 389 440.0 372.5Q431 356 419 344Q402 352 378.0 359.5Q354 367 326 367Z"/></g>
+          <g transform="translate(2541,0)"><path class="c-blue" pathLength="100" d="M532 205H362V294Q362 335 341.5 351.5Q321 368 291 368Q261 368 238.0 357.0Q215 346 198 333V470Q221 482 253.0 491.5Q285 501 323 501Q421 501 476.5 451.5Q532 402 532 304ZM54 264H224V1Q213 -2 192.5 -5.0Q172 -8 148 -8Q99 -8 76.5 9.0Q54 26 54 72ZM362 264H532V1Q521 -2 500.5 -5.0Q480 -8 456 -8Q407 -8 384.5 9.0Q362 26 362 72ZM224 175H54V652Q65 655 85.5 658.0Q106 661 130 661Q180 661 202.0 644.5Q224 628 224 581Z"/></g>
+          <g transform="translate(3126,0)"><path class="c-yellow" pathLength="100" d="M614 303V97Q614 66 603.0 51.0Q592 36 568 22Q540 6 486.5 -6.0Q433 -18 380 -18Q284 -18 205.5 15.0Q127 48 81.0 119.0Q35 190 35 302Q35 407 81.5 479.0Q128 551 206.5 588.0Q285 625 382 625Q445 625 491.5 611.5Q538 598 563.0 573.5Q588 549 588 516Q588 491 575.0 471.5Q562 452 545 441Q520 456 482.0 470.0Q444 484 395 484Q342 484 301.0 461.5Q260 439 237.5 398.5Q215 358 215 303Q215 243 236.5 202.5Q258 162 296.0 142.0Q334 122 383 122Q405 122 421.5 126.5Q438 131 447 135V231H340Q334 242 328.5 260.0Q323 278 323 298Q323 334 339.5 350.0Q356 366 382 366H551Q581 366 597.5 349.5Q614 333 614 303Z"/></g>
+          <g transform="translate(3790,0)"><path class="c-green" pathLength="100" d="M52 193V259H222V193Q222 153 242.5 135.0Q263 117 300 117Q323 117 338.0 121.0Q353 125 360 129V259H530V104Q530 79 519.5 60.5Q509 42 488 29Q453 7 404.5 -4.5Q356 -16 299 -16Q227 -16 171.0 5.5Q115 27 83.5 73.0Q52 119 52 193ZM530 216H360V484Q371 487 391.5 490.0Q412 493 436 493Q486 493 508.0 476.5Q530 460 530 413ZM222 216H52V484Q63 487 83.5 490.0Q104 493 128 493Q178 493 200.0 476.5Q222 460 222 413Z"/></g>
+          <g transform="translate(4372,0)"><path class="c-red" pathLength="100" d="M134 167 128 279 359 317Q357 337 339.0 357.0Q321 377 283 377Q243 377 216.5 351.0Q190 325 188 277L194 193Q204 147 239.5 129.0Q275 111 319 111Q361 111 399.0 122.0Q437 133 460 146Q476 136 487.0 118.0Q498 100 498 80Q498 47 473.5 25.5Q449 4 406.0 -6.0Q363 -16 307 -16Q229 -16 166.5 13.5Q104 43 67.5 102.0Q31 161 31 250Q31 316 52.5 364.0Q74 412 110.0 442.0Q146 472 190.5 486.5Q235 501 282 501Q353 501 406.0 473.5Q459 446 489.0 398.5Q519 351 519 289Q519 255 500.0 237.0Q481 219 447 214Z"/></g>
+          <g transform="translate(4921,0)"><path class="c-blue" pathLength="100" d="M462 145Q462 69 404.5 26.0Q347 -17 237 -17Q152 -17 97.5 7.5Q43 32 43 84Q43 108 53.0 125.0Q63 142 77 152Q106 136 143.5 123.5Q181 111 230 111Q294 111 294 144Q294 158 282.0 166.0Q270 174 242 179L212 185Q126 202 83.0 239.0Q40 276 40 343Q40 418 101.0 460.0Q162 502 260 502Q309 502 349.5 492.5Q390 483 414.0 462.5Q438 442 438 410Q438 388 429.5 371.0Q421 354 408 343Q397 350 373.5 357.0Q350 364 323.0 369.0Q296 374 275 374Q242 374 224.0 366.5Q206 359 206 343Q206 332 216.0 325.0Q226 318 254 312L285 305Q381 283 421.5 244.5Q462 206 462 145Z"/></g>
+          <g transform="translate(5413,0)"><path class="c-yellow" pathLength="100" d="M462 145Q462 69 404.5 26.0Q347 -17 237 -17Q152 -17 97.5 7.5Q43 32 43 84Q43 108 53.0 125.0Q63 142 77 152Q106 136 143.5 123.5Q181 111 230 111Q294 111 294 144Q294 158 282.0 166.0Q270 174 242 179L212 185Q126 202 83.0 239.0Q40 276 40 343Q40 418 101.0 460.0Q162 502 260 502Q309 502 349.5 492.5Q390 483 414.0 462.5Q438 442 438 410Q438 388 429.5 371.0Q421 354 408 343Q397 350 373.5 357.0Q350 364 323.0 369.0Q296 374 275 374Q242 374 224.0 366.5Q206 359 206 343Q206 332 216.0 325.0Q226 318 254 312L285 305Q381 283 421.5 244.5Q462 206 462 145Z"/></g>
+          </g>
         </svg>
       </h1>
       <div class="hero-logo-reflection" aria-hidden="true">
         <div class="reflect-flip">
-          <svg class="gartic-loader" viewBox="-30 0 600 130" xmlns="http://www.w3.org/2000/svg">
-            <g transform="translate(10,15) translate(0,110) skewX(14) translate(0,-110)"><path class="c-red" pathLength="100" d="M 61,31 A 32 50 0 1 0 61,89 L 61,60 L 38,60"/></g>
-            <g transform="translate(100,15) translate(0,110) skewX(8.4) translate(0,-110)"><path class="c-blue" pathLength="100" d="M 5,110 L 35,10 L 65,110 M 15,70 L 55,70"/></g>
-            <g transform="translate(190,15) translate(0,110) skewX(2.8) translate(0,-110)"><path class="c-yellow" pathLength="100" d="M 10,10 L 10,110 M 10,10 L 40,10 A 20 20 0 0 1 40,50 L 10,50 M 22,50 L 55,110"/></g>
-            <g transform="translate(280,15) translate(0,110) skewX(-2.8) translate(0,-110)"><path class="c-red" pathLength="100" d="M 5,10 L 65,10 M 35,10 L 35,110"/></g>
-            <g transform="translate(370,15) translate(0,110) skewX(-8.4) translate(0,-110)"><path class="c-blue" pathLength="100" d="M 15,10 L 55,10 M 35,10 L 35,110 M 15,110 L 55,110"/></g>
-            <g transform="translate(460,15) translate(0,110) skewX(-14) translate(0,-110)"><path class="c-yellow" pathLength="100" d="M 61,31 A 32 50 0 1 0 61,89"/></g>
+          <svg class="gartic-loader" viewBox="-40 -20 5985 719" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(0,661) scale(1,-1)">
+          <g transform="translate(0,0) skewX(-14)"><path class="c-red" pathLength="100" d="M251 124Q300 124 320.0 140.0Q340 156 340 176Q340 196 324.0 207.5Q308 219 279 229L237 243Q179 263 134.5 285.5Q90 308 65.0 344.0Q40 380 40 438Q40 523 105.5 574.0Q171 625 289 625Q347 625 392.0 614.0Q437 603 463.0 580.5Q489 558 489 523Q489 498 477.0 479.0Q465 460 448 447Q426 461 389.0 471.5Q352 482 308 482Q263 482 242.0 469.5Q221 457 221 438Q221 423 234.5 413.5Q248 404 273 396L326 379Q421 349 471.0 301.5Q521 254 521 174Q521 89 453.5 35.5Q386 -18 257 -18Q196 -18 147.0 -5.0Q98 8 69.0 34.0Q40 60 40 97Q40 126 57.0 146.5Q74 167 94 178Q122 156 162.5 140.0Q203 124 251 124Z"/></g>
+          <g transform="translate(551,0) skewX(-11.2)"><path class="c-blue" pathLength="100" d="M295 186 171 263 396 493Q448 493 479.5 470.0Q511 447 511 412Q511 382 490.0 359.0Q469 336 425 298ZM179 239 316 298 527 88Q523 42 500.0 16.5Q477 -9 434 -9Q403 -9 377.5 6.5Q352 22 323 59ZM54 264H224V1Q213 -2 192.5 -5.0Q172 -8 148 -8Q99 -8 76.5 9.0Q54 26 54 72ZM224 175H54V652Q65 655 85.5 658.0Q106 661 130 661Q180 661 202.0 644.5Q224 628 224 581Z"/></g>
+          <g transform="translate(1106,0) skewX(-8.4)"><path class="c-yellow" pathLength="100" d="M134 167 128 279 359 317Q357 337 339.0 357.0Q321 377 283 377Q243 377 216.5 351.0Q190 325 188 277L194 193Q204 147 239.5 129.0Q275 111 319 111Q361 111 399.0 122.0Q437 133 460 146Q476 136 487.0 118.0Q498 100 498 80Q498 47 473.5 25.5Q449 4 406.0 -6.0Q363 -16 307 -16Q229 -16 166.5 13.5Q104 43 67.5 102.0Q31 161 31 250Q31 316 52.5 364.0Q74 412 110.0 442.0Q146 472 190.5 486.5Q235 501 282 501Q353 501 406.0 473.5Q459 446 489.0 398.5Q519 351 519 289Q519 255 500.0 237.0Q481 219 447 214Z"/></g>
+          <g transform="translate(1655,0) skewX(-5.6)"><path class="c-green" pathLength="100" d="M54 264H222V167Q222 142 238.5 130.5Q255 119 285 119Q300 119 316.0 121.5Q332 124 344 128Q353 118 359.5 104.0Q366 90 366 71Q366 34 337.5 9.5Q309 -15 237 -15Q149 -15 101.5 25.0Q54 65 54 155ZM164 345V475H353Q359 465 364.5 448.0Q370 431 370 411Q370 376 354.5 360.5Q339 345 313 345ZM222 240H54V599Q65 602 85.5 605.5Q106 609 129 609Q178 609 200.0 592.0Q222 575 222 529Z"/></g>
+          <g transform="translate(2052,0) skewX(-2.8)"><path class="c-red" pathLength="100" d="M326 367Q276 367 239.5 335.0Q203 303 203 241Q203 179 238.0 149.0Q273 119 325 119Q355 119 378.5 126.5Q402 134 418 142Q437 128 446.5 112.0Q456 96 456 73Q456 33 416.5 9.0Q377 -15 304 -15Q221 -15 159.5 14.0Q98 43 64.5 100.5Q31 158 31 241Q31 329 68.0 386.5Q105 444 166.0 472.5Q227 501 299 501Q370 501 409.5 475.0Q449 449 449 408Q449 389 440.0 372.5Q431 356 419 344Q402 352 378.0 359.5Q354 367 326 367Z"/></g>
+          <g transform="translate(2541,0) skewX(0)"><path class="c-blue" pathLength="100" d="M532 205H362V294Q362 335 341.5 351.5Q321 368 291 368Q261 368 238.0 357.0Q215 346 198 333V470Q221 482 253.0 491.5Q285 501 323 501Q421 501 476.5 451.5Q532 402 532 304ZM54 264H224V1Q213 -2 192.5 -5.0Q172 -8 148 -8Q99 -8 76.5 9.0Q54 26 54 72ZM362 264H532V1Q521 -2 500.5 -5.0Q480 -8 456 -8Q407 -8 384.5 9.0Q362 26 362 72ZM224 175H54V652Q65 655 85.5 658.0Q106 661 130 661Q180 661 202.0 644.5Q224 628 224 581Z"/></g>
+          <g transform="translate(3126,0) skewX(2.8)"><path class="c-yellow" pathLength="100" d="M614 303V97Q614 66 603.0 51.0Q592 36 568 22Q540 6 486.5 -6.0Q433 -18 380 -18Q284 -18 205.5 15.0Q127 48 81.0 119.0Q35 190 35 302Q35 407 81.5 479.0Q128 551 206.5 588.0Q285 625 382 625Q445 625 491.5 611.5Q538 598 563.0 573.5Q588 549 588 516Q588 491 575.0 471.5Q562 452 545 441Q520 456 482.0 470.0Q444 484 395 484Q342 484 301.0 461.5Q260 439 237.5 398.5Q215 358 215 303Q215 243 236.5 202.5Q258 162 296.0 142.0Q334 122 383 122Q405 122 421.5 126.5Q438 131 447 135V231H340Q334 242 328.5 260.0Q323 278 323 298Q323 334 339.5 350.0Q356 366 382 366H551Q581 366 597.5 349.5Q614 333 614 303Z"/></g>
+          <g transform="translate(3790,0) skewX(5.6)"><path class="c-green" pathLength="100" d="M52 193V259H222V193Q222 153 242.5 135.0Q263 117 300 117Q323 117 338.0 121.0Q353 125 360 129V259H530V104Q530 79 519.5 60.5Q509 42 488 29Q453 7 404.5 -4.5Q356 -16 299 -16Q227 -16 171.0 5.5Q115 27 83.5 73.0Q52 119 52 193ZM530 216H360V484Q371 487 391.5 490.0Q412 493 436 493Q486 493 508.0 476.5Q530 460 530 413ZM222 216H52V484Q63 487 83.5 490.0Q104 493 128 493Q178 493 200.0 476.5Q222 460 222 413Z"/></g>
+          <g transform="translate(4372,0) skewX(8.4)"><path class="c-red" pathLength="100" d="M134 167 128 279 359 317Q357 337 339.0 357.0Q321 377 283 377Q243 377 216.5 351.0Q190 325 188 277L194 193Q204 147 239.5 129.0Q275 111 319 111Q361 111 399.0 122.0Q437 133 460 146Q476 136 487.0 118.0Q498 100 498 80Q498 47 473.5 25.5Q449 4 406.0 -6.0Q363 -16 307 -16Q229 -16 166.5 13.5Q104 43 67.5 102.0Q31 161 31 250Q31 316 52.5 364.0Q74 412 110.0 442.0Q146 472 190.5 486.5Q235 501 282 501Q353 501 406.0 473.5Q459 446 489.0 398.5Q519 351 519 289Q519 255 500.0 237.0Q481 219 447 214Z"/></g>
+          <g transform="translate(4921,0) skewX(11.2)"><path class="c-blue" pathLength="100" d="M462 145Q462 69 404.5 26.0Q347 -17 237 -17Q152 -17 97.5 7.5Q43 32 43 84Q43 108 53.0 125.0Q63 142 77 152Q106 136 143.5 123.5Q181 111 230 111Q294 111 294 144Q294 158 282.0 166.0Q270 174 242 179L212 185Q126 202 83.0 239.0Q40 276 40 343Q40 418 101.0 460.0Q162 502 260 502Q309 502 349.5 492.5Q390 483 414.0 462.5Q438 442 438 410Q438 388 429.5 371.0Q421 354 408 343Q397 350 373.5 357.0Q350 364 323.0 369.0Q296 374 275 374Q242 374 224.0 366.5Q206 359 206 343Q206 332 216.0 325.0Q226 318 254 312L285 305Q381 283 421.5 244.5Q462 206 462 145Z"/></g>
+          <g transform="translate(5413,0) skewX(14)"><path class="c-yellow" pathLength="100" d="M462 145Q462 69 404.5 26.0Q347 -17 237 -17Q152 -17 97.5 7.5Q43 32 43 84Q43 108 53.0 125.0Q63 142 77 152Q106 136 143.5 123.5Q181 111 230 111Q294 111 294 144Q294 158 282.0 166.0Q270 174 242 179L212 185Q126 202 83.0 239.0Q40 276 40 343Q40 418 101.0 460.0Q162 502 260 502Q309 502 349.5 492.5Q390 483 414.0 462.5Q438 442 438 410Q438 388 429.5 371.0Q421 354 408 343Q397 350 373.5 357.0Q350 364 323.0 369.0Q296 374 275 374Q242 374 224.0 366.5Q206 359 206 343Q206 332 216.0 325.0Q226 318 254 312L285 305Q381 283 421.5 244.5Q462 206 462 145Z"/></g>
+          </g>
           </svg>
         </div>
         <div class="reflection-fade"></div>
@@ -652,11 +692,11 @@
         <path pathLength="1" class="pencil-point" filter="url(#pencil-blur)" d="M-43.9,63.4 Q-32.7,65.4 -27.2,65.9 Q-21.7,66.5 -16.4,66.4 Q-11.2,66.4 -6.1,65.5 Q-1.1,64.7 3.7,63.1 Q8.5,61.4 13.0,58.9 Q17.5,56.5 21.7,53.3 Q26.0,50.1 30.1,46.3 Q34.2,42.5 38.2,38.4 Q42.2,34.3 46.1,30.0 Q50.1,25.8 54.1,21.8 Q58.1,17.7 62.2,14.1 Q66.3,10.4 70.7,7.4 Q75.0,4.4 86.3,12.8 Q97.5,21.1 106.2,21.6 Q115.0,22.1 123.8,22.4 Q132.5,22.8 141.2,22.9 Q150.0,23.0 158.8,22.9 Q167.5,22.8 176.2,22.4 Q185.0,22.1 193.8,21.6 Q202.5,21.1 211.2,20.6 Q220.0,20.0 219.4,26.0 Q218.9,32.0 218.4,38.0 Q217.9,44.0 217.6,50.0 Q217.3,56.0 217.1,62.0 Q217.0,68.0 217.1,74.0 Q217.1,80.0 217.4,86.0 Q217.7,92.0 218.1,98.0 Q218.6,104.0 219.1,110.0 Q219.6,116.0 220.2,122.0 Q220.7,128.0 221.3,134.0 Q221.8,140.0 222.2,140.0 Q222.7,140.1 225.3,140.4 Q227.9,140.8 230.0,142.5 Q232.1,144.1 233.0,146.6 Q234.0,149.0 233.5,151.6 Q233.1,154.2 231.4,156.2 Q229.7,158.3 227.2,159.1 Q224.7,160.0 222.1,159.5 Q219.5,158.9 217.5,157.2 Q215.6,155.4 214.8,152.9 Q214.0,150.3 214.6,147.8 Q215.2,145.2 220.7,143.3 Q226.2,141.4 229.4,141.7 Q232.5,142.0 235.6,141.7 Q238.8,141.4 241.9,140.7 Q245.0,140.0 246.3,143.5 Q247.5,147.0 249.2,150.3 Q250.8,153.5 252.9,156.5 Q255.0,159.5 257.5,162.2 Q260.0,165.0 249.0,164.4 Q238.0,163.8 227.0,163.3 Q216.0,162.8 205.0,162.5 Q194.0,162.2 183.0,162.1 Q172.0,162.0 161.0,162.2 Q150.0,162.3 139.0,162.7 Q128.0,163.1 117.0,163.6 Q106.0,164.2 95.0,164.8 Q84.0,165.4 73.0,166.0 Q62.0,166.5 51.0,167.0 Q40.0,167.4 42.5,163.5 Q45.0,159.5 47.1,156.5 Q49.2,153.5 50.8,150.3 Q52.5,147.0 53.7,143.5 Q55.0,140.0 58.1,140.7 Q61.2,141.4 64.4,141.7 Q67.5,142.0 70.6,141.7 Q73.8,141.4 76.9,140.7 Q80.0,140.0 80.6,134.0 Q81.1,128.0 81.6,122.0 Q82.1,116.0 82.4,110.0 Q82.7,104.0 82.9,98.0 Q83.0,92.0 82.9,86.0 Q82.9,80.0 82.6,74.0 Q82.3,68.0 81.9,62.0 Q81.4,56.0 80.9,50.0 Q80.4,44.0 79.8,38.0 Q79.3,32.0 78.7,26.0 Q78.2,20.0 85.6,29.0 Q93.0,37.9 100.7,41.5 Q108.4,45.1 116.4,47.8 Q124.3,50.6 132.4,52.4 Q140.6,54.2 148.9,55.0 Q157.3,55.9 165.9,55.9 Q174.4,55.9 183.1,55.2 Q191.8,54.6 200.6,53.5 Q209.4,52.5 218.3,51.3 Q227.1,50.1 235.9,49.2 Q244.7,48.2 253.3,47.6 Q262.0,47.1 270.5,47.2 Q279.1,47.4 287.4,48.4 Q295.7,49.4 303.8,51.4 Q311.9,53.3 319.8,56.2 Q327.7,59.1 335.4,62.9 L343.1,66.6"></path>
       </svg>
       <h2>About us</h2>
-      <p data-i18n="about.text">O Gartic nasceu como projeto académico de uma equipa de quatro pessoas, apaixonada por jogos multijogador em tempo real. Construímos cada sala, cada traço e cada palpite a pensar em quem está do outro lado do ecrã.</p>
+      <p data-i18n="about.text">O SketchGuess nasceu como projeto académico de uma equipa de quatro pessoas, apaixonada por jogos multijogador em tempo real. Construímos cada sala, cada traço e cada palpite a pensar em quem está do outro lado do ecrã.</p>
     </div>
   </section>
 
-  <!-- LOGIN -->
+  <!-- ============ LOGIN ============ -->
   <section class="page" data-page="login">
     <div class="auth-wrap">
       <div class="auth-card">
@@ -669,7 +709,7 @@
     </div>
   </section>
 
-  <!--CRIAR CONTA -->
+  <!-- ============ CRIAR CONTA ============ -->
   <section class="page" data-page="criar-conta">
     <div class="auth-wrap">
       <div class="auth-card">
@@ -699,7 +739,7 @@
     </div>
   </section>
 
-  <!-- PERFIL  -->
+  <!-- ============ PERFIL ============ -->
   <section class="page" data-page="perfil">
     <div class="profile-wrap">
       <div class="profile-head">
@@ -734,7 +774,7 @@
           <div><div class="room-name">sala-rapida-02</div><div class="room-meta">5/6 <span data-i18n="profile.rooms.players">jogadores</span> · EN</div></div>
           <button class="btn btn-ghost btn-sm" data-goto="jogo" data-i18n="profile.rooms.enter">Entrar</button>
         </div>
-        <button class="btn btn-primary btn-sm" style="margin-top:14px;" data-i18n="profile.rooms.create">Criar sala</button>
+        <button class="btn btn-primary btn-sm" style="margin-top:14px;" id="open-create-room" data-i18n="profile.rooms.create">Criar sala</button>
       </div>
 
       <div class="panel">
@@ -780,7 +820,7 @@
     </div>
   </section>
 
-  <!--  JOGO  -->
+  <!-- ============ JOGO ============ -->
   <section class="page" data-page="jogo">
     <div class="game-wrap">
       <div class="game-topbar">
@@ -833,7 +873,7 @@
     </div>
   </section>
 
-  <!-- REGRAS  -->
+  <!-- ============ REGRAS ============ -->
   <section class="page" data-page="regras">
     <div class="simple-wrap">
       <h1 data-i18n="rules.title">Regras do jogo</h1>
@@ -852,7 +892,7 @@
     </div>
   </section>
 
-  <!--  PRIVACIDADE  -->
+  <!-- ============ PRIVACIDADE ============ -->
   <section class="page" data-page="privacidade">
     <div class="simple-wrap">
       <h1 data-i18n="privacy.title">Política de Privacidade</h1>
@@ -867,7 +907,7 @@
     </div>
   </section>
 
-  <!--  TERMOS -->
+  <!-- ============ TERMOS ============ -->
   <section class="page" data-page="termos">
     <div class="simple-wrap">
       <h1 data-i18n="terms.title">Termos de Serviço</h1>
@@ -885,7 +925,7 @@
 
 
 
-<!--  FIM DE JOGO ( teste) -->
+<!-- ============ FIM DE JOGO (overlay de teste) ============ -->
 <div class="endgame-overlay" id="endgame-overlay">
   <div class="endgame-panel">
     <div class="endgame-trophy" id="endgame-trophy">
@@ -1005,6 +1045,81 @@
   </div>
 </div>
 
+
+<!-- ============ CRIAR SALA (modal) ============ -->
+<div class="modal-overlay" id="create-room-overlay">
+  <div class="modal-panel">
+    <h2 data-i18n="room.create.title">Criar sala</h2>
+
+    <div class="field-dark">
+      <label data-i18n="room.create.name">Nome da sala</label>
+      <input type="text" id="room-name" placeholder="Sala do utilizador_demo">
+    </div>
+
+    <div class="field-dark">
+      <label><span data-i18n="room.create.players">Jogadores</span>: <span id="room-players-val">6</span></label>
+      <input type="range" id="room-players" min="2" max="6" value="6">
+    </div>
+
+    <div class="field-row">
+      <div class="field-dark">
+        <label data-i18n="room.create.rounds">Rondas</label>
+        <select id="room-rounds">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+      <div class="field-dark">
+        <label data-i18n="room.create.time">Tempo por ronda</label>
+        <select id="room-time">
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+          <option value="80" selected>80s</option>
+          <option value="120">120s</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-dark">
+        <label data-i18n="room.create.chatlang">Idioma do chat</label>
+        <select id="room-chatlang">
+          <option value="pt">Português</option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
+      </div>
+      <div class="field-dark">
+        <label data-i18n="room.create.category">Categoria de palavras</label>
+        <select id="room-category">
+          <option value="general" data-i18n="room.cat.general">Geral</option>
+          <option value="animals" data-i18n="room.cat.animals">Animais</option>
+          <option value="food" data-i18n="room.cat.food">Comida</option>
+          <option value="movies" data-i18n="room.cat.movies">Filmes e séries</option>
+          <option value="objects" data-i18n="room.cat.objects">Objetos</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="signup-terms" style="margin-bottom:6px;">
+      <input type="checkbox" id="room-private-check">
+      <span data-i18n="room.create.private">Sala privada (só entra quem tiver a senha)</span>
+    </label>
+    <div class="field-dark" id="room-password-field" style="display:none;">
+      <label data-i18n="room.create.password">Senha da sala</label>
+      <input type="password" id="room-password" placeholder="••••••">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="room-create-cancel" data-i18n="room.create.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="room-create-confirm" data-i18n="room.create.confirm">Criar sala</button>
+    </div>
+  </div>
+</div>
+
 <footer class="site">
   <div data-i18n="footer.copyright">© 2026 Garatuja Games, Lda. — empresa fictícia, projeto académico</div>
   <div class="line2">
@@ -1027,7 +1142,7 @@
       'hero.lede':'Desenha, adivinha e ganha pontos em tempo real com os teus amigos. Uma sala, uma palavra, sessenta segundos — quem acertar mais rápido, sobe no rank.',
       'hero.placeholder':'imagem do jogo · placeholder',
       'cta.play':'Jogar',
-      'about.text':'O Gartic nasceu como projeto académico de uma equipa de quatro pessoas, apaixonada por jogos multijogador em tempo real. Construímos cada sala, cada traço e cada palpite a pensar em quem está do outro lado do ecrã.',
+      'about.text':'O SketchGuess nasceu como projeto académico de uma equipa de quatro pessoas, apaixonada por jogos multijogador em tempo real. Construímos cada sala, cada traço e cada palpite a pensar em quem está do outro lado do ecrã.',
       'login.title':'Login', 'login.email':'Email', 'login.password':'Password', 'login.enter':'Entrar',
       'login.noaccount':'Ainda não tens conta?', 'login.createaccount':'Criar conta',
       'signup.title':'Criar conta', 'signup.photo':'Adicionar foto', 'signup.name':'Nome', 'signup.nickname':'Nickname',
@@ -1035,6 +1150,12 @@
       'profile.editphoto':'Trocar foto', 'profile.changepass':'Trocar password',
       'profile.stats.heading':'Rank e estatísticas', 'profile.stats.rank':'Rank', 'profile.stats.points':'Pontos totais', 'profile.stats.matches':'Partidas', 'profile.stats.wins':'Vitórias',
       'profile.rooms.heading':'Salas disponíveis', 'profile.rooms.players':'jogadores', 'profile.rooms.enter':'Entrar', 'profile.rooms.create':'Criar sala',
+      'room.create.title':'Criar sala', 'room.create.name':'Nome da sala', 'room.create.players':'Jogadores',
+      'room.create.rounds':'Rondas', 'room.create.time':'Tempo por ronda', 'room.create.chatlang':'Idioma do chat',
+      'room.create.category':'Categoria de palavras', 'room.cat.general':'Geral', 'room.cat.animals':'Animais',
+      'room.cat.food':'Comida', 'room.cat.movies':'Filmes e séries', 'room.cat.objects':'Objetos',
+      'room.create.private':'Sala privada (só entra quem tiver a senha)', 'room.create.password':'Senha da sala',
+      'room.create.confirm':'Criar sala', 'room.create.cancel':'Cancelar',
       'profile.addfriends.heading':'Adicionar amigos', 'profile.addfriends.placeholder':'Pesquisar por username', 'profile.addfriends.add':'Adicionar',
       'profile.friends.heading':'Amigos', 'profile.friends.online':'online', 'profile.friends.offline':'offline', 'profile.friends.remove':'Remover',
       'profile.danger.heading':'Zona de perigo', 'profile.danger.text':'Esta ação é permanente e remove todos os teus dados. Não pode ser desfeita.',
@@ -1081,7 +1202,7 @@
       'hero.lede':'Draw, guess, and earn points in real time with your friends. One room, one word, sixty seconds — whoever guesses fastest climbs the rank.',
       'hero.placeholder':'game image · placeholder',
       'cta.play':'Play',
-      'about.text':"Gartic was born as an academic project by a team of four people passionate about real-time multiplayer games. We built every room, every stroke, and every guess thinking about who's on the other side of the screen.",
+      'about.text':"SketchGuess was born as an academic project by a team of four people passionate about real-time multiplayer games. We built every room, every stroke, and every guess thinking about who's on the other side of the screen.",
       'login.title':'Login', 'login.email':'Email', 'login.password':'Password', 'login.enter':'Log in',
       'login.noaccount':"Don't have an account yet?", 'login.createaccount':'Create account',
       'signup.title':'Create account', 'signup.photo':'Add photo', 'signup.name':'Name', 'signup.nickname':'Nickname',
@@ -1089,6 +1210,12 @@
       'profile.editphoto':'Change photo', 'profile.changepass':'Change password',
       'profile.stats.heading':'Rank & stats', 'profile.stats.rank':'Rank', 'profile.stats.points':'Total points', 'profile.stats.matches':'Matches', 'profile.stats.wins':'Wins',
       'profile.rooms.heading':'Available rooms', 'profile.rooms.players':'players', 'profile.rooms.enter':'Join', 'profile.rooms.create':'Create room',
+      'room.create.title':'Create room', 'room.create.name':'Room name', 'room.create.players':'Players',
+      'room.create.rounds':'Rounds', 'room.create.time':'Time per round', 'room.create.chatlang':'Chat language',
+      'room.create.category':'Word category', 'room.cat.general':'General', 'room.cat.animals':'Animals',
+      'room.cat.food':'Food', 'room.cat.movies':'Movies & TV', 'room.cat.objects':'Objects',
+      'room.create.private':'Private room (only accessible with the password)', 'room.create.password':'Room password',
+      'room.create.confirm':'Create room', 'room.create.cancel':'Cancel',
       'profile.addfriends.heading':'Add friends', 'profile.addfriends.placeholder':'Search by username', 'profile.addfriends.add':'Add',
       'profile.friends.heading':'Friends', 'profile.friends.online':'online', 'profile.friends.offline':'offline', 'profile.friends.remove':'Remove',
       'profile.danger.heading':'Danger zone', 'profile.danger.text':'This action is permanent and removes all your data. It cannot be undone.',
@@ -1135,7 +1262,7 @@
       'hero.lede':'Dibuja, adivina y gana puntos en tiempo real con tus amigos. Una sala, una palabra, sesenta segundos — quien acierte más rápido, sube en el ranking.',
       'hero.placeholder':'imagen del juego · placeholder',
       'cta.play':'Jugar',
-      'about.text':'Gartic nació como proyecto académico de un equipo de cuatro personas apasionadas por los juegos multijugador en tiempo real. Construimos cada sala, cada trazo y cada intento pensando en quien está al otro lado de la pantalla.',
+      'about.text':'SketchGuess nació como proyecto académico de un equipo de cuatro personas apasionadas por los juegos multijugador en tiempo real. Construimos cada sala, cada trazo y cada intento pensando en quien está al otro lado de la pantalla.',
       'login.title':'Login', 'login.email':'Email', 'login.password':'Contraseña', 'login.enter':'Iniciar sesión',
       'login.noaccount':'¿Aún no tienes cuenta?', 'login.createaccount':'Crear cuenta',
       'signup.title':'Crear cuenta', 'signup.photo':'Añadir foto', 'signup.name':'Nombre', 'signup.nickname':'Nickname',
@@ -1143,6 +1270,12 @@
       'profile.editphoto':'Cambiar foto', 'profile.changepass':'Cambiar contraseña',
       'profile.stats.heading':'Rango y estadísticas', 'profile.stats.rank':'Rango', 'profile.stats.points':'Puntos totales', 'profile.stats.matches':'Partidas', 'profile.stats.wins':'Victorias',
       'profile.rooms.heading':'Salas disponibles', 'profile.rooms.players':'jugadores', 'profile.rooms.enter':'Entrar', 'profile.rooms.create':'Crear sala',
+      'room.create.title':'Crear sala', 'room.create.name':'Nombre de la sala', 'room.create.players':'Jugadores',
+      'room.create.rounds':'Rondas', 'room.create.time':'Tiempo por ronda', 'room.create.chatlang':'Idioma del chat',
+      'room.create.category':'Categoría de palabras', 'room.cat.general':'General', 'room.cat.animals':'Animales',
+      'room.cat.food':'Comida', 'room.cat.movies':'Películas y series', 'room.cat.objects':'Objetos',
+      'room.create.private':'Sala privada (solo se accede con la contraseña)', 'room.create.password':'Contraseña de la sala',
+      'room.create.confirm':'Crear sala', 'room.create.cancel':'Cancelar',
       'profile.addfriends.heading':'Añadir amigos', 'profile.addfriends.placeholder':'Buscar por nombre de usuario', 'profile.addfriends.add':'Añadir',
       'profile.friends.heading':'Amigos', 'profile.friends.online':'en línea', 'profile.friends.offline':'desconectado', 'profile.friends.remove':'Eliminar',
       'profile.danger.heading':'Zona de peligro', 'profile.danger.text':'Esta acción es permanente y elimina todos tus datos. No se puede deshacer.',
@@ -1250,6 +1383,27 @@
   if(signupTerms){
     signupTerms.addEventListener('change', e=>{
       document.getElementById('signup-submit').disabled = !e.target.checked;
+    });
+  }
+
+  // ---------- criar sala (modal) ----------
+  const openRoomBtn = document.getElementById('open-create-room');
+  if(openRoomBtn){
+    openRoomBtn.addEventListener('click', ()=>{
+      document.getElementById('create-room-overlay').classList.add('show');
+    });
+    document.getElementById('room-create-cancel').addEventListener('click', ()=>{
+      document.getElementById('create-room-overlay').classList.remove('show');
+    });
+    document.getElementById('room-players').addEventListener('input', e=>{
+      document.getElementById('room-players-val').textContent = e.target.value;
+    });
+    document.getElementById('room-private-check').addEventListener('change', e=>{
+      document.getElementById('room-password-field').style.display = e.target.checked ? 'block' : 'none';
+    });
+    document.getElementById('room-create-confirm').addEventListener('click', ()=>{
+      document.getElementById('create-room-overlay').classList.remove('show');
+      goto('jogo');
     });
   }
 
