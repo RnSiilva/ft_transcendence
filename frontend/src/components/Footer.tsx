@@ -1,17 +1,17 @@
 import { Link } from 'react-router-dom'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function Footer() {
+  const { t } = useLanguage()
+
   return (
-    <footer className="rodape">
-      <p>
-        © 2026 Garatuja Games, Lda. — empresa fictícia, projeto académico
-        ft_transcendence (42 Porto)
-      </p>
-      <p>
-        <Link to="/privacidade">Política de Privacidade</Link> ·{' '}
-        <Link to="/termos">Termos de Serviço</Link> ·{' '}
-        <Link to="/regras">Regras do jogo</Link>
-      </p>
+    <footer className="site">
+      <div>{t('footer.copyright')}</div>
+      <div className="line2">
+        <Link to="/privacy">{t('footer.privacy')}</Link>
+        <Link to="/terms">{t('footer.terms')}</Link>
+        <Link to="/rules">{t('footer.rules')}</Link>
+      </div>
     </footer>
   )
 }

@@ -1,44 +1,41 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
-  function entrar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    // Autenticação real (bcrypt + JWT, validação no backend) — Sprint 2.
-    navigate('/perfil')
+  function handleLogin() {
+    // AQUI O CODIGO DO LOGIN (autenticação real no backend: bcrypt + JWT em
+    // cookie httpOnly, validação de email/password, rate limiting)
+    navigate('/profile')
   }
 
   return (
-    <main className="pagina centro">
-      <h1>Login</h1>
-      <form className="formulario" onSubmit={entrar}>
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={7}
-            required
-          />
-        </label>
-        <button type="submit">Entrar</button>
-      </form>
-      <p>Ainda não tens conta? Criar conta</p>
-    </main>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <h1>{t('login.title')}</h1>
+        <div className="field">
+          <label>{t('login.email')}</label>
+          <input type="email" placeholder="tu@exemplo.com" />
+        </div>
+        <div className="field">
+          <label>{t('login.password')}</label>
+          <input type="password" placeholder="••••••••" />
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={handleLogin}
+        >
+          {t('login.enter')}
+        </button>
+        <p className="switch">
+          <span>{t('login.noaccount')}</span>{' '}
+          <Link to="/register">{t('login.createaccount')}</Link>
+        </p>
+      </div>
+    </div>
   )
 }
 

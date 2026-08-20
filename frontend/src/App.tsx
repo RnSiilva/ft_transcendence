@@ -1,31 +1,42 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { LanguageProvider } from './i18n/LanguageContext'
+import StarField from './components/StarField'
+import LanguageBar from './components/LanguageBar'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import CookieBanner from './components/CookieBanner'
 import Home from './pages/Home'
 import Login from './pages/Login'
-import Perfil from './pages/Perfil'
-import Jogo from './pages/Jogo'
-import Regras from './pages/Regras'
-import Privacidade from './pages/Privacidade'
-import Termos from './pages/Termos'
+import Register from './pages/Register'
+import Profile from './pages/Profile'
+import Game from './pages/Game'
+import Rules from './pages/Rules'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 
 function App() {
   return (
-    <BrowserRouter>
-      <Header />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/perfil" element={<Perfil />} />
-        <Route path="/jogo" element={<Jogo />} />
-        <Route path="/regras" element={<Regras />} />
-        <Route path="/privacidade" element={<Privacidade />} />
-        <Route path="/termos" element={<Termos />} />
-      </Routes>
-      <Footer />
-      <CookieBanner />
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <StarField />
+        <LanguageBar />
+        <Header />
+        <main>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/game" element={<Game />} />
+            <Route path="/rules" element={<Rules />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+          </Routes>
+        </main>
+        <Footer />
+        <CookieBanner />
+      </BrowserRouter>
+    </LanguageProvider>
   )
 }
 
