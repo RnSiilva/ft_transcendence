@@ -1,111 +1,269 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --fundo: #ffffff;
+  --texto: #1a1a1a;
+  --destaque: #2f6fdb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+* {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texto);
+  background: var(--fundo);
+  line-height: 1.5;
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h2,
+h3 {
+  line-height: 1.2;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+a {
+  color: var(--destaque);
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+button {
+  font: inherit;
+  cursor: pointer;
+  background: var(--destaque);
+  color: var(--fundo);
+  border: 1px solid var(--destaque);
+  padding: 8px 16px;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+input {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid var(--texto);
+  background: var(--fundo);
+  color: var(--texto);
+}
+
+/* Cabeçalho e rodapé */
+.cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--texto);
+}
+
+.cabecalho nav {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.logo {
+  font-weight: bold;
+  font-size: 20px;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.rodape {
+  border-top: 1px solid var(--texto);
+  padding: 16px 24px;
+  text-align: center;
+  font-size: 14px;
+  margin-top: 48px;
+}
+
+.rodape a {
+  margin: 0 8px;
+}
+
+/* Estrutura das páginas */
+.pagina {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.pagina section {
+  margin-top: 48px;
+}
+
+.centro {
+  text-align: center;
+}
+
+.foto-jogo {
+  max-width: 100%;
+  width: 420px;
+  border: 1px solid var(--texto);
+}
+
+/* Faixa de cookies */
+.faixa-cookies {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--texto);
+  color: var(--fundo);
+  padding: 12px 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.faixa-cookies a {
+  color: var(--fundo);
+}
+
+/* Formulários */
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 320px;
+  margin: 32px auto;
+}
+
+.formulario label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.envio {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.envio input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Perfil */
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--destaque);
+  color: var(--fundo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  flex-shrink: 0;
+}
+
+.avatar-pequeno {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.cartao {
+  border: 1px solid var(--texto);
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.linha {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.linha-jogador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lista-simples {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.lista-simples li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(26, 26, 26, 0.2);
+}
+
+.online {
+  color: var(--destaque);
+  font-size: 12px;
+}
+
+.offline {
+  opacity: 0.5;
+  font-size: 12px;
+}
+
+/* Página do jogo */
+.barra-estado {
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  border: 1px solid var(--texto);
+  padding: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.area-jogo {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.painel {
+  border: 1px solid var(--texto);
+  padding: 12px;
+}
+
+.placar {
+  width: 200px;
+}
+
+.quadro {
+  flex: 1;
+  min-width: 320px;
+  text-align: center;
+}
+
+.quadro canvas {
+  border: 1px solid var(--texto);
+  background: var(--fundo);
+  max-width: 100%;
+  touch-action: none;
+}
+
+.chat {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-mensagens {
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid rgba(26, 26, 26, 0.2);
+  padding: 8px;
+  font-size: 14px;
+}
+
+.chat-mensagens p {
+  margin: 0 0 6px;
 }
