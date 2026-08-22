@@ -49,13 +49,13 @@ const io = new Server(server, {
 const PORT = process.env.BACKEND_PORT || 4000;
 
 io.on('connection', (socket) => {
-  console.log('Cliente conectado:', socket.id);
+  console.log('Client connected:', socket.id);
 
   socket.on('disconnect', () => {
-    console.log('Cliente desconectado:', socket.id);
+    console.log('Client disconnected:', socket.id);
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`Backend rodando na porta ${PORT}`);
+  console.log(`Backend running on port ${PORT}`);
 });
