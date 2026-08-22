@@ -51,48 +51,55 @@ function Login() {
   }
 
   return (
-    <main className="page center">
-      <h1>{t('auth.loginTitle')}</h1>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <h1>{t('auth.loginTitle')}</h1>
 
-      {error && (
-        <p id="login-error" role="alert" style={{ color: 'red', margin: '0 auto', maxWidth: 320 }}>
-          {error}
+        {error && (
+          <p id="login-error" role="alert" style={{ color: 'var(--red)', marginBottom: 16 }}>
+            {error}
+          </p>
+        )}
+
+        <form id="login-form" onSubmit={handleSubmit}>
+          <div className="field">
+            <label>{t('auth.loginOrUsername')}</label>
+            <input
+              id="login-identifier"
+              type="text"
+              placeholder={t('auth.placeholderLogin')}
+              value={login}
+              onChange={(e) => setLogin(e.target.value)}
+              required
+            />
+          </div>
+          <div className="field">
+            <label>{t('auth.password')}</label>
+            <input
+              id="login-password"
+              type="password"
+              placeholder={t('auth.placeholderPassword')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button
+            id="login-submit"
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={loading}
+          >
+            {loading ? t('auth.loggingIn') : t('auth.loginSubmit')}
+          </button>
+        </form>
+
+        <p className="switch">
+          <span>{t('auth.noAccount')}</span>{' '}
+          <Link id="link-to-register" to="/register">{t('auth.linkToRegister')}</Link>
         </p>
-      )}
-
-      <form id="login-form" className="form" onSubmit={handleSubmit}>
-        <label>
-          {t('auth.loginOrUsername')}
-          <input
-            id="login-identifier"
-            type="text"
-            placeholder={t('auth.placeholderLogin')}
-            value={login}
-            onChange={(e) => setLogin(e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          {t('auth.password')}
-          <input
-            id="login-password"
-            type="password"
-            placeholder={t('auth.placeholderPassword')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        <button id="login-submit" type="submit" disabled={loading}>
-          {loading ? t('auth.loggingIn') : t('auth.loginSubmit')}
-        </button>
-      </form>
-
-      <p>
-        {t('auth.noAccount')}{' '}
-        <Link id="link-to-register" to="/register">{t('auth.linkToRegister')}</Link>
-      </p>
-    </main>
+      </div>
+    </div>
   )
 }
 

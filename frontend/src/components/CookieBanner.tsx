@@ -4,15 +4,13 @@ import { useTranslation } from 'react-i18next'
 
 function CookieBanner() {
   const { t } = useTranslation()
-  const [visible, setVisible] = useState(() => {
+  const [accepted, setAccepted] = useState(() => {
     try {
-      return localStorage.getItem('cookiesAccepted') !== 'yes'
+      return localStorage.getItem('cookiesAccepted') === 'yes'
     } catch {
-      return true
+      return false
     }
   })
-
-  if (!visible) return null
 
   function accept() {
     try {
@@ -20,16 +18,18 @@ function CookieBanner() {
     } catch {
       // Ignore storage errors (e.g. private mode).
     }
-    setVisible(false)
+    setAccepted(true)
   }
 
   return (
-    <div className="cookie-banner">
-      <span>
-        {t('cookies.message')}{' '}
+    <div className={accepted ? 'cookies hide' : 'cookies'}>
+      <p>
+        <span>{t('cookies.message')}</span>{' '}
         <Link to="/privacy">{t('cookies.learnMore')}</Link>
-      </span>
-      <button type="button" onClick={accept}>{t('cookies.accept')}</button>
+      </p>
+      <button type="button" className="btn btn-primary btn-sm" onClick={accept}>
+        {t('cookies.accept')}
+      </button>
     </div>
   )
 }

@@ -5,13 +5,13 @@ function Footer() {
   const { t } = useTranslation()
 
   return (
-    <footer className="footer">
-      <p>{t('footer.copyright')}</p>
-      <p>
-        <Link to="/privacy">{t('footer.privacy')}</Link> ·{' '}
-        <Link to="/terms">{t('footer.terms')}</Link> ·{' '}
+    <footer className="site">
+      <div>{t('footer.copyright')}</div>
+      <div className="line2">
+        <Link to="/privacy">{t('footer.privacy')}</Link>
+        <Link to="/terms">{t('footer.terms')}</Link>
         <Link to="/rules">{t('footer.rules')}</Link>
-      </p>
+      </div>
     </footer>
   )
 }

@@ -4,22 +4,15 @@ function Rules() {
   const { t } = useTranslation()
 
   return (
-    <main className="page">
+    <div className="simple-wrap">
       <h1>{t('rules.title')}</h1>
-      <p>{t('rules.intro')}</p>
-      <ul>
-        <li>{t('rules.rule1')}</li>
-        <li>{t('rules.rule2')}</li>
-        <li>{t('rules.rule3')}</li>
-        <li>{t('rules.rule4')}</li>
-        <li>{t('rules.rule5')}</li>
-        <li>{t('rules.rule6')}</li>
-        <li>{t('rules.rule7')}</li>
-        <li>{t('rules.rule8')}</li>
-        <li>{t('rules.rule9')}</li>
-        <li>{t('rules.rule10')}</li>
-      </ul>
-    </main>
+      <p className="kicker">{t('rules.intro')}</p>
+      <ol className="rules-list">
+        {Array.from({ length: 10 }, (_, i) => (
+          <li key={i}>{t(`rules.rule${i + 1}`)}</li>
+        ))}
+      </ol>
+    </div>
   )
 }
 

@@ -1,77 +1,225 @@
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import EndGameOverlay from '../components/EndGameOverlay'
 
-type Message = { author: string; text: string }
+const COLORS = ['#15161B', '#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 
-const players = [
-  { name: 'demo_user', points: 120, isDrawing: true },
-  { name: 'renan', points: 250, isDrawing: false },
-  { name: 'pedro', points: 180, isDrawing: false },
-]
-
-const exampleMessages: Message[] = [
-  { author: 'renan', text: 'good luck!' },
-  { author: 'pedro', text: 'is it an animal?' },
-]
+type ChatMessage = { name: string; text: string }
 
 function Game() {
   const { t } = useTranslation()
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const chatLogRef = useRef<HTMLDivElement | null>(null)
+  const drawingRef = useRef(false)
+  const colorRef = useRef(COLORS[0])
+  const [activeColor, setActiveColor] = useState(COLORS[0])
+  const [seconds, setSeconds] = useState(80)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [guess, setGuess] = useState('')
+  const [chatText, setChatText] = useState('')
+  const [endgameOpen, setEndgameOpen] = useState(false)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSeconds((s) => (s > 0 ? s - 1 : s))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+
+    function fitCanvas() {
+      if (!canvas || !ctx) return
+      const rect = canvas.getBoundingClientRect()
+      canvas.width = rect.width * 2
+      canvas.height = rect.height * 2
+      ctx.scale(2, 2)
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.lineWidth = 4
+    }
+    fitCanvas()
+
+    function pos(e: MouseEvent | TouchEvent) {
+      const rect = canvas!.getBoundingClientRect()
+      const point = 'touches' in e ? e.touches[0] : e
+      return { x: point.clientX - rect.left, y: point.clientY - rect.top }
+    }
+    function start(e: MouseEvent | TouchEvent) {
+      drawingRef.current = true
+      const p = pos(e)
+      ctx!.beginPath()
+      ctx!.moveTo(p.x, p.y)
+    }
+    function move(e: MouseEvent | TouchEvent) {
+      if (!drawingRef.current) return
+      const p = pos(e)
+      ctx!.strokeStyle = colorRef.current
+      ctx!.lineTo(p.x, p.y)
+      ctx!.stroke()
+      e.preventDefault()
+    }
+    function end() {
+      drawingRef.current = false
+    }
+
+    canvas.addEventListener('mousedown', start)
+    canvas.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', end)
+    canvas.addEventListener('touchstart', start)
+    canvas.addEventListener('touchmove', move, { passive: false })
+    canvas.addEventListener('touchend', end)
+    window.addEventListener('resize', fitCanvas)
+    return () => {
+      canvas.removeEventListener('mousedown', start)
+      canvas.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', end)
+      canvas.removeEventListener('touchstart', start)
+      canvas.removeEventListener('touchmove', move)
+      canvas.removeEventListener('touchend', end)
+      window.removeEventListener('resize', fitCanvas)
+    }
+  }, [])
+
+  useEffect(() => {
+    const log = chatLogRef.current
+    if (log) log.scrollTop = log.scrollHeight
+  }, [messages])
+
+  function selectColor(color: string) {
+    colorRef.current = color
+    setActiveColor(color)
+  }
+
+  function clearCanvas() {
+    const canvas = canvasRef.current
+    canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
+  }
+
+  function sendGuess() {
+    if (!guess.trim()) return
+    setMessages((m) => [...m, { name: 'demo_user (guess)', text: guess.trim() }])
+    setGuess('')
+  }
+
+  function sendChat() {
+    if (!chatText.trim()) return
+    setMessages((m) => [...m, { name: 'demo_user', text: chatText.trim() }])
+    setChatText('')
+  }
 
   return (
-    <main className="page">
-      <div className="status-bar">
-        <span className="player-row">
-          <span className="avatar avatar-small">U</span>
-          demo_user — 120 pts
-        </span>
-        <span>{t('game.round', { current: 1, total: 3 })}</span>
-        <span>{t('game.word', { hint: '_ _ _ _ _' })}</span>
-        <span>{t('game.time', { seconds: 80 })}</span>
+    <div className="game-wrap">
+      <div className="game-topbar">
+        <div className="who">
+          <div className="mini-avatar">U</div>
+          demo_user — <span>120</span> <span>pts</span>
+        </div>
+        <div className="pill-stat">
+          {t('game.round', { current: 1, total: 3 })}
+        </div>
+        <div className="pill-stat word-blank">
+          {t('game.word', { hint: '_ _ _ _ _' })}
+        </div>
+        <div className="pill-stat">
+          <span className="timer" style={seconds <= 15 ? { color: 'var(--yellow)' } : undefined}>
+            {t('game.time', { seconds: seconds })}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => setEndgameOpen(true)}
+        >
+          Test End
+        </button>
       </div>
 
-      <div className="game-area">
-        <aside className="panel scoreboard-panel">
-          <h2>{t('game.scoreboard')}</h2>
-          <ul className="simple-list">
-            {players.map((player) => (
-              <li key={player.name}>
-                <span className="player-row">
-                  <span className="avatar avatar-small">
-                    {player.name.charAt(0).toUpperCase()}
-                  </span>
-                  {player.name}
-                  {player.isDrawing && ` ${t('game.drawing')}`}
-                </span>
-                <span>{player.points}</span>
-              </li>
-            ))}
-          </ul>
-        </aside>
+      <div className="game-grid">
+        <div className="panel" style={{ margin: 0 }}>
+          <h3>{t('game.scoreboard')}</h3>
+          <div className="score-list">
+            <div className="score-row drawing">
+              <div className="mini-avatar">C</div>
+              <div className="nm">
+                Carlos <span className="drawing-tag">{t('game.drawing')}</span>
+              </div>
+              <div className="pts">140</div>
+            </div>
+            <div className="score-row">
+              <div className="mini-avatar">U</div>
+              <div className="nm">demo_user</div>
+              <div className="pts">120</div>
+            </div>
+            <div className="score-row">
+              <div className="mini-avatar">R</div>
+              <div className="nm">Renan</div>
+              <div className="pts">95</div>
+            </div>
+          </div>
+        </div>
 
-        <section className="panel canvas-panel">
-          {/* Drawing canvas — Sprint 3 */}
-          <canvas width={400} height={400} aria-label={t('game.canvas')} />
-          <div className="submit-row">
-            <input placeholder={t('game.guessPlaceholder')} />
-            <button type="button">{t('game.submitGuess')}</button>
+        <div className="canvas-box">
+          <div className="tools">
+            {COLORS.map((color) => (
+              <div
+                key={color}
+                className={color === activeColor ? 'swatch active' : 'swatch'}
+                style={{ background: color }}
+                onClick={() => selectColor(color)}
+              />
+            ))}
+            <div className="spacer" />
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearCanvas}>
+              Clear
+            </button>
           </div>
-        </section>
+          <canvas id="draw-canvas" ref={canvasRef} aria-label={t('game.canvas') ?? 'Drawing canvas'} />
+          <div className="guess-row">
+            <input
+              type="text"
+              placeholder={t('game.guessPlaceholder')}
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') sendGuess() }}
+            />
+            <button type="button" className="btn btn-primary" onClick={sendGuess}>
+              {t('game.submitGuess')}
+            </button>
+          </div>
+        </div>
 
-        <aside className="panel chat">
-          <h2>{t('game.chat')}</h2>
-          <div className="chat-messages">
-            {exampleMessages.map((msg, i) => (
-              <p key={i}>
-                <strong>{msg.author}:</strong> {msg.text}
-              </p>
+        <div className="chat-box">
+          <h3>{t('game.chat')}</h3>
+          <div className="chat-log" ref={chatLogRef}>
+            <div className="msg"><b>Renan:</b> <span>good luck!</span></div>
+            <div className="msg"><b>Pedro:</b> <span>is it an animal?</span></div>
+            {messages.map((message, i) => (
+              <div className="msg" key={i}>
+                <b>{message.name}:</b> {message.text}
+              </div>
             ))}
           </div>
-          <div className="submit-row">
-            <input placeholder={t('game.messagePlaceholder')} />
-            <button type="button">{t('game.sendMessage')}</button>
+          <div className="chat-input-row">
+            <input
+              type="text"
+              placeholder={t('game.chatPlaceholder')}
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') sendChat() }}
+            />
+            <button type="button" className="btn btn-ghost btn-sm" onClick={sendChat}>
+              {t('game.sendMessage')}
+            </button>
           </div>
-        </aside>
+        </div>
       </div>
-    </main>
+
+      {endgameOpen && <EndGameOverlay onClose={() => setEndgameOpen(false)} />}
+    </div>
   )
 }
 

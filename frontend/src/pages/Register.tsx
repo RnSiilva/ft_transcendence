@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -21,6 +21,16 @@ function Register() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+
+  function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setPhoto(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   function validate(
     emailVal: string,
@@ -80,80 +90,110 @@ function Register() {
   }
 
   return (
-    <main className="page center">
-      <h1>{t('auth.registerTitle')}</h1>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <h1>{t('auth.registerTitle')}</h1>
 
-      {errors.general && (
-        <p role="alert" style={{ color: 'red', margin: '0 auto', maxWidth: 320 }}>
-          {errors.general}
+        {errors.general && (
+          <p role="alert" style={{ color: 'var(--red)', marginBottom: 16 }}>
+            {errors.general}
+          </p>
+        )}
+
+        <form id="register-form" onSubmit={handleSubmit}>
+          <div className="signup-avatar">
+            <label htmlFor="signup-photo" className="signup-avatar-btn">
+              <div className="signup-avatar-preview">
+                {photo ? <img src={photo} alt="" /> : <span>📷</span>}
+              </div>
+              <span className="signup-avatar-label">Photo</span>
+            </label>
+            <input
+              type="file"
+              id="signup-photo"
+              accept="image/*"
+              hidden
+              onChange={handlePhoto}
+            />
+          </div>
+
+          <div className="field">
+            <label>{t('auth.email')}</label>
+            <input
+              type="email"
+              placeholder={t('auth.placeholderEmail')}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            {errors.email && <span style={{ color: 'var(--red)', fontSize: 13 }}>{errors.email}</span>}
+          </div>
+
+          <div className="field">
+            <label>{t('auth.username')}</label>
+            <input
+              type="text"
+              placeholder={t('auth.placeholderUsername')}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+            {errors.username && <span style={{ color: 'var(--red)', fontSize: 13 }}>{errors.username}</span>}
+          </div>
+
+          <div className="field">
+            <label>{t('auth.password')}</label>
+            <input
+              type="password"
+              placeholder={t('auth.placeholderPassword')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            {errors.password && <span style={{ color: 'var(--red)', fontSize: 13 }}>{errors.password}</span>}
+          </div>
+
+          <div className="field">
+            <label>{t('auth.confirmPassword')}</label>
+            <input
+              type="password"
+              placeholder={t('auth.placeholderConfirmPassword')}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            {errors.confirmPassword && (
+              <span style={{ color: 'var(--red)', fontSize: 13 }}>{errors.confirmPassword}</span>
+            )}
+          </div>
+
+          <label className="signup-terms">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+            />
+            <span>
+              I accept the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>
+            </span>
+          </label>
+
+          <button
+            id="register-submit"
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={loading || !termsAccepted}
+          >
+            {loading ? t('auth.creatingAccount') : t('auth.registerSubmit')}
+          </button>
+        </form>
+
+        <p className="switch">
+          <span>{t('auth.haveAccount')}</span>{' '}
+          <Link to="/login">{t('auth.linkToLogin')}</Link>
         </p>
-      )}
-
-      <form id="register-form" className="form" onSubmit={handleSubmit}>
-        <label>
-          {t('auth.email')}
-          <input
-            id="register-email"
-            type="email"
-            placeholder={t('auth.placeholderEmail')}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          {errors.email && <span style={{ color: 'red', fontSize: 13 }}>{errors.email}</span>}
-        </label>
-
-        <label>
-          {t('auth.username')}
-          <input
-            id="register-username"
-            type="text"
-            placeholder={t('auth.placeholderUsername')}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          {errors.username && <span style={{ color: 'red', fontSize: 13 }}>{errors.username}</span>}
-        </label>
-
-        <label>
-          {t('auth.password')}
-          <input
-            id="register-password"
-            type="password"
-            placeholder={t('auth.placeholderPassword')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {errors.password && <span style={{ color: 'red', fontSize: 13 }}>{errors.password}</span>}
-        </label>
-
-        <label>
-          {t('auth.confirmPassword')}
-          <input
-            id="register-confirm"
-            type="password"
-            placeholder={t('auth.placeholderConfirmPassword')}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
-          {errors.confirmPassword && (
-            <span style={{ color: 'red', fontSize: 13 }}>{errors.confirmPassword}</span>
-          )}
-        </label>
-
-        <button id="register-submit" type="submit" disabled={loading}>
-          {loading ? t('auth.creatingAccount') : t('auth.registerSubmit')}
-        </button>
-      </form>
-
-      <p>
-        {t('auth.haveAccount')}{' '}
-        <Link id="link-to-login" to="/login">{t('auth.linkToLogin')}</Link>
-      </p>
-    </main>
+      </div>
+    </div>
   )
 }
 
