@@ -61,7 +61,16 @@
     "friendRequestSent": "Friend request sent to \"{{name}}\" (example).",
     "friends": "Friends",
     "online": "● online",
-    "offline": "○ offline"
+    "offline": "○ offline",
+    "editphoto": "Change Photo",
+    "changepass": "New Password",
+    "dangerZone": "Danger Zone",
+    "deleteAccount": "Delete Account",
+    "deleteWarning": "Delete account permanently.",
+    "confirmDelete": "Are you sure?",
+    "yesDelete": "Yes, delete",
+    "cancelDelete": "Cancel",
+    "remove": "Remove"
   },
   "game": {
     "round": "Round {{current}} / {{total}}",
@@ -158,5 +167,41 @@
     "pt": "Português",
     "en": "English",
     "es": "Español"
+  },
+  "room": {
+    "create": {
+      "title": "Create Room",
+      "cancel": "Cancel",
+      "name": "Room Name",
+      "players": "Players",
+      "rounds": "Rounds",
+      "time": "Time per Round",
+      "chatlang": "Chat Language",
+      "category": "Category",
+      "private": "Private room",
+      "password": "Room Password",
+      "confirm": "Create"
+    },
+    "cat": {
+      "general": "General",
+      "animals": "Animals",
+      "food": "Food",
+      "movies": "Movies",
+      "objects": "Objects"
+    }
+  },
+  "editprofile": {
+    "title": "Edit Profile",
+    "nickname": "Nickname",
+    "save": "Save"
+  },
+  "login": {
+    "email": "Email"
+  },
+  "endgame": {
+    "test": "Test end screen",
+    "title": "GAME OVER",
+    "score": "SCORE",
+    "close": "Close"
   }
 }

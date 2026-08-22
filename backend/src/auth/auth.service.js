@@ -14,7 +14,7 @@ const SALT_ROUNDS = 12;
  * Throws on duplicate email/username.
  * Returns the created user (without passwordHash).
  */
-async function registerUser({ email, username, password }) {
+async function registerUser({ email, username, password, avatarUrl }) {
   // Check for duplicates
   const existing = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
@@ -40,6 +40,7 @@ async function registerUser({ email, username, password }) {
       email,
       username,
       passwordHash,
+      avatarUrl: avatarUrl || null,
     },
     select: {
       id: true,
@@ -140,4 +141,62 @@ async function getUserById(id) {
   return user;
 }
 
-module.exports = { registerUser, loginUser, updateUserLanguage, getUserById };
+/**
+ * Updates user profile (username and/or avatar).
+ */
+async function updateUserProfile(userId, { username, avatarUrl }) {
+  const data = {};
+
+  if (username !== undefined) {
+    // Check uniqueness
+    const existing = await prisma.user.findFirst({
+      where: { username, NOT: { id: userId } },
+    });
+    if (existing) {
+      const err = new Error('Username already taken');
+      err.status = 409;
+      err.field = 'username';
+      throw err;
+    }
+    data.username = username;
+  }
+
+  if (avatarUrl !== undefined) {
+    data.avatarUrl = avatarUrl;
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data,
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      avatarUrl: true,
+      language: true,
+      rank: true,
+      totalPoints: true,
+      gamesPlayed: true,
+      wins: true,
+      createdAt: true,
+    },
+  });
+
+  return updatedUser;
+}
+
+/**
+ * Deletes a user and all related records.
+ */
+async function deleteUser(userId) {
+  // Delete related records first (cascading)
+  await prisma.friend.deleteMany({
+    where: { OR: [{ userId }, { friendId: userId }] },
+  });
+  await prisma.report.deleteMany({
+    where: { OR: [{ reportedId: userId }, { reporterId: userId }] },
+  });
+  await prisma.user.delete({ where: { id: userId } });
+}
+
+module.exports = { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLanguage } from '../i18n/LanguageContext'
+import { useTranslation } from 'react-i18next'
 
 // Classificação de demonstração do modelo aprovado.
 // AQUI O CODIGO DO JOGO (o fim de jogo real e a classificação final vêm do
@@ -21,7 +21,7 @@ const TROPHY_D =
 type Props = { onClose: () => void }
 
 function EndGameOverlay({ onClose }: Props) {
-  const { t } = useLanguage()
+  const { t } = useTranslation()
   const [playing, setPlaying] = useState(false)
   const [showMessage, setShowMessage] = useState(false)
   const [expandedCount, setExpandedCount] = useState(0)

@@ -11,7 +11,7 @@ const ROOMS = [
 ]
 
 function Profile() {
-  const { user, loading, logout } = useAuth()
+  const { user, loading, logout, refresh } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
   
@@ -43,9 +43,18 @@ function Profile() {
     setFriends((current) => current.filter((f) => f.name !== name))
   }
 
-  function deleteAccount() {
-    setConfirmingDelete(false)
-    navigate('/')
+  async function deleteAccount() {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL ?? '/api'}/auth/account`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      setConfirmingDelete(false)
+      await logout()
+      navigate('/', { replace: true })
+    } catch (err) {
+      console.error('Failed to delete account', err)
+    }
   }
 
   if (loading) {
@@ -68,7 +77,7 @@ function Profile() {
       <div className="profile-head">
         <div className="avatar-edit">
           <div className="avatar">
-            {displayName.charAt(0).toUpperCase()}
+            {user?.avatarUrl ? <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : displayName.charAt(0).toUpperCase()}
           </div>
           <button
             type="button"
@@ -174,7 +183,7 @@ function Profile() {
                 className="btn btn-ghost btn-sm"
                 onClick={() => removeFriend(friend.name)}
               >
-                Remove
+                {t('profile.remove')}
               </button>
             </div>
           </div>
@@ -182,35 +191,35 @@ function Profile() {
       </div>
 
       <div className="panel panel-danger">
-        <h3>Danger Zone</h3>
+        <h3>{t('profile.dangerZone')}</h3>
         {!confirmingDelete ? (
           <div>
-            <p className="danger-text">Delete account permanently.</p>
+            <p className="danger-text">{t('profile.deleteWarning')}</p>
             <button
               type="button"
               className="btn btn-danger btn-sm"
               onClick={() => setConfirmingDelete(true)}
             >
-              Delete Account
+              {t('profile.deleteAccount')}
             </button>
           </div>
         ) : (
           <div>
-            <p className="danger-confirm-text">Are you sure?</p>
+            <p className="danger-confirm-text">{t('profile.confirmDelete')}</p>
             <div className="danger-actions">
               <button
                 type="button"
                 className="btn btn-danger btn-sm"
                 onClick={deleteAccount}
               >
-                Yes, delete
+                {t('profile.yesDelete')}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={() => setConfirmingDelete(false)}
               >
-                Cancel
+                {t('profile.cancelDelete')}
               </button>
             </div>
           </div>
@@ -220,9 +229,11 @@ function Profile() {
       {editOpen && (
         <EditProfileModal
           currentNickname={displayName}
-          currentPhoto={null}
+          currentEmail={displayEmail}
+          currentPhoto={user?.avatarUrl || null}
           onClose={() => setEditOpen(false)}
-          onSave={(newNickname, newPhoto) => {
+          onSave={() => {
+            refresh()
           }}
         />
       )}

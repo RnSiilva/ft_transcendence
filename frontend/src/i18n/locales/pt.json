@@ -61,7 +61,16 @@
     "friendRequestSent": "Pedido de amizade enviado a \"{{name}}\" (exemplo).",
     "friends": "Amigos",
     "online": "● online",
-    "offline": "○ offline"
+    "offline": "○ offline",
+    "editphoto": "Alterar Foto",
+    "changepass": "Nova Palavra-passe",
+    "dangerZone": "Zona de Perigo",
+    "deleteAccount": "Eliminar Conta",
+    "deleteWarning": "Eliminar conta permanentemente.",
+    "confirmDelete": "Tem a certeza?",
+    "yesDelete": "Sim, eliminar",
+    "cancelDelete": "Cancelar",
+    "remove": "Remover"
   },
   "game": {
     "round": "Ronda {{current}} / {{total}}",
@@ -158,5 +167,41 @@
     "pt": "Português",
     "en": "English",
     "es": "Español"
+  },
+  "room": {
+    "create": {
+      "title": "Criar Sala",
+      "cancel": "Cancelar",
+      "name": "Nome da Sala",
+      "players": "Jogadores",
+      "rounds": "Rondas",
+      "time": "Tempo por Ronda",
+      "chatlang": "Idioma do Chat",
+      "category": "Categoria",
+      "private": "Sala privada",
+      "password": "Palavra-passe da Sala",
+      "confirm": "Criar"
+    },
+    "cat": {
+      "general": "Geral",
+      "animals": "Animais",
+      "food": "Comida",
+      "movies": "Filmes",
+      "objects": "Objetos"
+    }
+  },
+  "editprofile": {
+    "title": "Editar Perfil",
+    "nickname": "Nome de Utilizador",
+    "save": "Guardar"
+  },
+  "login": {
+    "email": "Email"
+  },
+  "endgame": {
+    "test": "Testar fim de jogo",
+    "title": "FIM DE JOGO",
+    "score": "PONTOS",
+    "close": "Fechar"
   }
 }

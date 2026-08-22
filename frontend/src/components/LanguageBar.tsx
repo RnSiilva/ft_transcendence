@@ -1,14 +1,24 @@
-import { useLanguage } from '../i18n/LanguageContext'
-import type { Lang } from '../i18n/translations'
+import { useTranslation } from 'react-i18next'
+import { useAuth } from '../hooks/useAuth'
 
-const LANGS: { code: Lang; label: string }[] = [
+const LANGS = [
   { code: 'pt', label: '🇵🇹 PT' },
   { code: 'en', label: '🇬🇧 EN' },
   { code: 'es', label: '🇪🇸 ES' },
-]
+] as const
 
 function LanguageBar() {
-  const { lang, setLang } = useLanguage()
+  const { i18n } = useTranslation()
+  const { user, updateLanguage } = useAuth()
+
+  async function handleChange(code: string) {
+    if (user) {
+      await updateLanguage(code)
+    } else {
+      i18n.changeLanguage(code)
+      localStorage.setItem('i18nextLng', code)
+    }
+  }
 
   return (
     <div className="lang-bar">
@@ -17,8 +27,8 @@ function LanguageBar() {
           <button
             key={code}
             type="button"
-            className={code === lang ? 'lang-btn active' : 'lang-btn'}
-            onClick={() => setLang(code)}
+            className={code === i18n.language ? 'lang-btn active' : 'lang-btn'}
+            onClick={() => void handleChange(code)}
           >
             {label}
           </button>

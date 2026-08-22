@@ -4,7 +4,7 @@
  */
 
 const jwt = require('jsonwebtoken');
-const { registerUser, loginUser, updateUserLanguage, getUserById } = require('./auth.service');
+const { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser } = require('./auth.service');
 
 const COOKIE_NAME = 'token';
 const COOKIE_OPTIONS = {
@@ -24,7 +24,7 @@ function issueToken(user) {
 
 // POST /auth/register
 async function register(req, res) {
-  const { email, username, password, confirmPassword } = req.body;
+  const { email, username, password, confirmPassword, avatarUrl } = req.body;
 
   // --- Backend validation ---
   const errors = {};
@@ -49,7 +49,7 @@ async function register(req, res) {
   }
 
   try {
-    const user = await registerUser({ email, username, password });
+    const user = await registerUser({ email, username, password, avatarUrl });
     const token = issueToken(user);
     res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
     return res.status(201).json({ user });
@@ -119,4 +119,35 @@ async function me(req, res) {
   }
 }
 
-module.exports = { register, login, updateLanguage, logout, me };
+// PUT /auth/profile  (protected by requireAuth middleware)
+async function updateProfile(req, res) {
+  const { username, avatarUrl } = req.body;
+
+  try {
+    const user = await updateUserProfile(req.user.id, { username, avatarUrl });
+    // Re-issue token with updated username
+    const token = issueToken(user);
+    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
+    return res.status(200).json({ user });
+  } catch (err) {
+    if (err.status === 409) {
+      return res.status(409).json({ errors: { [err.field]: err.message } });
+    }
+    console.error('[updateProfile]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// DELETE /auth/account  (protected by requireAuth middleware)
+async function deleteAccount(req, res) {
+  try {
+    await deleteUser(req.user.id);
+    res.clearCookie(COOKIE_NAME, { ...COOKIE_OPTIONS, maxAge: 0 });
+    return res.status(200).json({ message: 'Account deleted' });
+  } catch (err) {
+    console.error('[deleteAccount]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+module.exports = { register, login, updateLanguage, logout, me, updateProfile, deleteAccount };

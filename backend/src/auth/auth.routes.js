@@ -5,7 +5,7 @@
 
 const { Router } = require('express');
 const rateLimit = require('express-rate-limit');
-const { register, login, updateLanguage, logout, me } = require('./auth.controller');
+const { register, login, updateLanguage, logout, me, updateProfile, deleteAccount } = require('./auth.controller');
 const { requireAuth } = require('./auth.middleware');
 
 const router = Router();
@@ -23,6 +23,8 @@ const loginLimiter = rateLimit({
 router.post('/register', register);
 router.post('/login', loginLimiter, login);
 router.put('/language', requireAuth, updateLanguage);
+router.put('/profile', requireAuth, updateProfile);
+router.delete('/account', requireAuth, deleteAccount);
 router.post('/logout', logout);
 router.get('/me', requireAuth, me);
 
