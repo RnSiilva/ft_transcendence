@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 import EndGameOverlay from '../components/EndGameOverlay'
+import { useGameSocket } from '../hooks/useGameSocket'
 
 const COLORS = ['#15161B', '#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 
@@ -18,6 +19,16 @@ function Game() {
   const [guess, setGuess] = useState('')
   const [chatText, setChatText] = useState('')
   const [endgameOpen, setEndgameOpen] = useState(false)
+
+  // Server-side room engine: who is in the room, who holds the pencil, and
+  // the transport for strokes. Kept in a ref so the canvas listeners below
+  // can read the latest value without being torn down and rebuilt.
+  const game = useGameSocket(canvasRef)
+  const gameRef = useRef(game)
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    gameRef.current = game
+  })
 
   // AQUI O CODIGO DO SERVIDOR (o temporizador real é controlado pelo motor do
   // jogo no servidor; este é só a demonstração visual do modelo aprovado)
@@ -54,8 +65,12 @@ function Game() {
       return { x: point.clientX - rect.left, y: point.clientY - rect.top }
     }
     function start(e: MouseEvent | TouchEvent) {
+      // Only the current drawer may use the board. The server rejects
+      // strokes from anyone else too — this just avoids the dead cursor.
+      if (!gameRef.current.isDrawer) return
       drawingRef.current = true
       const p = pos(e)
+      lastPointRef.current = p
       ctx!.beginPath()
       ctx!.moveTo(p.x, p.y)
     }
@@ -65,6 +80,21 @@ function Game() {
       ctx!.strokeStyle = colorRef.current
       ctx!.lineTo(p.x, p.y)
       ctx!.stroke()
+
+      // Normalised to 0..1 so windows of different sizes stay in sync.
+      const rect = canvas!.getBoundingClientRect()
+      const from = lastPointRef.current
+      if (from) {
+        gameRef.current.sendStroke({
+          x0: from.x / rect.width,
+          y0: from.y / rect.height,
+          x1: p.x / rect.width,
+          y1: p.y / rect.height,
+          colour: colorRef.current,
+        })
+      }
+      lastPointRef.current = p
+
       e.preventDefault()
     }
     function end() {
@@ -102,6 +132,7 @@ function Game() {
   function clearCanvas() {
     const canvas = canvasRef.current
     canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
+    game.sendClear()
   }
 
   function sendGuess() {
