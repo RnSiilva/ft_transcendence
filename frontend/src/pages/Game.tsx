@@ -20,7 +20,6 @@ function Game() {
   const [chatText, setChatText] = useState('')
   const [endgameOpen, setEndgameOpen] = useState(false)
 
-
   // Server-side room engine: who is in the room, who holds the pencil, and
   // the transport for strokes. Kept in a ref so the canvas listeners below
   // can read the latest value without being torn down and rebuilt.
@@ -31,7 +30,8 @@ function Game() {
     gameRef.current = game
   })
 
-
+  // AQUI O CODIGO DO SERVIDOR (o temporizador real é controlado pelo motor do
+  // jogo no servidor; este é só a demonstração visual do modelo aprovado)
   useEffect(() => {
     const interval = setInterval(() => {
       setSeconds((s) => (s > 0 ? s - 1 : s))
@@ -39,6 +39,9 @@ function Game() {
     return () => clearInterval(interval)
   }, [])
 
+  // AQUI O CODIGO DO JOGO (motor do jogo: transmitir os traços por Socket.IO
+  // — ex.: evento 'desenho:traco' — e desenhar também os traços recebidos dos
+  // outros jogadores; só quem está "a desenhar" pode usar o quadro)
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
@@ -134,13 +137,17 @@ function Game() {
 
   function sendGuess() {
     if (!guess.trim()) return
-    setMessages((m) => [...m, { name: 'demo_user (guess)', text: guess.trim() }])
+    // AQUI O CODIGO DO JOGO (o palpite é enviado ao SERVIDOR, que o valida
+    // contra a palavra secreta na língua do jogador e atribui os pontos)
+    setMessages((m) => [...m, { name: 'utilizador_demo (palpite)', text: guess.trim() }])
     setGuess('')
   }
 
   function sendChat() {
     if (!chatText.trim()) return
-    setMessages((m) => [...m, { name: 'demo_user', text: chatText.trim() }])
+    // AQUI O CODIGO DO CHAT (Socket.IO — a mensagem vai para todos os
+    // jogadores da sala; o chat não é guardado na base de dados)
+    setMessages((m) => [...m, { name: 'utilizador_demo', text: chatText.trim() }])
     setChatText('')
   }
 
@@ -149,31 +156,30 @@ function Game() {
       <div className="game-topbar">
         <div className="who">
           <div className="mini-avatar">U</div>
-          demo_user — <span>120</span> <span>pts</span>
+          utilizador_demo — <span>120</span> <span>{t('game.points')}</span>
         </div>
+        <div className="pill-stat"><span>{t('game.round')}</span> 1 / 3</div>
+        <div className="pill-stat word-blank"><span>{t('game.word')}</span>: _ _ _ _ _</div>
         <div className="pill-stat">
-          {t('game.round', { current: 1, total: 3 })}
-        </div>
-        <div className="pill-stat word-blank">
-          {t('game.word', { hint: '_ _ _ _ _' })}
-        </div>
-        <div className="pill-stat">
+          <span>{t('game.time')}</span>:{' '}
           <span className="timer" style={seconds <= 15 ? { color: 'var(--yellow)' } : undefined}>
-            {t('game.time', { seconds: seconds })}
+            {seconds}
           </span>
+          s
         </div>
         <button
           type="button"
           className="btn btn-ghost btn-sm"
           onClick={() => setEndgameOpen(true)}
         >
-          Test End
+          {t('endgame.test')}
         </button>
       </div>
 
       <div className="game-grid">
         <div className="panel" style={{ margin: 0 }}>
-          <h3>{t('game.scoreboard')}</h3>
+          <h3>{t('game.score.heading')}</h3>
+          {/* AQUI O CODIGO DO JOGO (placar em tempo real vindo do SERVIDOR) */}
           <div className="score-list">
             <div className="score-row drawing">
               <div className="mini-avatar">C</div>
@@ -184,7 +190,7 @@ function Game() {
             </div>
             <div className="score-row">
               <div className="mini-avatar">U</div>
-              <div className="nm">demo_user</div>
+              <div className="nm">utilizador_demo</div>
               <div className="pts">120</div>
             </div>
             <div className="score-row">
@@ -207,29 +213,29 @@ function Game() {
             ))}
             <div className="spacer" />
             <button type="button" className="btn btn-ghost btn-sm" onClick={clearCanvas}>
-              Clear
+              {t('game.clear')}
             </button>
           </div>
-          <canvas id="draw-canvas" ref={canvasRef} aria-label={t('game.canvas') ?? 'Drawing canvas'} />
+          <canvas id="draw-canvas" ref={canvasRef} />
           <div className="guess-row">
             <input
               type="text"
-              placeholder={t('game.guessPlaceholder')}
+              placeholder={t('game.guess.placeholder')}
               value={guess}
               onChange={(e) => setGuess(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') sendGuess() }}
             />
             <button type="button" className="btn btn-primary" onClick={sendGuess}>
-              {t('game.submitGuess')}
+              {t('game.guess.send')}
             </button>
           </div>
         </div>
 
         <div className="chat-box">
-          <h3>{t('game.chat')}</h3>
+          <h3>{t('game.chat.heading')}</h3>
           <div className="chat-log" ref={chatLogRef}>
-            <div className="msg"><b>Renan:</b> <span>good luck!</span></div>
-            <div className="msg"><b>Pedro:</b> <span>is it an animal?</span></div>
+            <div className="msg"><b>Renan:</b> <span>{t('game.msg1')}</span></div>
+            <div className="msg"><b>Pedro:</b> <span>{t('game.msg2')}</span></div>
             {messages.map((message, i) => (
               <div className="msg" key={i}>
                 <b>{message.name}:</b> {message.text}
@@ -239,13 +245,13 @@ function Game() {
           <div className="chat-input-row">
             <input
               type="text"
-              placeholder={t('game.chatPlaceholder')}
+              placeholder={t('game.chat.placeholder')}
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') sendChat() }}
             />
             <button type="button" className="btn btn-ghost btn-sm" onClick={sendChat}>
-              {t('game.sendMessage')}
+              {t('game.chat.send')}
             </button>
           </div>
         </div>
