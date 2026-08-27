@@ -5,7 +5,7 @@ export type Lang = 'pt' | 'en' | 'es'
 
 export const translations: Record<Lang, Record<string, string>> = {
   pt: {
-    'nav.home': 'Início', 'nav.rules': 'Regras do jogo', 'nav.login': 'Login', 'nav.profile': 'Perfil', 'nav.logout': 'Sair',
+    'nav.home': 'Início', 'nav.rules': 'Regras do jogo', 'nav.aboutUs': 'Sobre nós', 'nav.login': 'Login', 'nav.profile': 'Perfil', 'nav.logout': 'Sair',
     'hero.lede': 'Desenha, adivinha e ganha pontos em tempo real com os teus amigos. Uma sala, uma palavra, sessenta segundos — quem acertar mais rápido, sobe no rank.',
     'hero.placeholder': 'imagem do jogo · placeholder',
     'cta.play': 'Jogar',
@@ -14,7 +14,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'login.noaccount': 'Ainda não tens conta?', 'login.createaccount': 'Criar conta',
     'signup.title': 'Criar conta', 'signup.photo': 'Adicionar foto', 'signup.name': 'Nome', 'signup.nickname': 'Nickname',
     'signup.terms.pre': 'Aceito os', 'signup.terms.and': 'e a', 'signup.create': 'Criar conta', 'signup.hasaccount': 'Já tens conta?',
-    'profile.editphoto': 'Trocar foto', 'profile.changepass': 'Trocar password',
+    'profile.editphoto': 'Trocar foto', 'profile.changepass': 'Trocar password', 'profile.currentpass': 'Password atual', 'profile.newpass': 'Nova password',
     'editprofile.title': 'Editar perfil', 'editprofile.nickname': 'Nickname', 'editprofile.save': 'Guardar',
     'profile.stats.heading': 'Rank e estatísticas', 'profile.stats.rank': 'Rank', 'profile.stats.points': 'Pontos totais', 'profile.stats.matches': 'Partidas', 'profile.stats.wins': 'Vitórias',
     'profile.rooms.heading': 'Salas disponíveis', 'profile.rooms.players': 'jogadores', 'profile.rooms.enter': 'Entrar', 'profile.rooms.create': 'Criar sala',
@@ -67,7 +67,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'errors.invalidCredentials': 'Credenciais inválidas', 'errors.tooManyAttempts': 'Demasiadas tentativas, tenta mais tarde', 'errors.fillAllFields': 'Preenche todos os campos', 'errors.networkError': 'Erro de rede — tenta novamente',
   },
   en: {
-    'nav.home': 'Home', 'nav.rules': 'Game rules', 'nav.login': 'Login', 'nav.profile': 'Profile', 'nav.logout': 'Sign Out',
+    'nav.home': 'Home', 'nav.rules': 'Game rules', 'nav.aboutUs': 'About us', 'nav.login': 'Login', 'nav.profile': 'Profile', 'nav.logout': 'Sign Out',
     'hero.lede': 'Draw, guess, and earn points in real time with your friends. One room, one word, sixty seconds — whoever guesses fastest climbs the rank.',
     'hero.placeholder': 'game image · placeholder',
     'cta.play': 'Play',
@@ -76,7 +76,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'login.noaccount': "Don't have an account yet?", 'login.createaccount': 'Create account',
     'signup.title': 'Create account', 'signup.photo': 'Add photo', 'signup.name': 'Name', 'signup.nickname': 'Nickname',
     'signup.terms.pre': 'I accept the', 'signup.terms.and': 'and the', 'signup.create': 'Create account', 'signup.hasaccount': 'Already have an account?',
-    'profile.editphoto': 'Change photo', 'profile.changepass': 'Change password',
+    'profile.editphoto': 'Change photo', 'profile.changepass': 'Change password', 'profile.currentpass': 'Current password', 'profile.newpass': 'New password',
     'editprofile.title': 'Edit profile', 'editprofile.nickname': 'Nickname', 'editprofile.save': 'Save',
     'profile.stats.heading': 'Rank & stats', 'profile.stats.rank': 'Rank', 'profile.stats.points': 'Total points', 'profile.stats.matches': 'Matches', 'profile.stats.wins': 'Wins',
     'profile.rooms.heading': 'Available rooms', 'profile.rooms.players': 'players', 'profile.rooms.enter': 'Join', 'profile.rooms.create': 'Create room',
@@ -129,7 +129,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'errors.invalidCredentials': 'Invalid credentials', 'errors.tooManyAttempts': 'Too many login attempts, please try again later', 'errors.fillAllFields': 'Please fill in all fields', 'errors.networkError': 'Network error — please try again',
   },
   es: {
-    'nav.home': 'Inicio', 'nav.rules': 'Reglas del juego', 'nav.login': 'Login', 'nav.profile': 'Perfil', 'nav.logout': 'Cerrar sesión',
+    'nav.home': 'Inicio', 'nav.rules': 'Reglas del juego', 'nav.aboutUs': 'Sobre nosotros', 'nav.login': 'Login', 'nav.profile': 'Perfil', 'nav.logout': 'Cerrar sesión',
     'hero.lede': 'Dibuja, adivina y gana puntos en tiempo real con tus amigos. Una sala, una palabra, sesenta segundos — quien acierte más rápido, sube en el ranking.',
     'hero.placeholder': 'imagen del juego · placeholder',
     'cta.play': 'Jugar',
@@ -138,7 +138,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'login.noaccount': '¿Aún no tienes cuenta?', 'login.createaccount': 'Crear cuenta',
     'signup.title': 'Crear cuenta', 'signup.photo': 'Añadir foto', 'signup.name': 'Nombre', 'signup.nickname': 'Nickname',
     'signup.terms.pre': 'Acepto los', 'signup.terms.and': 'y la', 'signup.create': 'Crear cuenta', 'signup.hasaccount': '¿Ya tienes cuenta?',
-    'profile.editphoto': 'Cambiar foto', 'profile.changepass': 'Cambiar contraseña',
+    'profile.editphoto': 'Cambiar foto', 'profile.changepass': 'Cambiar contraseña', 'profile.currentpass': 'Contraseña actual', 'profile.newpass': 'Nueva contraseña',
     'editprofile.title': 'Editar perfil', 'editprofile.nickname': 'Nickname', 'editprofile.save': 'Guardar',
     'profile.stats.heading': 'Rango y estadísticas', 'profile.stats.rank': 'Rango', 'profile.stats.points': 'Puntos totales', 'profile.stats.matches': 'Partidas', 'profile.stats.wins': 'Victorias',
     'profile.rooms.heading': 'Salas disponibles', 'profile.rooms.players': 'jugadores', 'profile.rooms.enter': 'Entrar', 'profile.rooms.create': 'Crear sala',

@@ -125,13 +125,13 @@ function EditProfileModal({
           <label>{t('profile.changepass')}</label>
           <input
             type="password"
-            placeholder="Password atual"
+            placeholder={t('profile.currentpass')}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
           />
           <input
             type="password"
-            placeholder="Nova password"
+            placeholder={t('profile.newpass')}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             style={{ marginTop: 8 }}
