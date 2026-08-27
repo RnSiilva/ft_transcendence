@@ -13,7 +13,7 @@ model User {
   username     String   @unique
   passwordHash String
   avatarUrl    String?  @db.LongText // Optional: defaults to null until uploaded/selected by user
-  language     String?  // Optional: user preferred language (e.g. 'pt', 'en', 'es')
+  language     String   @default("pt") // Default language is 'pt' (supports 'pt', 'en', 'es')
   rank         Int      @default(0)
   totalPoints  Int      @default(0)
   gamesPlayed  Int      @default(0)
