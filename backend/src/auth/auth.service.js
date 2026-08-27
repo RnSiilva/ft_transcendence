@@ -1,21 +1,10 @@
-/**
- * auth.service.js
- * Business logic for authentication: register, login.
- */
-
 const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = 12; // 2^12 (4096) hashing iterations with a random salt
 
-/**
- * Registers a new user.
- * Throws on duplicate email/username.
- * Returns the created user (without passwordHash).
- */
-async function registerUser({ email, username, password, avatarUrl }) {
-  // Check for duplicates
+async function registerUser({ email, username, password, avatarUrl, language }) {
   const existing = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
   });
@@ -41,6 +30,7 @@ async function registerUser({ email, username, password, avatarUrl }) {
       username,
       passwordHash,
       avatarUrl: avatarUrl || null,
+      language: language || 'pt',
     },
     select: {
       id: true,
@@ -59,10 +49,6 @@ async function registerUser({ email, username, password, avatarUrl }) {
   return user;
 }
 
-/**
- * Validates credentials and returns the user.
- * Always throws a generic error to avoid username/email enumeration.
- */
 async function loginUser({ identifier, email, login, password }) {
   const loginInput = identifier || login || email;
   const user = await prisma.user.findFirst({
@@ -75,25 +61,21 @@ async function loginUser({ identifier, email, login, password }) {
   GENERIC_ERROR.status = 401;
 
   if (!user) {
-    // Dummy compare to prevent timing attacks
-    await bcrypt.compare(password, '$2a$12$dummyhashfortimingnormalization000000000000000000000000.');
+    await bcrypt.compare(password, '$2a$12$DummyCompareNonExistingUserToMakeTheTimmingTheSame.1ms.vs.250ms');
     throw GENERIC_ERROR;
   }
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) throw GENERIC_ERROR;
+  const valid = await bcrypt.compare(password, user.passwordHash); // extracts the salt from the hashed password, hashes the incoming one and compares hashes
+  if (!valid)
+    throw GENERIC_ERROR;
 
-  // Return safe user object (no passwordHash)
   const { passwordHash: _ph, ...safeUser } = user;
   return safeUser;
 }
 
-/**
- * Updates the user's language preference (pt, en, es).
- */
-async function updateUserLanguage(userId, language) {
+async function updateUserLanguage(userId, newLanguage) {
   const allowed = ['pt', 'en', 'es'];
-  if (!allowed.includes(language)) {
+  if (!allowed.includes(newLanguage)) {
     const err = new Error('Invalid language preference. Allowed: pt, en, es');
     err.status = 400;
     throw err;
@@ -101,7 +83,7 @@ async function updateUserLanguage(userId, language) {
 
   const updatedUser = await prisma.user.update({
     where: { id: userId },
-    data: { language },
+    data: { language: newLanguage },
     select: {
       id: true,
       email: true,
@@ -119,9 +101,6 @@ async function updateUserLanguage(userId, language) {
   return updatedUser;
 }
 
-/**
- * Fetches a user by id (for the /me endpoint).
- */
 async function getUserById(id) {
   const user = await prisma.user.findUnique({
     where: { id },
@@ -141,14 +120,10 @@ async function getUserById(id) {
   return user;
 }
 
-/**
- * Updates user profile (username and/or avatar).
- */
-async function updateUserProfile(userId, { username, avatarUrl }) {
+async function updateUserProfile(userId, { username, avatarUrl, currentPassword, newPassword }) {
   const data = {};
 
   if (username !== undefined) {
-    // Check uniqueness
     const existing = await prisma.user.findFirst({
       where: { username, NOT: { id: userId } },
     });
@@ -163,6 +138,32 @@ async function updateUserProfile(userId, { username, avatarUrl }) {
 
   if (avatarUrl !== undefined) {
     data.avatarUrl = avatarUrl;
+  }
+
+  if (newPassword) {
+    if (!currentPassword) {
+      const err = new Error('Current password is required to set a new password');
+      err.status = 400;
+      err.field = 'currentPassword';
+      throw err;
+    }
+    if (newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      const err = new Error('New password must be at least 8 characters and contain a letter and a number');
+      err.status = 400;
+      err.field = 'newPassword';
+      throw err;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      const err = new Error('Current password is incorrect');
+      err.status = 400;
+      err.field = 'currentPassword';
+      throw err;
+    }
+
+    data.passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   }
 
   const updatedUser = await prisma.user.update({
@@ -185,11 +186,7 @@ async function updateUserProfile(userId, { username, avatarUrl }) {
   return updatedUser;
 }
 
-/**
- * Deletes a user and all related records.
- */
 async function deleteUser(userId) {
-  // Delete related records first (cascading)
   await prisma.friend.deleteMany({
     where: { OR: [{ userId }, { friendId: userId }] },
   });
