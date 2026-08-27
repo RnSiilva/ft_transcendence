@@ -1,16 +1,12 @@
-/**
- * auth.routes.js
- * Mounts auth endpoints and applies rate-limiting to login.
- */
-
 const { Router } = require('express');
-const rateLimit = require('express-rate-limit');
 const { register, login, updateLanguage, logout, me, updateProfile, deleteAccount } = require('./auth.controller');
-const { requireAuth } = require('./auth.middleware');
+const { requireAuth } = require('./auth.middleware'); // if a user does not have a valid JWT cookie, the request is block with a 401 error
 
 const router = Router();
 
-// Rate-limit: max 5 login attempts per minute per IP
+// express-rate-limit contains the tracking of the number of attempts
+const rateLimit = require('express-rate-limit');
+
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5,
