@@ -92,7 +92,7 @@ function Register() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <h1>{t('auth.registerTitle')}</h1>
+        <h1>{t('signup.title')}</h1>
 
         {errors.general && (
           <p role="alert" style={{ color: 'var(--red)', marginBottom: 16 }}>
@@ -106,7 +106,7 @@ function Register() {
               <div className="signup-avatar-preview">
                 {photo ? <img src={photo} alt="" /> : <span>📷</span>}
               </div>
-              <span className="signup-avatar-label">Photo</span>
+              <span className="signup-avatar-label">{t('signup.photo')}</span>
             </label>
             <input
               type="file"
@@ -118,10 +118,10 @@ function Register() {
           </div>
 
           <div className="field">
-            <label>{t('auth.email')}</label>
+            <label>{t('login.email')}</label>
             <input
               type="email"
-              placeholder={t('auth.placeholderEmail')}
+              placeholder="tu@exemplo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -130,10 +130,10 @@ function Register() {
           </div>
 
           <div className="field">
-            <label>{t('auth.username')}</label>
+            <label>{t('signup.nickname')}</label>
             <input
               type="text"
-              placeholder={t('auth.placeholderUsername')}
+              placeholder="utilizador_demo"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -142,10 +142,10 @@ function Register() {
           </div>
 
           <div className="field">
-            <label>{t('auth.password')}</label>
+            <label>{t('login.password')}</label>
             <input
               type="password"
-              placeholder={t('auth.placeholderPassword')}
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -154,10 +154,10 @@ function Register() {
           </div>
 
           <div className="field">
-            <label>{t('auth.confirmPassword')}</label>
+            <label>{t('login.password')} (confirmação)</label>
             <input
               type="password"
-              placeholder={t('auth.placeholderConfirmPassword')}
+              placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
@@ -174,7 +174,10 @@ function Register() {
               onChange={(e) => setTermsAccepted(e.target.checked)}
             />
             <span>
-              I accept the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link>
+              <span>{t('signup.terms.pre')}</span>{' '}
+              <Link to="/terms">{t('footer.terms')}</Link>{' '}
+              <span>{t('signup.terms.and')}</span>{' '}
+              <Link to="/privacy">{t('footer.privacy')}</Link>
             </span>
           </label>
 
@@ -184,13 +187,13 @@ function Register() {
             className="btn btn-primary btn-block"
             disabled={loading || !termsAccepted}
           >
-            {loading ? t('auth.creatingAccount') : t('auth.registerSubmit')}
+            {loading ? '...' : t('signup.create')}
           </button>
         </form>
 
         <p className="switch">
-          <span>{t('auth.haveAccount')}</span>{' '}
-          <Link to="/login">{t('auth.linkToLogin')}</Link>
+          <span>{t('signup.hasaccount')}</span>{' '}
+          <Link to="/login">{t('login.enter')}</Link>
         </p>
       </div>
     </div>
