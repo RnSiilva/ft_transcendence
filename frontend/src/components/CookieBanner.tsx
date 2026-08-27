@@ -1,31 +1,23 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function CookieBanner() {
-  const { t } = useTranslation()
-  const [accepted, setAccepted] = useState(() => {
-    try {
-      return localStorage.getItem('cookiesAccepted') === 'yes'
-    } catch {
-      return false
-    }
-  })
+  const { t } = useLanguage()
+  const [accepted, setAccepted] = useState(
+    () => localStorage.getItem('cookiesAceites') === 'sim'
+  )
 
   function accept() {
-    try {
-      localStorage.setItem('cookiesAccepted', 'yes')
-    } catch {
-      // Ignore storage errors (e.g. private mode).
-    }
+    localStorage.setItem('cookiesAceites', 'sim')
     setAccepted(true)
   }
 
   return (
     <div className={accepted ? 'cookies hide' : 'cookies'}>
       <p>
-        <span>{t('cookies.message')}</span>{' '}
-        <Link to="/privacy">{t('cookies.learnMore')}</Link>
+        <span>{t('cookies.text')}</span>{' '}
+        <Link to="/privacy">{t('cookies.more')}</Link>
       </p>
       <button type="button" className="btn btn-primary btn-sm" onClick={accept}>
         {t('cookies.accept')}

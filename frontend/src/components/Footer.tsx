@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../i18n/LanguageContext'
 
 function Footer() {
-  const { t } = useTranslation()
+  const { t } = useLanguage()
 
   return (
     <footer className="site">

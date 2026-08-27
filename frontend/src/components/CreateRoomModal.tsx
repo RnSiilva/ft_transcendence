@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../i18n/LanguageContext'
 
 type Props = {
   open: boolean
@@ -8,7 +8,7 @@ type Props = {
 }
 
 function CreateRoomModal({ open, onClose, onCreate }: Props) {
-  const { t, i18n } = useTranslation()
+  const { t } = useLanguage()
   const [players, setPlayers] = useState(6)
   const [isPrivate, setIsPrivate] = useState(false)
 
@@ -67,7 +67,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
         <div className="field-row">
           <div className="field-dark">
             <label>{t('room.create.chatlang')}</label>
-            <select defaultValue={i18n.language}>
+            <select defaultValue="pt">
               <option value="pt">Português</option>
               <option value="en">English</option>
               <option value="es">Español</option>
