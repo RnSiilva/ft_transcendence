@@ -5,7 +5,7 @@ export type Lang = 'pt' | 'en' | 'es'
 
 export const translations: Record<Lang, Record<string, string>> = {
   pt: {
-    'nav.home': 'Início', 'nav.rules': 'Regras do jogo', 'nav.login': 'Login',
+    'nav.home': 'Início', 'nav.rules': 'Regras do jogo', 'nav.login': 'Login', 'nav.profile': 'Perfil', 'nav.logout': 'Sair',
     'hero.lede': 'Desenha, adivinha e ganha pontos em tempo real com os teus amigos. Uma sala, uma palavra, sessenta segundos — quem acertar mais rápido, sobe no rank.',
     'hero.placeholder': 'imagem do jogo · placeholder',
     'cta.play': 'Jogar',
@@ -64,9 +64,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.copyright': '© 2026 Garatuja Games, Lda. — empresa fictícia, projeto académico',
     'footer.privacy': 'Política de Privacidade', 'footer.terms': 'Termos de Serviço', 'footer.rules': 'Regras do jogo',
     'cookies.text': 'Este site usa apenas cookies essenciais (sessão de login).', 'cookies.more': 'Saber mais', 'cookies.accept': 'Aceitar',
+    'errors.invalidCredentials': 'Credenciais inválidas', 'errors.tooManyAttempts': 'Demasiadas tentativas, tenta mais tarde', 'errors.fillAllFields': 'Preenche todos os campos', 'errors.networkError': 'Erro de rede — tenta novamente',
   },
   en: {
-    'nav.home': 'Home', 'nav.rules': 'Game rules', 'nav.login': 'Login',
+    'nav.home': 'Home', 'nav.rules': 'Game rules', 'nav.login': 'Login', 'nav.profile': 'Profile', 'nav.logout': 'Sign Out',
     'hero.lede': 'Draw, guess, and earn points in real time with your friends. One room, one word, sixty seconds — whoever guesses fastest climbs the rank.',
     'hero.placeholder': 'game image · placeholder',
     'cta.play': 'Play',
@@ -125,9 +126,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.copyright': '© 2026 Garatuja Games, Ltd. — fictional company, academic project',
     'footer.privacy': 'Privacy Policy', 'footer.terms': 'Terms of Service', 'footer.rules': 'Game rules',
     'cookies.text': 'This site uses only essential cookies (login session).', 'cookies.more': 'Learn more', 'cookies.accept': 'Accept',
+    'errors.invalidCredentials': 'Invalid credentials', 'errors.tooManyAttempts': 'Too many login attempts, please try again later', 'errors.fillAllFields': 'Please fill in all fields', 'errors.networkError': 'Network error — please try again',
   },
   es: {
-    'nav.home': 'Inicio', 'nav.rules': 'Reglas del juego', 'nav.login': 'Login',
+    'nav.home': 'Inicio', 'nav.rules': 'Reglas del juego', 'nav.login': 'Login', 'nav.profile': 'Perfil', 'nav.logout': 'Cerrar sesión',
     'hero.lede': 'Dibuja, adivina y gana puntos en tiempo real con tus amigos. Una sala, una palabra, sesenta segundos — quien acierte más rápido, sube en el ranking.',
     'hero.placeholder': 'imagen del juego · placeholder',
     'cta.play': 'Jugar',
@@ -186,5 +188,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.copyright': '© 2026 Garatuja Games, Lda. — empresa ficticia, proyecto académico',
     'footer.privacy': 'Política de Privacidad', 'footer.terms': 'Términos de Servicio', 'footer.rules': 'Reglas del juego',
     'cookies.text': 'Este sitio usa solo cookies esenciales (sesión de login).', 'cookies.more': 'Saber más', 'cookies.accept': 'Aceptar',
+    'errors.invalidCredentials': 'Credenciales inválidas', 'errors.tooManyAttempts': 'Demasiados intentos, intenta más tarde', 'errors.fillAllFields': 'Rellena todos os campos', 'errors.networkError': 'Error de red — intenta de nuevo',
   },
 }

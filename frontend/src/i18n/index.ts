@@ -1,9 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import pt from './locales/pt.json';
-import en from './locales/en.json';
-import es from './locales/es.json';
+import { translations } from './translations';
 
 const savedLanguage = localStorage.getItem('i18nextLng') || 'pt';
 
@@ -11,14 +9,14 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      pt: { translation: pt },
-      en: { translation: en },
-      es: { translation: es },
+      pt: { translation: translations.pt },
+      en: { translation: translations.en },
+      es: { translation: translations.es },
     },
     lng: savedLanguage,
     fallbackLng: 'pt',
     interpolation: {
-      escapeValue: false, // React already escapes values
+      escapeValue: false,
     },
   });
 
