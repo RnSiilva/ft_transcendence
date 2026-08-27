@@ -53,7 +53,7 @@ function Login() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <h1>{t('auth.loginTitle')}</h1>
+        <h1>{t('login.title')}</h1>
 
         {error && (
           <p id="login-error" role="alert" style={{ color: 'var(--red)', marginBottom: 16 }}>
@@ -63,22 +63,22 @@ function Login() {
 
         <form id="login-form" onSubmit={handleSubmit}>
           <div className="field">
-            <label>{t('auth.loginOrUsername')}</label>
+            <label>{t('login.email')}</label>
             <input
               id="login-identifier"
               type="text"
-              placeholder={t('auth.placeholderLogin')}
+              placeholder="tu@exemplo.com"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
               required
             />
           </div>
           <div className="field">
-            <label>{t('auth.password')}</label>
+            <label>{t('login.password')}</label>
             <input
               id="login-password"
               type="password"
-              placeholder={t('auth.placeholderPassword')}
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -90,13 +90,13 @@ function Login() {
             className="btn btn-primary btn-block"
             disabled={loading}
           >
-            {loading ? t('auth.loggingIn') : t('auth.loginSubmit')}
+            {loading ? '...' : t('login.enter')}
           </button>
         </form>
 
         <p className="switch">
-          <span>{t('auth.noAccount')}</span>{' '}
-          <Link id="link-to-register" to="/register">{t('auth.linkToRegister')}</Link>
+          <span>{t('login.noaccount')}</span>{' '}
+          <Link id="link-to-register" to="/register">{t('login.createaccount')}</Link>
         </p>
       </div>
     </div>
