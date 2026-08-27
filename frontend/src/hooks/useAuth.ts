@@ -1,8 +1,11 @@
-/**
- * useAuth.ts
- * Provides the authenticated user, loading state, and a logout helper.
- * Calls GET /api/auth/me on mount — the single source of truth for session state.
- */
+/* useAuth.ts
+   Central hook managing active user session state.
+   Fetches GET /api/auth/me on mount to provide session data across all pages and route guards:
+   - user: active user profile data (or null if logged out)
+   - loading: true while verifying session on startup (prevents UI flickering)
+   - logout: calls backend logout and resets user state to null
+   - refresh: re-fetches latest user info and syncs language with i18n
+*/
 
 import { useState, useEffect, useCallback } from 'react';
 import i18n from '../i18n';
