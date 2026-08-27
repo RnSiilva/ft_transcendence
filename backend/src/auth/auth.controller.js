@@ -1,17 +1,12 @@
-/**
- * auth.controller.js
- * Route handlers: register, login, logout, me.
- */
-
 const jwt = require('jsonwebtoken');
 const { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser } = require('./auth.service');
 
 const COOKIE_NAME = 'token';
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV !== 'development', // false in dev so HTTP works too
-  sameSite: 'strict',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  secure: process.env.NODE_ENV !== 'development', // False in dev so HTTP works too
+  sameSite: 'strict', // CSRF attack prevention
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (in ms) expiration
 };
 
 function issueToken(user) {
@@ -23,10 +18,12 @@ function issueToken(user) {
 }
 
 // POST /auth/register
+/* Validates email format, username (3–20 chars alphanumeric), password strength (8+ chars, letters + numbers),
+   and password confirmation. Calls registerUser, issues JWT in httpOnly cookie, and returns 201 Created
+*/
 async function register(req, res) {
-  const { email, username, password, confirmPassword, avatarUrl } = req.body;
+  const { email, username, password, confirmPassword, avatarUrl, language } = req.body;
 
-  // --- Backend validation ---
   const errors = {};
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -49,7 +46,7 @@ async function register(req, res) {
   }
 
   try {
-    const user = await registerUser({ email, username, password, avatarUrl });
+    const user = await registerUser({ email, username, password, avatarUrl, language });
     const token = issueToken(user);
     res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
     return res.status(201).json({ user });
@@ -63,6 +60,7 @@ async function register(req, res) {
 }
 
 // POST /auth/login
+// Validates inputs, calls loginUser, issues JWT in httpOnly cookie, returns 200 OK
 async function login(req, res) {
   const { login, email, password } = req.body;
   const identifier = login || email;
@@ -85,7 +83,8 @@ async function login(req, res) {
   }
 }
 
-// PUT /auth/language  (protected by requireAuth middleware)
+// PUT /auth/language (protected by requireAuth middleware)
+// Updates user's language preference (pt, en, es) in database
 async function updateLanguage(req, res) {
   const { language } = req.body;
 
@@ -102,12 +101,14 @@ async function updateLanguage(req, res) {
 }
 
 // POST /auth/logout
+// Clears the token cookie (maxAge: 0) and returns 200 Logged out
 function logout(req, res) {
   res.clearCookie(COOKIE_NAME, { ...COOKIE_OPTIONS, maxAge: 0 });
   return res.status(200).json({ message: 'Logged out' });
 }
 
-// GET /auth/me  (protected by requireAuth middleware)
+// GET /auth/me (protected by requireAuth middleware)
+// Reads req.user.id from JWT and returns current user's profile and game statistics (used on page refresh)
 async function me(req, res) {
   try {
     const user = await getUserById(req.user.id);
@@ -119,26 +120,28 @@ async function me(req, res) {
   }
 }
 
-// PUT /auth/profile  (protected by requireAuth middleware)
+// PUT /auth/profile (protected by requireAuth middleware)
+// Updates nickname, avatar photo, or password. Re-issues token if username changed
 async function updateProfile(req, res) {
-  const { username, avatarUrl } = req.body;
+  const { username, avatarUrl, currentPassword, newPassword } = req.body;
 
   try {
-    const user = await updateUserProfile(req.user.id, { username, avatarUrl });
+    const user = await updateUserProfile(req.user.id, { username, avatarUrl, currentPassword, newPassword });
     // Re-issue token with updated username
     const token = issueToken(user);
     res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
     return res.status(200).json({ user });
   } catch (err) {
-    if (err.status === 409) {
-      return res.status(409).json({ errors: { [err.field]: err.message } });
+    if (err.status === 409 || err.status === 400) {
+      return res.status(err.status).json({ errors: { [err.field]: err.message }, error: err.message });
     }
     console.error('[updateProfile]', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-// DELETE /auth/account  (protected by requireAuth middleware)
+// DELETE /auth/account (protected by requireAuth middleware)
+// Deletes account from database and clears the auth cookie (GDPR)
 async function deleteAccount(req, res) {
   try {
     await deleteUser(req.user.id);
