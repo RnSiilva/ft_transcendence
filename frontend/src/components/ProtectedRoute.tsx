@@ -1,6 +1,6 @@
-/**
- * ProtectedRoute.tsx
- * Wraps private pages — redirects to /login if not authenticated.
+/* ProtectedRoute.tsx
+   While checking if user is logged in, show a clean loading spinner.
+   Redirects to /login if not authenticated.
  */
 
 import { Navigate } from 'react-router-dom';
