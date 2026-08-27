@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-
 import StarField from './components/StarField'
 import LanguageBar from './components/LanguageBar'
 import Header from './components/Header'
@@ -37,14 +36,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/game"
-            element={
-              <ProtectedRoute>
-                <Game />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/game" element={<Game />} />
         </Routes>
       </main>
       <Footer />
