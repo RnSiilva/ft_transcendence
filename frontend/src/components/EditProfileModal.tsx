@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../i18n/LanguageContext'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -20,7 +20,7 @@ function EditProfileModal({
   onClose,
   onSave,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useLanguage()
   const [nickname, setNickname] = useState(currentNickname)
   const [photo, setPhoto] = useState<string | null>(currentPhoto)
   const [error, setError] = useState('')
