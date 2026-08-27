@@ -6,6 +6,9 @@ const cookieParser = require('cookie-parser');
 
 const authRouter = require('./auth/auth.routes');
 
+const { registerRoomHandlers } = require('./sockets/room.socket');
+const { registerDrawHandlers } = require('./sockets/draw.socket');
+
 const app = express();
 const server = http.createServer(app);
 
@@ -50,6 +53,9 @@ const PORT = process.env.BACKEND_PORT || 4000;
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+
+  registerRoomHandlers(io, socket);
+  registerDrawHandlers(io, socket);
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
