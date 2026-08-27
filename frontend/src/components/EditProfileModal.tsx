@@ -23,6 +23,8 @@ function EditProfileModal({
   const { t } = useLanguage()
   const [nickname, setNickname] = useState(currentNickname)
   const [photo, setPhoto] = useState<string | null>(currentPhoto)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -38,21 +40,33 @@ function EditProfileModal({
     setError('')
     setSaving(true)
 
+    const payload: Record<string, unknown> = {
+      username: nickname.trim() || currentNickname,
+      avatarUrl: photo,
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        setError(t('errors.fillAllFields'))
+        setSaving(false)
+        return
+      }
+      payload.currentPassword = currentPassword
+      payload.newPassword = newPassword
+    }
+
     try {
       const res = await fetch(`${API}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          username: nickname.trim() || currentNickname,
-          avatarUrl: photo,
-        }),
+        body: JSON.stringify(payload),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.errors?.username || data.error || t('errors.networkError'))
+        setError(data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error || t('errors.networkError'))
         setSaving(false)
         return
       }
@@ -109,7 +123,19 @@ function EditProfileModal({
 
         <div className="field-dark">
           <label>{t('profile.changepass')}</label>
-          <input type="password" placeholder="••••••••" />
+          <input
+            type="password"
+            placeholder="Password atual"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="Nova password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            style={{ marginTop: 8 }}
+          />
         </div>
 
         <div className="modal-actions">
