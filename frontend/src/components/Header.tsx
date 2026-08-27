@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
 
 const UNDERLINE_D =
@@ -20,7 +20,7 @@ function NavUnderline() {
 }
 
 function Header() {
-  const { t } = useTranslation()
+  const { t } = useLanguage()
   const { user } = useAuth()
   const navigate = useNavigate()
 
