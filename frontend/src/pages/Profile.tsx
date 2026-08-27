@@ -1,31 +1,32 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
 import EditProfileModal from '../components/EditProfileModal'
 import CreateRoomModal from '../components/CreateRoomModal'
 
 const ROOMS = [
-  { code: 'ABC123', creator: 'renan', players: 2, meta: '2/6', lang: 'PT' },
-  { code: 'XYZ789', creator: 'pedro', players: 4, meta: '4/6', lang: 'EN' },
+  { name: 'Sala do Carlos', meta: '3/6', lang: 'PT' },
+  { name: 'sala-rapida-02', meta: '5/6', lang: 'EN' },
+]
+
+const INITIAL_FRIENDS = [
+  { name: 'Renan', initial: 'R', online: true },
+  { name: 'Pedro', initial: 'P', online: false },
+  { name: 'Carlos', initial: 'C', online: true },
 ]
 
 function Profile() {
   const { user, loading, logout, refresh } = useAuth()
-  const { t } = useTranslation()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   
   const [search, setSearch] = useState('')
   const [message, setMessage] = useState('')
+  const [friends, setFriends] = useState(INITIAL_FRIENDS)
   const [editOpen, setEditOpen] = useState(false)
   const [roomOpen, setRoomOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-
-  const [friends, setFriends] = useState([
-    { name: 'renan', initial: 'R', online: true },
-    { name: 'pedro', initial: 'P', online: true },
-    { name: 'carlos', initial: 'C', online: false },
-  ])
 
   async function handleLogout() {
     await logout()
@@ -35,7 +36,7 @@ function Profile() {
   function addFriend(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!search) return
-    setMessage(t('profile.friendRequestSent', { name: search }))
+    setMessage(`Pedido enviado a ${search}`)
     setSearch('')
   }
 
@@ -59,15 +60,15 @@ function Profile() {
 
   if (loading) {
     return (
-      <main className="page center">
-        <p>{t('profile.loading')}</p>
-      </main>
+      <div className="auth-loading" aria-label="Loading profile…">
+        <div className="auth-spinner" />
+      </div>
     )
   }
 
-  const displayName = user?.username ?? 'demo_user'
-  const displayEmail = user?.email ?? 'demo@example.com'
-  const displayRank = user?.rank ?? 0
+  const displayName = user?.username ?? 'utilizador_demo'
+  const displayEmail = user?.email ?? 'utilizador_demo@exemplo.com'
+  const displayRank = user?.rank ?? 128
   const displayPoints = user?.totalPoints ?? 0
   const displayGames = user?.gamesPlayed ?? 0
   const displayWins = user?.wins ?? 0
@@ -77,12 +78,20 @@ function Profile() {
       <div className="profile-head">
         <div className="avatar-edit">
           <div className="avatar">
-            {user?.avatarUrl ? <img src={user.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : displayName.charAt(0).toUpperCase()}
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+              />
+            ) : (
+              displayName.charAt(0).toUpperCase()
+            )}
           </div>
           <button
             type="button"
             className="edit-btn"
-            title="Edit Photo"
+            title={t('profile.editphoto')}
             onClick={() => setEditOpen(true)}
           >
             ✎
@@ -100,30 +109,30 @@ function Profile() {
                 handleLogout()
               }}
             >
-              {t('profile.signOut')}
+              {t('nav.logout')}
             </a>
           )}
         </div>
       </div>
 
       <div className="panel">
-        <h3>{t('profile.rankStats')}</h3>
+        <h3>{t('profile.stats.heading')}</h3>
         <div className="stat-row">
-          <div className="stat"><b>#{displayRank || '—'}</b><span>{t('profile.rank')}</span></div>
-          <div className="stat"><b>{displayPoints}</b><span>{t('profile.totalPoints')}</span></div>
-          <div className="stat"><b>{displayGames}</b><span>{t('profile.gamesPlayed')}</span></div>
-          <div className="stat"><b>{displayWins}</b><span>{t('profile.wins')}</span></div>
+          <div className="stat"><b>#{displayRank}</b><span>{t('profile.stats.rank')}</span></div>
+          <div className="stat"><b>{displayPoints}</b><span>{t('profile.stats.points')}</span></div>
+          <div className="stat"><b>{displayGames}</b><span>{t('profile.stats.matches')}</span></div>
+          <div className="stat"><b>{displayWins}</b><span>{t('profile.stats.wins')}</span></div>
         </div>
       </div>
 
       <div className="panel">
-        <h3>{t('profile.availableRooms')}</h3>
+        <h3>{t('profile.rooms.heading')}</h3>
         {ROOMS.map((room) => (
-          <div className="room-row" key={room.code}>
+          <div className="room-row" key={room.name}>
             <div>
-              <div className="room-name">{t('profile.roomEntry', { code: room.code, creator: room.creator, count: room.players })}</div>
+              <div className="room-name">{room.name}</div>
               <div className="room-meta">
-                {room.meta} <span>Players</span> · {room.lang}
+                {room.meta} <span>{t('profile.rooms.players')}</span> · {room.lang}
               </div>
             </div>
             <button
@@ -131,7 +140,7 @@ function Profile() {
               className="btn btn-ghost btn-sm"
               onClick={() => navigate('/game')}
             >
-              {t('profile.joinRoom')}
+              {t('profile.rooms.enter')}
             </button>
           </div>
         ))}
@@ -141,28 +150,28 @@ function Profile() {
           style={{ marginTop: 14 }}
           onClick={() => setRoomOpen(true)}
         >
-          {t('profile.createRoom')}
+          {t('profile.rooms.create')}
         </button>
       </div>
 
       <div className="panel">
-        <h3>{t('profile.addFriend')}</h3>
+        <h3>{t('profile.addfriends.heading')}</h3>
         <form className="inline-add" onSubmit={addFriend}>
-          <input 
-            type="text" 
-            placeholder={t('profile.searchByUsername')} 
+          <input
+            type="text"
+            placeholder={t('profile.addfriends.placeholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           <button type="submit" className="btn btn-primary btn-sm">
-            {t('profile.add')}
+            {t('profile.addfriends.add')}
           </button>
         </form>
         {message && <p style={{ marginTop: 8 }}>{message}</p>}
       </div>
 
       <div className="panel">
-        <h3>{t('profile.friends')}</h3>
+        <h3>{t('profile.friends.heading')}</h3>
         {friends.map((friend) => (
           <div className="friend-row" key={friend.name}>
             <div className="who">
@@ -175,7 +184,7 @@ function Profile() {
                   {friend.online ? '●' : '○'}
                 </span>
                 <span>
-                  {friend.online ? t('profile.online') : t('profile.offline')}
+                  {friend.online ? t('profile.friends.online') : t('profile.friends.offline')}
                 </span>
               </span>
               <button
@@ -183,7 +192,7 @@ function Profile() {
                 className="btn btn-ghost btn-sm"
                 onClick={() => removeFriend(friend.name)}
               >
-                {t('profile.remove')}
+                {t('profile.friends.remove')}
               </button>
             </div>
           </div>
@@ -191,35 +200,35 @@ function Profile() {
       </div>
 
       <div className="panel panel-danger">
-        <h3>{t('profile.dangerZone')}</h3>
+        <h3>{t('profile.danger.heading')}</h3>
         {!confirmingDelete ? (
           <div>
-            <p className="danger-text">{t('profile.deleteWarning')}</p>
+            <p className="danger-text">{t('profile.danger.text')}</p>
             <button
               type="button"
               className="btn btn-danger btn-sm"
               onClick={() => setConfirmingDelete(true)}
             >
-              {t('profile.deleteAccount')}
+              {t('profile.danger.delete')}
             </button>
           </div>
         ) : (
           <div>
-            <p className="danger-confirm-text">{t('profile.confirmDelete')}</p>
+            <p className="danger-confirm-text">{t('profile.danger.confirm')}</p>
             <div className="danger-actions">
               <button
                 type="button"
                 className="btn btn-danger btn-sm"
                 onClick={deleteAccount}
               >
-                {t('profile.yesDelete')}
+                {t('profile.danger.confirmyes')}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={() => setConfirmingDelete(false)}
               >
-                {t('profile.cancelDelete')}
+                {t('profile.danger.cancel')}
               </button>
             </div>
           </div>

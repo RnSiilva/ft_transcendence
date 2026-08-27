@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../i18n/LanguageContext'
 import EndGameOverlay from '../components/EndGameOverlay'
 import { useGameSocket } from '../hooks/useGameSocket'
 
@@ -8,7 +8,7 @@ const COLORS = ['#15161B', '#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 type ChatMessage = { name: string; text: string }
 
 function Game() {
-  const { t } = useTranslation()
+  const { t } = useLanguage()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const chatLogRef = useRef<HTMLDivElement | null>(null)
   const drawingRef = useRef(false)

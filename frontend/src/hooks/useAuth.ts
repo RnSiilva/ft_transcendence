@@ -4,11 +4,10 @@
    - user: active user profile data (or null if logged out)
    - loading: true while verifying session on startup (prevents UI flickering)
    - logout: calls backend logout and resets user state to null
-   - refresh: re-fetches latest user info and syncs language with i18n
+   - refresh: re-fetches latest user info and syncs user session
 */
 
 import { useState, useEffect, useCallback } from 'react';
-import i18n from '../i18n';
 
 const API = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -47,8 +46,7 @@ export function useAuth(): UseAuthReturn {
         const data = await res.json();
         setUser(data.user);
         if (data.user?.language) {
-          i18n.changeLanguage(data.user.language);
-          localStorage.setItem('i18nextLng', data.user.language);
+          localStorage.setItem('lang', data.user.language);
         }
       } else {
         setUser(null);
@@ -76,8 +74,7 @@ export function useAuth(): UseAuthReturn {
       const data = await res.json();
       setUser(data.user);
       if (data.user?.language) {
-        i18n.changeLanguage(data.user.language);
-        localStorage.setItem('i18nextLng', data.user.language);
+        localStorage.setItem('lang', data.user.language);
       }
     }
   }, []);

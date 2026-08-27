@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { useLanguage } from '../i18n/LanguageContext'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
 function Login() {
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t } = useLanguage()
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
