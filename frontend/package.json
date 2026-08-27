@@ -10,10 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "i18next": "^25.3.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-i18next": "^15.5.3",
     "react-router-dom": "^7.1.1",
     "socket.io-client": "^4.8.3"
   },
