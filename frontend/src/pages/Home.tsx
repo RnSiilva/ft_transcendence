@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import HeroLogo from '../components/HeroLogo'
+import TeamCircuit from '../components/TeamCircuit'
+import HeroIllustration from '../components/HeroIllustration'
 
 // Traço do divisor de lápis do "About us" (copiado do modelo aprovado;
 // a mesma linha é usada duas vezes: risco vermelho + ponta amarela com blur).
@@ -26,7 +28,7 @@ function Home() {
         </div>
         <p className="lede">{t('hero.lede')}</p>
         <div className="hero-frame">
-          <span>{t('hero.placeholder')}</span>
+          <HeroIllustration />
         </div>
         <button
           type="button"
@@ -64,6 +66,8 @@ function Home() {
         <h2>About us</h2>
         <p>{t('about.text')}</p>
       </div>
+
+      <TeamCircuit />
     </section>
   )
 }

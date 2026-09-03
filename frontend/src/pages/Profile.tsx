@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
+import type { Lang } from '../i18n/translations'
 import EditProfileModal from '../components/EditProfileModal'
 import CreateRoomModal from '../components/CreateRoomModal'
+import RoomLanguageModal from '../components/RoomLanguageModal'
 
 // AQUI O CODIGO DA BASE DE DADOS (dados reais do utilizador, estatísticas,
 // salas e amigos vêm do backend; os valores abaixo são os do modelo aprovado)
-const ROOMS = [
-  { name: 'Sala do Carlos', meta: '3/6', lang: 'PT' },
-  { name: 'sala-rapida-02', meta: '5/6', lang: 'EN' },
+const ROOMS: { name: string; meta: string; lang: Lang }[] = [
+  { name: 'Sala do Carlos', meta: '3/6', lang: 'pt' },
+  { name: 'sala-rapida-02', meta: '5/6', lang: 'en' },
 ]
 
 const INITIAL_FRIENDS = [
@@ -18,7 +20,7 @@ const INITIAL_FRIENDS = [
 ]
 
 function Profile() {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const navigate = useNavigate()
   const [nickname, setNickname] = useState('utilizador_demo')
   const [photo, setPhoto] = useState<string | null>(null)
@@ -26,6 +28,17 @@ function Profile() {
   const [editOpen, setEditOpen] = useState(false)
   const [roomOpen, setRoomOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [pendingRoomLang, setPendingRoomLang] = useState<Lang | null>(null)
+
+  function enterRoom(roomLang: Lang) {
+    // Sala noutro idioma: avisar que as palavras serão nesse idioma e pedir
+    // confirmação antes de entrar. No mesmo idioma, entra diretamente.
+    if (roomLang !== lang) {
+      setPendingRoomLang(roomLang)
+      return
+    }
+    navigate('/game')
+  }
 
   function removeFriend(name: string) {
     // AQUI O CODIGO DA BASE DE DADOS (remover amizade real)
@@ -88,13 +101,14 @@ function Profile() {
             <div>
               <div className="room-name">{room.name}</div>
               <div className="room-meta">
-                {room.meta} <span>{t('profile.rooms.players')}</span> · {room.lang}
+                {room.meta} <span>{t('profile.rooms.players')}</span> ·{' '}
+                {room.lang.toUpperCase()}
               </div>
             </div>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              onClick={() => navigate('/game')}
+              onClick={() => enterRoom(room.lang)}
             >
               {t('profile.rooms.enter')}
             </button>
@@ -205,6 +219,16 @@ function Profile() {
         onClose={() => setRoomOpen(false)}
         onCreate={() => navigate('/game')}
       />
+      {pendingRoomLang && (
+        <RoomLanguageModal
+          roomLang={pendingRoomLang}
+          onClose={() => setPendingRoomLang(null)}
+          onConfirm={() => {
+            setPendingRoomLang(null)
+            navigate('/game')
+          }}
+        />
+      )}
     </div>
   )
 }
