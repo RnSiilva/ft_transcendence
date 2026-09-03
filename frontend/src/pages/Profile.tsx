@@ -1,11 +1,10 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
+import { useAuth } from '../hooks/useAuth'
 import EditProfileModal from '../components/EditProfileModal'
 import CreateRoomModal from '../components/CreateRoomModal'
 
-// AQUI O CODIGO DA BASE DE DADOS (dados reais do utilizador, estatísticas,
-// salas e amigos vêm do backend; os valores abaixo são os do modelo aprovado)
 const ROOMS = [
   { name: 'Sala do Carlos', meta: '3/6', lang: 'PT' },
   { name: 'sala-rapida-02', meta: '5/6', lang: 'EN' },
@@ -18,32 +17,76 @@ const INITIAL_FRIENDS = [
 ]
 
 function Profile() {
+  const { user, loading, logout, refresh } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
-  const [nickname, setNickname] = useState('utilizador_demo')
-  const [photo, setPhoto] = useState<string | null>(null)
+  
+  const [search, setSearch] = useState('')
+  const [message, setMessage] = useState('')
   const [friends, setFriends] = useState(INITIAL_FRIENDS)
   const [editOpen, setEditOpen] = useState(false)
   const [roomOpen, setRoomOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
+  async function handleLogout() {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
+  function addFriend(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!search) return
+    setMessage(`Pedido enviado a ${search}`)
+    setSearch('')
+  }
+
   function removeFriend(name: string) {
-    // AQUI O CODIGO DA BASE DE DADOS (remover amizade real)
     setFriends((current) => current.filter((f) => f.name !== name))
   }
 
-  function deleteAccount() {
-    // AQUI O CODIGO DA BASE DE DADOS (apagar conta e todos os dados — GDPR)
-    setConfirmingDelete(false)
-    navigate('/')
+  async function deleteAccount() {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL ?? '/api'}/auth/account`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      setConfirmingDelete(false)
+      await logout()
+      navigate('/', { replace: true })
+    } catch (err) {
+      console.error('Failed to delete account', err)
+    }
   }
+
+  if (loading) {
+    return (
+      <div className="auth-loading" aria-label="Loading profile…">
+        <div className="auth-spinner" />
+      </div>
+    )
+  }
+
+  const displayName = user?.username ?? 'utilizador_demo'
+  const displayEmail = user?.email ?? 'utilizador_demo@exemplo.com'
+  const displayRank = user?.rank ?? 128
+  const displayPoints = user?.totalPoints ?? 0
+  const displayGames = user?.gamesPlayed ?? 0
+  const displayWins = user?.wins ?? 0
 
   return (
     <div className="profile-wrap">
       <div className="profile-head">
         <div className="avatar-edit">
           <div className="avatar">
-            {photo ? <img src={photo} alt="" /> : 'U'}
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+              />
+            ) : (
+              displayName.charAt(0).toUpperCase()
+            )}
           </div>
           <button
             type="button"
@@ -55,34 +98,35 @@ function Profile() {
           </button>
         </div>
         <div className="who">
-          <div className="name">{nickname}</div>
-          <div className="email">utilizador_demo@exemplo.com</div>
-          <a
-            className="pass-link"
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              setEditOpen(true)
-            }}
-          >
-            {t('profile.changepass')}
-          </a>
+          <div className="name">{displayName}</div>
+          <div className="email">{displayEmail}</div>
+          {user && (
+            <a
+              className="pass-link"
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                handleLogout()
+              }}
+            >
+              {t('nav.logout')}
+            </a>
+          )}
         </div>
       </div>
 
       <div className="panel">
         <h3>{t('profile.stats.heading')}</h3>
         <div className="stat-row">
-          <div className="stat"><b>#128</b><span>{t('profile.stats.rank')}</span></div>
-          <div className="stat"><b>3.420</b><span>{t('profile.stats.points')}</span></div>
-          <div className="stat"><b>57</b><span>{t('profile.stats.matches')}</span></div>
-          <div className="stat"><b>21</b><span>{t('profile.stats.wins')}</span></div>
+          <div className="stat"><b>#{displayRank}</b><span>{t('profile.stats.rank')}</span></div>
+          <div className="stat"><b>{displayPoints}</b><span>{t('profile.stats.points')}</span></div>
+          <div className="stat"><b>{displayGames}</b><span>{t('profile.stats.matches')}</span></div>
+          <div className="stat"><b>{displayWins}</b><span>{t('profile.stats.wins')}</span></div>
         </div>
       </div>
 
       <div className="panel">
         <h3>{t('profile.rooms.heading')}</h3>
-        {/* AQUI O CODIGO DO SERVIDOR (lista real de salas abertas via Socket.IO) */}
         {ROOMS.map((room) => (
           <div className="room-row" key={room.name}>
             <div>
@@ -112,20 +156,22 @@ function Profile() {
 
       <div className="panel">
         <h3>{t('profile.addfriends.heading')}</h3>
-        {/* AQUI O CODIGO DA BASE DE DADOS (pesquisar utilizadores e enviar
-            pedido de amizade real) */}
-        <div className="inline-add">
-          <input type="text" placeholder={t('profile.addfriends.placeholder')} />
-          <button type="button" className="btn btn-primary btn-sm">
+        <form className="inline-add" onSubmit={addFriend}>
+          <input
+            type="text"
+            placeholder={t('profile.addfriends.placeholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary btn-sm">
             {t('profile.addfriends.add')}
           </button>
-        </div>
+        </form>
+        {message && <p style={{ marginTop: 8 }}>{message}</p>}
       </div>
 
       <div className="panel">
         <h3>{t('profile.friends.heading')}</h3>
-        {/* AQUI O CODIGO DA BASE DE DADOS + SERVIDOR (amigos reais e estado
-            online via Socket.IO) */}
         {friends.map((friend) => (
           <div className="friend-row" key={friend.name}>
             <div className="who">
@@ -191,12 +237,12 @@ function Profile() {
 
       {editOpen && (
         <EditProfileModal
-          currentNickname={nickname}
-          currentPhoto={photo}
+          currentNickname={displayName}
+          currentEmail={displayEmail}
+          currentPhoto={user?.avatarUrl || null}
           onClose={() => setEditOpen(false)}
-          onSave={(newNickname, newPhoto) => {
-            setNickname(newNickname)
-            setPhoto(newPhoto)
+          onSave={() => {
+            refresh()
           }}
         />
       )}

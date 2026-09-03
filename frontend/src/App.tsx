@@ -13,6 +13,7 @@ import Game from './pages/Game'
 import Rules from './pages/Rules'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
   return (
@@ -26,11 +27,18 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/profile" element={<Profile />} />
             <Route path="/game" element={<Game />} />
             <Route path="/rules" element={<Rules />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
         <Footer />
