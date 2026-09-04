@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
+import { useAuth } from '../hooks/useAuth'
 
 const UNDERLINE_D =
   'M2,6 C15,1 20,10 30,6 C40,2 45,9 55,5 C65,1 70,9 80,5 C88,2 92,7 98,5'
@@ -20,6 +21,7 @@ function NavUnderline() {
 
 function Header() {
   const { t } = useLanguage()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   function goToAbout(e: MouseEvent<HTMLAnchorElement>) {
@@ -53,14 +55,21 @@ function Header() {
             <NavUnderline />
           </Link>
           <a href="/#home-about" className="nav-fx" onClick={goToAbout}>
-            <span className="nav-fx-text">About us</span>
-            <span className="nav-fx-front" aria-hidden="true">About us</span>
+            <span className="nav-fx-text">{t('nav.aboutUs')}</span>
+            <span className="nav-fx-front" aria-hidden="true">{t('nav.aboutUs')}</span>
             <NavUnderline />
           </a>
-          <Link to="/login" className="btn btn-primary btn-sm login-underline-host">
-            <span>{t('nav.login')}</span>
-            <NavUnderline />
-          </Link>
+          {user ? (
+            <Link to="/profile" className="btn btn-primary btn-sm login-underline-host">
+              <span>{t('nav.profile')}</span>
+              <NavUnderline />
+            </Link>
+          ) : (
+            <Link to="/login" className="btn btn-primary btn-sm login-underline-host">
+              <span>{t('nav.login')}</span>
+              <NavUnderline />
+            </Link>
+          )}
         </nav>
       </div>
     </header>

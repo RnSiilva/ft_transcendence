@@ -20,7 +20,15 @@ const LanguageContext = createContext<LanguageContextValue>({
 })
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>('pt')
+  const [lang, setLangState] = useState<Lang>(() => {
+    const saved = localStorage.getItem('lang') as Lang | null
+    return saved === 'en' || saved === 'es' || saved === 'pt' ? saved : 'pt'
+  })
+
+  function setLang(newLang: Lang) {
+    setLangState(newLang)
+    localStorage.setItem('lang', newLang)
+  }
 
   // O modelo aprovado usa html[data-lang] no CSS (ex.: texto dos "sparks"),
   // por isso o atributo tem de acompanhar o idioma escolhido.
@@ -30,7 +38,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, [lang])
 
   function t(key: string): string {
-    return translations[lang][key] ?? key
+    return translations[lang]?.[key] ?? key
   }
 
   return (
