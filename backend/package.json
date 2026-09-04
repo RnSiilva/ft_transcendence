@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "demo:rooms": "node scripts/rooms-demo.js",
+    "test:rooms": "node scripts/rooms-test.js",
+    "test:scoring": "node scripts/scoring-test.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -16,6 +16,18 @@ const MAX_MEMBERS = 8;
 const MAX_STROKES = 5000;
 const MAX_NAME_LENGTH = 20;
 
+// Chosen when the room is created. The client offers these same options, but
+// the server decides — anything it does not recognise falls back to a default.
+const ROUND_SECONDS = [30, 60, 80, 120];
+const THEMES = ['general', 'animals', 'food', 'movies'];
+const LANGUAGES = ['pt', 'en', 'es'];
+
+const DEFAULT_SETTINGS = {
+	roundSeconds: 60,
+	theme: 'general',
+	language: 'pt',
+};
+
 /**
  * code -> { code, members, drawerId, strokes, createdAt }
  *
@@ -67,6 +79,24 @@ function normaliseCode(code)
 	return code.trim().toUpperCase();
 }
 
+/** Never trust what the client sends: unknown values become the default. */
+function cleanSettings(raw)
+{
+	const wanted = raw && typeof raw === 'object' ? raw : {};
+
+	const roundSeconds = Number(wanted.roundSeconds);
+
+	return {
+		roundSeconds: ROUND_SECONDS.includes(roundSeconds)
+			? roundSeconds
+			: DEFAULT_SETTINGS.roundSeconds,
+		theme: THEMES.includes(wanted.theme) ? wanted.theme : DEFAULT_SETTINGS.theme,
+		language: LANGUAGES.includes(wanted.language)
+			? wanted.language
+			: DEFAULT_SETTINGS.language,
+	};
+}
+
 function addMember(room, memberId, name)
 {
 	room.members.set(memberId, { id: memberId, name });
@@ -76,7 +106,7 @@ function addMember(room, memberId, name)
 		room.drawerId = memberId;
 }
 
-function createRoom(memberId, name)
+function createRoom(memberId, name, settings)
 {
 	const cleanedName = cleanName(name);
 
@@ -89,6 +119,7 @@ function createRoom(memberId, name)
 		members: new Map(),
 		drawerId: null,
 		strokes: [],
+		settings: cleanSettings(settings),
 		createdAt: new Date(),
 	};
 
@@ -228,6 +259,7 @@ function serialiseRoom(room)
 	return {
 		code: room.code,
 		drawerId: room.drawerId,
+		settings: room.settings,
 		members: [...room.members.values()].map((member) => ({
 			id: member.id,
 			name: member.name,
@@ -256,4 +288,7 @@ module.exports = {
 	serialiseRoom,
 	reset,
 	MAX_MEMBERS,
+	ROUND_SECONDS,
+	THEMES,
+	LANGUAGES,
 };

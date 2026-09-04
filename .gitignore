@@ -31,3 +31,8 @@ npm-debug.log*
 
 # Docker
 *.pid
+
+# Chaves de acesso (nunca versionar)
+*.pem
+*.key
+aws/

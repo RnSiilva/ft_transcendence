@@ -41,7 +41,7 @@ function registerRoomHandlers(io, socket)
 	{
 		try
 		{
-			const room = rooms.createRoom(socket.id, payload.name);
+			const room = rooms.createRoom(socket.id, payload.name, payload.settings);
 			socket.join(room.code);
 
 			ok(ack, room);
