@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import EndGameOverlay from '../components/EndGameOverlay'
 import { useGameSocket } from '../hooks/useGameSocket'
@@ -9,6 +10,7 @@ type ChatMessage = { name: string; text: string }
 
 function Game() {
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const chatLogRef = useRef<HTMLDivElement | null>(null)
   const drawingRef = useRef(false)
@@ -16,7 +18,6 @@ function Game() {
   const [activeColor, setActiveColor] = useState(COLORS[0])
   const [seconds, setSeconds] = useState(80)
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [guess, setGuess] = useState('')
   const [chatText, setChatText] = useState('')
   const [endgameOpen, setEndgameOpen] = useState(false)
 
@@ -135,18 +136,11 @@ function Game() {
     game.sendClear()
   }
 
-  function sendGuess() {
-    if (!guess.trim()) return
-    // AQUI O CODIGO DO JOGO (o palpite é enviado ao SERVIDOR, que o valida
-    // contra a palavra secreta na língua do jogador e atribui os pontos)
-    setMessages((m) => [...m, { name: 'utilizador_demo (palpite)', text: guess.trim() }])
-    setGuess('')
-  }
-
   function sendChat() {
     if (!chatText.trim()) return
-    // AQUI O CODIGO DO CHAT (Socket.IO — a mensagem vai para todos os
-    // jogadores da sala; o chat não é guardado na base de dados)
+    // AQUI O CODIGO DO CHAT/PALPITES (Socket.IO — a mensagem vai para todos
+    // os jogadores da sala; o SERVIDOR compara-a com a palavra secreta para
+    // validar palpites; o chat não é guardado na base de dados)
     setMessages((m) => [...m, { name: 'utilizador_demo', text: chatText.trim() }])
     setChatText('')
   }
@@ -177,7 +171,7 @@ function Game() {
       </div>
 
       <div className="game-grid">
-        <div className="panel" style={{ margin: 0 }}>
+        <div className="panel score-panel">
           <h3>{t('game.score.heading')}</h3>
           {/* AQUI O CODIGO DO JOGO (placar em tempo real vindo do SERVIDOR) */}
           <div className="score-list">
@@ -199,61 +193,60 @@ function Game() {
               <div className="pts">95</div>
             </div>
           </div>
+          <button
+            type="button"
+            className="btn btn-danger btn-sm leave-btn"
+            onClick={() => {
+              // AQUI O CODIGO DO SERVIDOR (sair da sala real: avisar o
+              // Socket.IO para remover o jogador e saltar o turno dele)
+              navigate('/profile')
+            }}
+          >
+            {t('game.leave')}
+          </button>
         </div>
 
         <div className="canvas-box">
-          <div className="tools">
-            {COLORS.map((color) => (
-              <div
-                key={color}
-                className={color === activeColor ? 'swatch active' : 'swatch'}
-                style={{ background: color }}
-                onClick={() => selectColor(color)}
-              />
-            ))}
-            <div className="spacer" />
-            <button type="button" className="btn btn-ghost btn-sm" onClick={clearCanvas}>
-              {t('game.clear')}
-            </button>
-          </div>
+            <div className="tools">
+              {COLORS.map((color) => (
+                <div
+                  key={color}
+                  className={color === activeColor ? 'swatch active' : 'swatch'}
+                  style={{ background: color }}
+                  onClick={() => selectColor(color)}
+                />
+              ))}
+              <div className="spacer" />
+              <button type="button" className="btn btn-ghost btn-sm" onClick={clearCanvas}>
+                {t('game.clear')}
+              </button>
+            </div>
           <canvas id="draw-canvas" ref={canvasRef} />
-          <div className="guess-row">
-            <input
-              type="text"
-              placeholder={t('game.guess.placeholder')}
-              value={guess}
-              onChange={(e) => setGuess(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') sendGuess() }}
-            />
-            <button type="button" className="btn btn-primary" onClick={sendGuess}>
-              {t('game.guess.send')}
-            </button>
-          </div>
         </div>
 
         <div className="chat-box">
-          <h3>{t('game.chat.heading')}</h3>
-          <div className="chat-log" ref={chatLogRef}>
-            <div className="msg"><b>Renan:</b> <span>{t('game.msg1')}</span></div>
-            <div className="msg"><b>Pedro:</b> <span>{t('game.msg2')}</span></div>
-            {messages.map((message, i) => (
-              <div className="msg" key={i}>
-                <b>{message.name}:</b> {message.text}
-              </div>
-            ))}
-          </div>
-          <div className="chat-input-row">
-            <input
-              type="text"
-              placeholder={t('game.chat.placeholder')}
-              value={chatText}
-              onChange={(e) => setChatText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') sendChat() }}
-            />
-            <button type="button" className="btn btn-ghost btn-sm" onClick={sendChat}>
-              {t('game.chat.send')}
-            </button>
-          </div>
+            <h3>{t('game.chat.heading')}</h3>
+            <div className="chat-log" ref={chatLogRef}>
+              <div className="msg"><b>Renan:</b> <span>{t('game.msg1')}</span></div>
+              <div className="msg"><b>Pedro:</b> <span>{t('game.msg2')}</span></div>
+              {messages.map((message, i) => (
+                <div className="msg" key={i}>
+                  <b>{message.name}:</b> {message.text}
+                </div>
+              ))}
+            </div>
+            <div className="chat-input-row">
+              <input
+                type="text"
+                placeholder={t('game.chat.placeholder')}
+                value={chatText}
+                onChange={(e) => setChatText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') sendChat() }}
+              />
+              <button type="button" className="btn btn-ghost btn-sm" onClick={sendChat}>
+                {t('game.chat.send')}
+              </button>
+            </div>
         </div>
       </div>
 

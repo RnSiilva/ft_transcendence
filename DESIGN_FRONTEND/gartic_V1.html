@@ -591,6 +591,21 @@
   .field-row .field-dark{flex:1;}
   .modal-actions{display:flex;gap:10px;margin-top:6px;}
   .modal-actions .btn{flex:1;}
+
+  .edit-avatar{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:22px;}
+  .edit-avatar-btn{cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .edit-avatar-preview{
+    width:84px;height:84px;border-radius:50%;
+    background:linear-gradient(135deg,var(--red),var(--yellow));
+    border:2px dashed var(--line-strong);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    font-family:var(--display);font-weight:800;font-size:28px;color:var(--ink);
+    transition:border-color .15s;
+  }
+  .edit-avatar-btn:hover .edit-avatar-preview{border-color:var(--red);}
+  .edit-avatar-preview img{width:100%;height:100%;object-fit:cover;}
+  .edit-avatar-label{font-size:12.5px;font-weight:700;color:var(--chalk-dim);}
+  .field-readonly{padding:11px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--canvas);color:var(--chalk-dim);font-size:14px;}
 </style>
 </head>
 <body>
@@ -744,13 +759,13 @@
     <div class="profile-wrap">
       <div class="profile-head">
         <div class="avatar-edit">
-          <div class="avatar">U</div>
-          <button class="edit-btn" title="Trocar foto" data-i18n-title="profile.editphoto">✎</button>
+          <div class="avatar" id="profile-avatar-display">U</div>
+          <button class="edit-btn" id="open-edit-profile" title="Trocar foto" data-i18n-title="profile.editphoto">✎</button>
         </div>
         <div class="who">
-          <div class="name">utilizador_demo</div>
+          <div class="name" id="profile-name-display">utilizador_demo</div>
           <div class="email">utilizador_demo@exemplo.com</div>
-          <a class="pass-link" href="#" data-i18n="profile.changepass">Trocar password</a>
+          <a class="pass-link" href="#" id="open-edit-profile-2" data-i18n="profile.changepass">Trocar password</a>
         </div>
       </div>
 
@@ -1046,6 +1061,41 @@
 </div>
 
 
+<!-- ============ EDITAR PERFIL (modal) ============ -->
+<div class="modal-overlay" id="edit-profile-overlay">
+  <div class="modal-panel">
+    <h2 data-i18n="editprofile.title">Editar perfil</h2>
+
+    <div class="edit-avatar">
+      <label for="edit-profile-photo" class="edit-avatar-btn">
+        <div class="edit-avatar-preview" id="edit-avatar-preview">U</div>
+        <span class="edit-avatar-label" data-i18n="profile.editphoto">Trocar foto</span>
+      </label>
+      <input type="file" id="edit-profile-photo" accept="image/*" hidden>
+    </div>
+
+    <div class="field-dark">
+      <label data-i18n="editprofile.nickname">Nickname</label>
+      <input type="text" id="edit-profile-nickname" value="utilizador_demo">
+    </div>
+
+    <div class="field-dark">
+      <label data-i18n="login.email">Email</label>
+      <div class="field-readonly">utilizador_demo@exemplo.com</div>
+    </div>
+
+    <div class="field-dark">
+      <label data-i18n="profile.changepass">Trocar password</label>
+      <input type="password" id="edit-profile-password" placeholder="••••••••">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="edit-profile-cancel" data-i18n="room.create.cancel">Cancelar</button>
+      <button class="btn btn-primary" id="edit-profile-save" data-i18n="editprofile.save">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ CRIAR SALA (modal) ============ -->
 <div class="modal-overlay" id="create-room-overlay">
   <div class="modal-panel">
@@ -1148,6 +1198,7 @@
       'signup.title':'Criar conta', 'signup.photo':'Adicionar foto', 'signup.name':'Nome', 'signup.nickname':'Nickname',
       'signup.terms.pre':'Aceito os', 'signup.terms.and':'e a', 'signup.create':'Criar conta', 'signup.hasaccount':'Já tens conta?',
       'profile.editphoto':'Trocar foto', 'profile.changepass':'Trocar password',
+      'editprofile.title':'Editar perfil', 'editprofile.nickname':'Nickname', 'editprofile.save':'Guardar',
       'profile.stats.heading':'Rank e estatísticas', 'profile.stats.rank':'Rank', 'profile.stats.points':'Pontos totais', 'profile.stats.matches':'Partidas', 'profile.stats.wins':'Vitórias',
       'profile.rooms.heading':'Salas disponíveis', 'profile.rooms.players':'jogadores', 'profile.rooms.enter':'Entrar', 'profile.rooms.create':'Criar sala',
       'room.create.title':'Criar sala', 'room.create.name':'Nome da sala', 'room.create.players':'Jogadores',
@@ -1208,6 +1259,7 @@
       'signup.title':'Create account', 'signup.photo':'Add photo', 'signup.name':'Name', 'signup.nickname':'Nickname',
       'signup.terms.pre':'I accept the', 'signup.terms.and':'and the', 'signup.create':'Create account', 'signup.hasaccount':'Already have an account?',
       'profile.editphoto':'Change photo', 'profile.changepass':'Change password',
+      'editprofile.title':'Edit profile', 'editprofile.nickname':'Nickname', 'editprofile.save':'Save',
       'profile.stats.heading':'Rank & stats', 'profile.stats.rank':'Rank', 'profile.stats.points':'Total points', 'profile.stats.matches':'Matches', 'profile.stats.wins':'Wins',
       'profile.rooms.heading':'Available rooms', 'profile.rooms.players':'players', 'profile.rooms.enter':'Join', 'profile.rooms.create':'Create room',
       'room.create.title':'Create room', 'room.create.name':'Room name', 'room.create.players':'Players',
@@ -1268,6 +1320,7 @@
       'signup.title':'Crear cuenta', 'signup.photo':'Añadir foto', 'signup.name':'Nombre', 'signup.nickname':'Nickname',
       'signup.terms.pre':'Acepto los', 'signup.terms.and':'y la', 'signup.create':'Crear cuenta', 'signup.hasaccount':'¿Ya tienes cuenta?',
       'profile.editphoto':'Cambiar foto', 'profile.changepass':'Cambiar contraseña',
+      'editprofile.title':'Editar perfil', 'editprofile.nickname':'Nickname', 'editprofile.save':'Guardar',
       'profile.stats.heading':'Rango y estadísticas', 'profile.stats.rank':'Rango', 'profile.stats.points':'Puntos totales', 'profile.stats.matches':'Partidas', 'profile.stats.wins':'Victorias',
       'profile.rooms.heading':'Salas disponibles', 'profile.rooms.players':'jugadores', 'profile.rooms.enter':'Entrar', 'profile.rooms.create':'Crear sala',
       'room.create.title':'Crear sala', 'room.create.name':'Nombre de la sala', 'room.create.players':'Jugadores',
@@ -1383,6 +1436,44 @@
   if(signupTerms){
     signupTerms.addEventListener('change', e=>{
       document.getElementById('signup-submit').disabled = !e.target.checked;
+    });
+  }
+
+  // ---------- editar perfil (modal) ----------
+  const openEditBtns = [document.getElementById('open-edit-profile'), document.getElementById('open-edit-profile-2')];
+  openEditBtns.forEach(btn=>{
+    if(!btn) return;
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      document.getElementById('edit-profile-overlay').classList.add('show');
+    });
+  });
+  const editProfileCancel = document.getElementById('edit-profile-cancel');
+  if(editProfileCancel){
+    editProfileCancel.addEventListener('click', ()=>{
+      document.getElementById('edit-profile-overlay').classList.remove('show');
+    });
+  }
+  const editProfilePhoto = document.getElementById('edit-profile-photo');
+  if(editProfilePhoto){
+    editProfilePhoto.addEventListener('change', e=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ev=>{
+        document.getElementById('edit-avatar-preview').innerHTML = '<img src="'+ev.target.result+'" alt="">';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  const editProfileSave = document.getElementById('edit-profile-save');
+  if(editProfileSave){
+    editProfileSave.addEventListener('click', ()=>{
+      const newNick = document.getElementById('edit-profile-nickname').value.trim();
+      if(newNick) document.getElementById('profile-name-display').textContent = newNick;
+      const newPhotoHtml = document.getElementById('edit-avatar-preview').innerHTML;
+      if(newPhotoHtml.includes('<img')) document.getElementById('profile-avatar-display').innerHTML = newPhotoHtml;
+      document.getElementById('edit-profile-overlay').classList.remove('show');
     });
   }
 
