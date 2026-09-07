@@ -1,7 +1,7 @@
 /**
  * room.socket.js
  * Socket.IO transport for rooms. Only translates events into calls on
- * game/rooms.js — every decision about who may do what lives there.
+ * game/rooms.js every decision about who may do what lives there.
  */
 
 const rooms = require('../game/rooms');
@@ -41,7 +41,8 @@ function registerRoomHandlers(io, socket)
 	{
 		try
 		{
-			const room = rooms.createRoom(socket.id, payload.name, payload.settings);
+			// The name comes from the session, not from the payload.
+			const room = rooms.createRoom(socket.id, socket.user, payload.settings);
 			socket.join(room.code);
 
 			ok(ack, room);
@@ -58,7 +59,7 @@ function registerRoomHandlers(io, socket)
 		try
 		{
 			const previous = rooms.getRoomOf(socket.id);
-			const room = rooms.joinRoom(socket.id, payload.code, payload.name);
+			const room = rooms.joinRoom(socket.id, payload.code, socket.user);
 
 			// Otherwise strokes from the previous room keep arriving.
 			if (previous && previous.code !== room.code)

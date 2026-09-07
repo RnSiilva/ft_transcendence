@@ -17,7 +17,7 @@ const MAX_STROKES = 5000;
 const MAX_NAME_LENGTH = 20;
 
 // Chosen when the room is created. The client offers these same options, but
-// the server decides — anything it does not recognise falls back to a default.
+// the server decides anything it does not recognise falls back to a default.
 const ROUND_SECONDS = [30, 60, 80, 120];
 const THEMES = ['general', 'animals', 'food', 'movies'];
 const LANGUAGES = ['pt', 'en', 'es'];
@@ -97,18 +97,34 @@ function cleanSettings(raw)
 	};
 }
 
-function addMember(room, memberId, name)
+/**
+ * Identity comes from the session cookie, never from the client payload —
+ * otherwise anyone could join under someone else's name.
+ */
+function identityOf(user)
 {
-	room.members.set(memberId, { id: memberId, name });
+	if (!user || typeof user !== 'object')
+		throw fail('Authentication required', 'UNAUTHENTICATED');
+
+	return { userId: user.id, name: cleanName(user.username) };
+}
+
+function addMember(room, memberId, identity)
+{
+	room.members.set(memberId, {
+		id: memberId,
+		userId: identity.userId,
+		name: identity.name,
+	});
 	memberRoom.set(memberId, room.code);
 
 	if (!room.drawerId)
 		room.drawerId = memberId;
 }
 
-function createRoom(memberId, name, settings)
+function createRoom(memberId, user, settings)
 {
-	const cleanedName = cleanName(name);
+	const identity = identityOf(user);
 
 	if (memberRoom.has(memberId))
 		leaveRoom(memberId);
@@ -124,30 +140,42 @@ function createRoom(memberId, name, settings)
 	};
 
 	rooms.set(room.code, room);
-	addMember(room, memberId, cleanedName);
+	addMember(room, memberId, identity);
 
 	return room;
 }
 
-/** Throws if the room is missing or full. */
-function joinRoom(memberId, rawCode, name)
+/** Throws if the room is missing, full, or the user is already inside it. */
+function joinRoom(memberId, rawCode, user)
 {
 	const code = normaliseCode(rawCode);
-	const cleanedName = cleanName(name);
+	const identity = identityOf(user);
 
 	const room = rooms.get(code);
 	if (!room)
 		throw fail('Room not found', 'ROOM_NOT_FOUND');
 
 	const alreadyHere = room.members.has(memberId);
-	if (!alreadyHere && room.members.size >= MAX_MEMBERS)
-		throw fail('Room is full', 'ROOM_FULL');
+
+	if (!alreadyHere)
+	{
+		if (room.members.size >= MAX_MEMBERS)
+			throw fail('Room is full', 'ROOM_FULL');
+
+		// One seat per account. Two tabs would otherwise take two turns with
+		// the pencil, which is worth more than it looks.
+		for (const member of room.members.values())
+		{
+			if (member.userId === identity.userId)
+				throw fail('Already in this room', 'ALREADY_IN_ROOM');
+		}
+	}
 
 	// Leaving the old room first keeps the memberRoom index honest.
 	if (memberRoom.get(memberId) !== code)
 		leaveRoom(memberId);
 
-	addMember(room, memberId, cleanedName);
+	addMember(room, memberId, identity);
 	return room;
 }
 
@@ -262,6 +290,7 @@ function serialiseRoom(room)
 		settings: room.settings,
 		members: [...room.members.values()].map((member) => ({
 			id: member.id,
+			userId: member.userId,
 			name: member.name,
 			isDrawer: member.id === room.drawerId,
 		})),

@@ -8,6 +8,7 @@ const authRouter = require('./auth/auth.routes');
 
 const { registerRoomHandlers } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
+const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
 
 const app = express();
 const server = http.createServer(app);
@@ -47,8 +48,11 @@ const io = new Server(server, {
 
 const PORT = process.env.BACKEND_PORT || 4000;
 
+// Rooms are for registered users: no valid session cookie, no connection.
+io.use(requireAuthenticatedSocket);
+
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('Client connected:', socket.id, 'as', socket.user.username);
 
   registerRoomHandlers(io, socket);
   registerDrawHandlers(io, socket);

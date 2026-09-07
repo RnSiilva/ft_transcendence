@@ -22,6 +22,7 @@ export type Stroke =
 export type RoomMember =
 {
 	id: string
+	userId: number
 	name: string
 	isDrawer: boolean
 }
@@ -36,18 +37,6 @@ type RoomState =
 type Ack = { ok: boolean; room?: RoomState; error?: string; code?: string }
 
 const DEFAULT_COLOUR = '#15161B'
-
-/** Temporary until auth lands, when the name comes from the session. */
-function guestName()
-{
-	const stored = sessionStorage.getItem('guestName')
-	if (stored)
-		return stored
-
-	const name = `Jogador ${Math.floor(Math.random() * 900 + 100)}`
-	sessionStorage.setItem('guestName', name)
-	return name
-}
 
 function paintSegment(canvas: HTMLCanvasElement, stroke: Stroke)
 {
@@ -82,16 +71,17 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 
 		const enterRoom = async () =>
 		{
-			const name = guestName()
+			// The server takes the player's name from the session cookie, so
+			// there is nothing to send: it would only be a name to spoof.
 			const wanted = new URLSearchParams(window.location.search).get('room')
 
 			let answer = wanted
-				? await request('room:join', { code: wanted, name })
-				: await request('room:create', { name })
+				? await request('room:join', { code: wanted })
+				: await request('room:create', {})
 
 			// Rooms disappear once empty, so a stale link falls back to a new one.
 			if (!answer.ok)
-				answer = await request('room:create', { name })
+				answer = await request('room:create', {})
 
 			if (!answer.ok || !answer.room)
 				return
