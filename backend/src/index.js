@@ -9,6 +9,7 @@ const authRouter = require('./auth/auth.routes');
 const { registerRoomHandlers } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
 const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
+const { seedWords } = require('./game/words.repository');
 
 const app = express();
 const server = http.createServer(app);
@@ -62,6 +63,13 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Backend running on port ${PORT}`);
+
+  // Fills the Word table the first time only; words added later are kept.
+  const seeded = await seedWords().catch((err) => {
+    console.error('[words] seeding failed:', err.message);
+    return 0;
+  });
+  if (seeded > 0) console.log(`[words] loaded ${seeded} starting words`);
 });

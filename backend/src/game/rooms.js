@@ -19,7 +19,7 @@ const MAX_NAME_LENGTH = 20;
 // Chosen when the room is created. The client offers these same options, but
 // the server decides anything it does not recognise falls back to a default.
 const ROUND_SECONDS = [30, 60, 80, 120];
-const THEMES = ['general', 'animals', 'food', 'movies'];
+const THEMES = ['general', 'objects', 'animals', 'food', 'movies'];
 const LANGUAGES = ['pt', 'en', 'es'];
 
 const DEFAULT_SETTINGS = {

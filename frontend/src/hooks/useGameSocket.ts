@@ -59,6 +59,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const socketRef = useRef<Socket | null>(null)
 	const [room, setRoom] = useState<RoomState | null>(null)
 	const [selfId, setSelfId] = useState<string | null>(null)
+	const [error, setError] = useState<string | null>(null)
 
 	useEffect(() =>
 	{
@@ -79,12 +80,24 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 				? await request('room:join', { code: wanted })
 				: await request('room:create', {})
 
-			// Rooms disappear once empty, so a stale link falls back to a new one.
+			// Um link de uma sala que ja nao existe cai numa sala nova. Ja
+			// estares dentro e outra coisa: abrir outra sala escondia o erro.
+			if (!answer.ok && answer.code === 'ALREADY_IN_ROOM')
+			{
+				setError('ALREADY_IN_ROOM')
+				return
+			}
+
 			if (!answer.ok)
 				answer = await request('room:create', {})
 
 			if (!answer.ok || !answer.room)
+			{
+				setError(answer.code || 'ROOM_ERROR')
 				return
+			}
+
+			setError(null)
 
 			const url = new URL(window.location.href)
 			url.searchParams.set('room', answer.room.code)
@@ -150,6 +163,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		code: room?.code ?? null,
 		members: room?.members ?? [],
 		isDrawer,
+		error, // ALREADY_IN_ROOM: a sala ja esta aberta noutro separador
 		sendStroke: (stroke: Stroke) => socketRef.current?.emit('draw:stroke', stroke),
 		sendClear: () => socketRef.current?.emit('draw:clear'),
 	}

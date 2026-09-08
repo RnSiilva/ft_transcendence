@@ -91,6 +91,35 @@ function connect(cookie)
 	});
 }
 
+/**
+ * Waits for a room:state that actually satisfies the condition, rather than
+ * for "the next one" — announcements from an earlier action can still be in
+ * flight, and which arrives first is not something a test should depend on.
+ */
+function waitForState(socket, matches, ms)
+{
+	return new Promise((resolve) =>
+	{
+		const timer = setTimeout(() =>
+		{
+			socket.off('room:state', onState);
+			resolve(null);
+		}, ms);
+
+		function onState(room)
+		{
+			if (!matches(room))
+				return;
+
+			clearTimeout(timer);
+			socket.off('room:state', onState);
+			resolve(room);
+		}
+
+		socket.on('room:state', onState);
+	});
+}
+
 /** Resolves with the payload, or null if nothing arrives — used to prove absence. */
 function waitFor(socket, event, ms)
 {
@@ -119,7 +148,8 @@ const drawerName = (room) =>
 	return drawer ? drawer.name : null;
 };
 
-const names = (room) => room.members.map((m) => m.name);
+/** Tolerates a missing room so a timeout reports a failed check, not a crash. */
+const names = (room) => (room ? room.members.map((m) => m.name) : null);
 
 function step(title)
 {
@@ -199,21 +229,22 @@ async function main()
 	const beforeLeaving = await ask(ana, 'room:next-drawer');
 	check('o lapis esta com o Bruno', drawerName(beforeLeaving.room), 'testbruno');
 
+	const semBruno = waitForState(ana, (room) => room.members.length === 2, 2000);
 	await ask(bruno, 'room:leave');
-	const afterLeaving = await waitFor(ana, 'room:state', 2000);
+	const afterLeaving = await semBruno;
 	check('a sala fica com a Ana e a Carla', names(afterLeaving), ['testana', 'testcarla']);
 	check('o lapis passou a Carla, que vinha a seguir', drawerName(afterLeaving), 'testcarla');
 
 	step('8. Quem nao tem o lapis nao consegue desenhar');
 	const traco = { x0: 0.1, y0: 0.1, x1: 0.2, y1: 0.2 };
 
+	const leak = waitFor(carla, 'draw:stroke', 500);
 	ana.emit('draw:stroke', traco);
-	const leaked = await waitFor(carla, 'draw:stroke', 500);
-	check('o traco da Ana e ignorado pelo servidor', leaked, null);
+	check('o traco da Ana e ignorado pelo servidor', await leak, null);
 
+	const delivery = waitFor(ana, 'draw:stroke', 2000);
 	carla.emit('draw:stroke', traco);
-	const delivered = await waitFor(ana, 'draw:stroke', 2000);
-	check('o traco da Carla, que tem o lapis, chega', delivered !== null, true);
+	check('o traco da Carla, que tem o lapis, chega', (await delivery) !== null, true);
 
 	console.log(`\n${checks} verificacoes, ${failures.length} falhas.`);
 
