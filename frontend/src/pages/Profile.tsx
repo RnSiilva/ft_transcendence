@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
+import type { Lang } from '../i18n/translations'
 import { useAuth } from '../hooks/useAuth'
 import EditProfileModal from '../components/EditProfileModal'
 import CreateRoomModal from '../components/CreateRoomModal'
+import RoomLanguageModal from '../components/RoomLanguageModal'
 
-const ROOMS = [
-  { name: 'Sala do Carlos', meta: '3/6', lang: 'PT' },
-  { name: 'sala-rapida-02', meta: '5/6', lang: 'EN' },
+const ROOMS: { name: string; meta: string; lang: Lang }[] = [
+  { name: 'Sala do Carlos', meta: '3/6', lang: 'pt' },
+  { name: 'sala-rapida-02', meta: '5/6', lang: 'en' },
 ]
 
 const INITIAL_FRIENDS = [
@@ -18,19 +20,30 @@ const INITIAL_FRIENDS = [
 
 function Profile() {
   const { user, loading, logout, refresh } = useAuth()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const navigate = useNavigate()
-  
+
   const [search, setSearch] = useState('')
   const [message, setMessage] = useState('')
   const [friends, setFriends] = useState(INITIAL_FRIENDS)
   const [editOpen, setEditOpen] = useState(false)
   const [roomOpen, setRoomOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [pendingRoomLang, setPendingRoomLang] = useState<Lang | null>(null)
 
   async function handleLogout() {
     await logout()
     navigate('/login', { replace: true })
+  }
+
+  function enterRoom(roomLang: Lang) {
+    // Sala noutro idioma: avisar que as palavras serão nesse idioma e pedir
+    // confirmação antes de entrar. No mesmo idioma, entra diretamente.
+    if (roomLang !== lang) {
+      setPendingRoomLang(roomLang)
+      return
+    }
+    navigate('/game')
   }
 
   function addFriend(e: FormEvent<HTMLFormElement>) {
@@ -132,13 +145,14 @@ function Profile() {
             <div>
               <div className="room-name">{room.name}</div>
               <div className="room-meta">
-                {room.meta} <span>{t('profile.rooms.players')}</span> · {room.lang}
+                {room.meta} <span>{t('profile.rooms.players')}</span> ·{' '}
+                {room.lang.toUpperCase()}
               </div>
             </div>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              onClick={() => navigate('/game')}
+              onClick={() => enterRoom(room.lang)}
             >
               {t('profile.rooms.enter')}
             </button>
@@ -201,39 +215,41 @@ function Profile() {
 
       <div className="panel panel-danger">
         <h3>{t('profile.danger.heading')}</h3>
-        {!confirmingDelete ? (
-          <div>
-            <p className="danger-text">{t('profile.danger.text')}</p>
-            <button
-              type="button"
-              className="btn btn-danger btn-sm"
-              onClick={() => setConfirmingDelete(true)}
-            >
-              {t('profile.danger.delete')}
-            </button>
-          </div>
-        ) : (
-          <div>
-            <p className="danger-confirm-text">{t('profile.danger.confirm')}</p>
-            <div className="danger-actions">
+        <p className="danger-text">{t('profile.danger.text')}</p>
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          onClick={() => setConfirmingDelete(true)}
+        >
+          {t('profile.danger.delete')}
+        </button>
+      </div>
+
+      {/* caixa de aviso: exclusão definitiva de todos os dados */}
+      {confirmingDelete && (
+        <div className="modal-overlay show">
+          <div className="modal-panel">
+            <h2>{t('profile.danger.delete')}</h2>
+            <p className="roomlang-text">{t('danger.modal.text')}</p>
+            <div className="modal-actions">
               <button
                 type="button"
-                className="btn btn-danger btn-sm"
-                onClick={deleteAccount}
-              >
-                {t('profile.danger.confirmyes')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost"
                 onClick={() => setConfirmingDelete(false)}
               >
                 {t('profile.danger.cancel')}
               </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={deleteAccount}
+              >
+                {t('roomlang.continue')}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {editOpen && (
         <EditProfileModal
@@ -251,6 +267,16 @@ function Profile() {
         onClose={() => setRoomOpen(false)}
         onCreate={() => navigate('/game')}
       />
+      {pendingRoomLang && (
+        <RoomLanguageModal
+          roomLang={pendingRoomLang}
+          onClose={() => setPendingRoomLang(null)}
+          onConfirm={() => {
+            setPendingRoomLang(null)
+            navigate('/game')
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -22,7 +22,7 @@
   --mono:'JetBrains Mono',monospace;
 }
 *{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
+html,body{margin:0;padding:0;overflow-x:hidden;overflow-x:clip;}
 body{
   background:var(--canvas);
   color:var(--chalk);
@@ -127,6 +127,25 @@ header.site{
 @media (prefers-reduced-motion:reduce){ .logo .stroke{animation:none;stroke-dashoffset:0;} }
 @keyframes draw{to{stroke-dashoffset:0;}}
 
+/* logotipo SketchGuess no header (com o reflexo original): parado por
+   defeito; a animação de desenho corre ao pairar no logotipo OU no botão
+   Jogar da página inicial */
+.logo-sketch{display:inline-flex;align-items:center;}
+.logo-sketch svg{width:200px;height:auto;display:block;margin:0;}
+.logo-sketch-inner{display:block;}
+.hero-logo-reflection{display:block;position:relative;margin:4px 0 -6px;pointer-events:none;}
+.reflect-flip{display:block;transform:scaleY(-1);opacity:.45;}
+.reflect-flip svg{display:block;margin:0 auto;}
+.reflection-fade{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom, transparent 0%, var(--canvas) 78%);
+}
+.logo-sketch .gartic-loader path{animation:none;}
+.logo-sketch:hover .gartic-loader path,
+#root:has(.cta-btn:hover) .logo-sketch .gartic-loader path{
+  animation:dashArrayG 4.8s ease-in-out infinite, dashOffsetG 4.8s linear infinite;
+}
+
 nav.primary{display:flex;align-items:center;gap:30px;}
 nav.primary a{
   font-size:15px;font-weight:600;color:var(--chalk-dim);position:relative;padding:4px 0;
@@ -158,20 +177,75 @@ nav.primary a.nav-fx{
   50%{background-position:400% 0;}
   100%{background-position:0% 0;}
 }
-.nav-underline{
-  position:absolute;left:0;bottom:-7px;width:100%;height:9px;
-  overflow:visible;pointer-events:none;
+/* risco de marcador por cima do link (Início/Regras/Sobre nós), no vermelho
+   do projeto — substitui o traço de baixo nesses três */
+.nav-highlight{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  stroke:rgba(255,75,62,0.5);fill:none;
+  pointer-events:none;overflow:visible;
+  stroke-dasharray:1000;stroke-dashoffset:1000;
+  transition:stroke-dashoffset .5s ease-in-out;
 }
-.nav-underline path{
-  fill:none;stroke:var(--red);stroke-width:4.4;stroke-linecap:round;stroke-linejoin:round;
-  stroke-dasharray:1;stroke-dashoffset:1;
-  transition:stroke-dashoffset .45s ease;
-}
-.nav-fx:hover .nav-underline path{stroke-dashoffset:0;}
-.login-underline-host{position:relative;overflow:visible;}
-.login-underline-host:hover .nav-underline path{stroke-dashoffset:0;}
+.nav-fx:hover .nav-highlight{stroke-dashoffset:0;}
 @media (prefers-reduced-motion:reduce){
-  .nav-underline path{transition:none;}
+  .nav-highlight{transition:none;}
+}
+/* botão Login/Perfil desenhado (Uiverse type--C): contorno branco + rabisco
+   laranja marcado no hover; ícone no centro; à escala do header via transform */
+.ldb{display:block;width:85px;height:28px;position:relative;}
+.ldb__btn{
+  --line_color:var(--chalk);
+  --back_color:rgba(255,75,62,.78);
+  position:absolute;top:0;left:0;z-index:0;display:block;
+  width:170px;height:56px;
+  transform:scale(.5);transform-origin:0 0;
+  color:var(--line_color);
+  transition:all .3s ease;
+}
+.ldb__text{display:flex;justify-content:center;align-items:center;width:100%;height:100%;}
+.ldb__text svg{width:32px;height:32px;display:block;}
+.ldb__btn::before,.ldb__btn::after,.ldb__text::before,.ldb__text::after{
+  content:"";position:absolute;height:3px;border-radius:2px;
+  background:var(--line_color);transition:all .5s ease;
+}
+.ldb__btn::before{top:0;left:54px;width:calc(100% - 56px*2 - 16px);}
+.ldb__btn::after{top:0;right:54px;width:8px;}
+.ldb__text::before{bottom:0;right:54px;width:calc(100% - 56px*2 - 16px);}
+.ldb__text::after{bottom:0;left:54px;width:8px;}
+.ldb__line{position:absolute;top:0;width:56px;height:100%;overflow:hidden;}
+.ldb__line::before{
+  content:"";position:absolute;top:0;width:150%;height:100%;box-sizing:border-box;
+  border-radius:300px;border:solid 3px var(--line_color);
+}
+.ldb__line:nth-child(1),.ldb__line:nth-child(1)::before{left:0;}
+.ldb__line:nth-child(2),.ldb__line:nth-child(2)::before{right:0;}
+.ldb:hover .ldb__btn::before,.ldb:hover .ldb__text::before{width:8px;}
+.ldb:hover .ldb__btn::after,.ldb:hover .ldb__text::after{width:calc(100% - 56px*2 - 16px);}
+/* no hover, o mesmo traço de marcador dos links do menu */
+.ldb:hover .nav-highlight{stroke-dashoffset:0;}
+
+/* menu móvel: hambúrguer de traços ondulados (estilo do traço do hover);
+   aberto, vira um traço só para fechar */
+.nav-burger{display:none;background:none;padding:6px;cursor:pointer;}
+.nav-burger svg{width:36px;height:22px;display:block;overflow:visible;}
+.burger-line{fill:none;stroke:var(--red);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;}
+.mobile-menu{display:none;}
+@media (max-width:900px){
+  nav.primary{display:none;}
+  .nav-burger{display:block;}
+  .mobile-menu{
+    display:flex;flex-direction:column;
+    position:absolute;top:100%;left:0;right:0;z-index:39;
+    background:var(--canvas-2);
+    padding:8px 24px 16px;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line-strong);
+    box-shadow:var(--shadow);
+  }
+  .mobile-menu a{
+    padding:13px 4px;font-size:16px;font-weight:600;color:var(--chalk);
+    border-bottom:1px solid var(--line);
+  }
+  .mobile-menu a:last-child{border-bottom:none;}
 }
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
@@ -239,15 +313,11 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 /* HOME */
 .hero{padding:96px 32px 60px;text-align:center;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+/* H1 animado: Desenha (lápis) / Adivinha (balão ?) / Ganha pontos (troféu) */
+/* H1 original: logotipo SketchGuess grande, animado, com reflexo */
 .hero-logo{margin:0;line-height:0;}
 .hero-logo svg{width:min(90vw,620px);height:auto;}
-.hero-logo-reflection{position:relative;margin:4px 0 -6px;pointer-events:none;}
-.reflect-flip{transform:scaleY(-1);opacity:.45;}
-.reflect-flip svg{width:min(90vw,620px);height:auto;display:block;margin:0 auto;}
-.reflection-fade{
-  position:absolute;inset:0;
-  background:linear-gradient(to bottom, transparent 0%, var(--canvas) 78%);
-}
+.hero .reflect-flip svg{width:min(90vw,620px);}
 .gartic-loader path{
   fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:22;
   animation:dashArrayG 4.8s ease-in-out infinite, dashOffsetG 4.8s linear infinite;
@@ -275,7 +345,7 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
   font-size:17px;line-height:1.7;
 }
 .hero-frame{
-  max-width:760px;margin:0 auto 34px;aspect-ratio:16/9;border-radius:24px;
+  max-width:920px;margin:0 auto 34px;aspect-ratio:16/9;border-radius:24px;
   border:2px solid var(--line-strong);
   background:
     linear-gradient(135deg, rgba(255,75,62,0.16), rgba(62,193,211,0.14) 45%, rgba(255,201,60,0.14)),
@@ -288,6 +358,39 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
   background-size:22px 22px;
 }
 .hero-frame span{font-family:var(--mono);color:var(--chalk-dim);font-size:13px;letter-spacing:1px;text-transform:uppercase;position:relative;}
+.promo-illustration{width:100%;height:100%;display:block;position:relative;}
+.promo-doodle{stroke-dasharray:1;stroke-dashoffset:1;animation:promo-draw 5.5s ease-in-out infinite;}
+@keyframes promo-draw{0%{stroke-dashoffset:1;}45%{stroke-dashoffset:0;}85%{stroke-dashoffset:0;}100%{stroke-dashoffset:1;}}
+.promo-bubble{animation:promo-float 3.4s ease-in-out infinite;}
+@keyframes promo-float{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
+/* letras da palavra a aparecerem uma a uma, em loop de 8s */
+.promo-letter{opacity:0;animation-duration:8s;animation-timing-function:linear;animation-iteration-count:infinite;}
+.promo-l1{animation-name:promo-letter-1;}
+.promo-l2{animation-name:promo-letter-2;}
+.promo-l3{animation-name:promo-letter-3;}
+.promo-l4{animation-name:promo-letter-4;}
+@keyframes promo-letter-1{0%,16%{opacity:0;}20%,90%{opacity:1;}94%,100%{opacity:0;}}
+@keyframes promo-letter-2{0%,34%{opacity:0;}38%,90%{opacity:1;}94%,100%{opacity:0;}}
+@keyframes promo-letter-3{0%,52%{opacity:0;}56%,90%{opacity:1;}94%,100%{opacity:0;}}
+@keyframes promo-letter-4{0%,70%{opacity:0;}74%,90%{opacity:1;}94%,100%{opacity:0;}}
+/* estrela giratória do troféu (eco do fim de jogo) */
+.promo-star{transform-box:fill-box;transform-origin:center;animation:promo-star-rot 3s infinite;}
+@keyframes promo-star-rot{0%{transform:rotate(0deg);}50%{transform:rotate(340deg);}100%{transform:rotate(0deg);}}
+/* ranking a aparecer lugar a lugar, no mesmo ciclo de 8s das letras */
+.promo-rank{opacity:0;animation-duration:8s;animation-timing-function:ease;animation-iteration-count:infinite;}
+.promo-rank-1{animation-name:promo-rank-1;}
+.promo-rank-2{animation-name:promo-rank-2;}
+.promo-rank-3{animation-name:promo-rank-3;}
+@keyframes promo-rank-1{0%,20%{opacity:0;transform:translateY(10px);}26%,90%{opacity:1;transform:translateY(0);}94%,100%{opacity:0;}}
+@keyframes promo-rank-2{0%,34%{opacity:0;transform:translateY(10px);}40%,90%{opacity:1;transform:translateY(0);}94%,100%{opacity:0;}}
+@keyframes promo-rank-3{0%,48%{opacity:0;transform:translateY(10px);}54%,90%{opacity:1;transform:translateY(0);}94%,100%{opacity:0;}}
+@media (prefers-reduced-motion:reduce){
+  .promo-doodle{animation:none;stroke-dashoffset:0;}
+  .promo-bubble{animation:none;}
+  .promo-letter{animation:none;opacity:1;}
+  .promo-star{animation:none;}
+  .promo-rank{animation:none;opacity:1;}
+}
 .about{max-width:640px;margin:130px auto 0;text-align:center;padding:0 32px;}
 .about p{color:var(--chalk-dim);line-height:1.8;font-size:15.5px;margin-top:18px;}
 .about h2{font-family:var(--display);font-size:30px;margin:14px 0 14px;}
@@ -311,6 +414,197 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 }
 @media (prefers-reduced-motion:reduce){
   .pencil-line, .pencil-point{animation:none;stroke-dashoffset:0;}
+}
+
+/* fim da Home: computador desenhado como assinatura de fecho */
+.home-end{margin:90px 0 10px;}
+
+/* ---------- PÁGINA ABOUT US ---------- */
+.about-page{padding:56px 32px 70px;max-width:1060px;margin:0 auto;text-align:center;}
+.about-title{font-family:var(--display);font-size:34px;margin:14px 0 14px;}
+
+/* título com o traço e o reflexo do logotipo SketchGuess */
+.sketch-title{margin:0 0 10px;line-height:0;display:flex;flex-direction:column;align-items:center;}
+.sketch-text{height:58px;width:auto;overflow:visible;display:block;}
+.sketch-text text{font-family:var(--display);font-weight:800;font-size:78px;letter-spacing:2px;}
+.sketch-text tspan{
+  fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:520;
+  animation:sketch-draw 4.8s linear infinite;
+}
+@keyframes sketch-draw{
+  0%{stroke-dashoffset:520;}
+  42%{stroke-dashoffset:0;}
+  76%{stroke-dashoffset:0;}
+  100%{stroke-dashoffset:-520;}
+}
+.sketch-title .hero-logo-reflection{margin:2px 0 -6px;}
+.sketch-title .reflect-flip{transform:scaleY(-1) skewX(-10deg);}
+@media (prefers-reduced-motion:reduce){
+  .sketch-text tspan{animation:none;stroke-dashoffset:0;}
+}
+.about-intro{color:var(--chalk-dim);line-height:1.8;font-size:15.5px;max-width:640px;margin:0 auto 56px;}
+.about-page .team-section{margin:26px auto 84px;}
+.about-cards{display:flex;gap:36px;justify-content:center;align-items:stretch;flex-wrap:wrap;padding-bottom:24px;}
+
+/* cartão numerado (Uiverse adaptado às cores do projeto) */
+.about-card{
+  width:min(300px,100%);display:flex;flex-direction:column;
+  background-color:var(--paper);text-align:center;
+  border-top-left-radius:4rem;border:2px solid #fff;position:relative;
+}
+.about-card::before{
+  content:"";position:absolute;height:30px;width:120px;
+  background-color:var(--card-accent);top:32px;right:-2.5px;
+  clip-path:polygon(10% 0,100% 0,100% 100%,0 100%);
+}
+.about-card__body{padding:2rem 1.5rem .9rem;max-width:25ch;margin:auto;flex:1;}
+.about-card__icon{display:flex;justify-content:center;color:var(--card-accent);}
+.about-card__title{font-family:var(--display);font-weight:800;color:var(--ink);font-size:1.25rem;margin:1.5rem 0 .75rem;}
+.about-card__paragraph{color:#303830;font-size:.875rem;line-height:1.65;margin:0;}
+.about-card__ribbon{
+  margin-top:1.5rem;display:grid;place-items:center;height:50px;
+  background-color:var(--card-accent);position:relative;
+  width:110%;left:-5%;top:10px;border-radius:0 0 2rem 2rem;
+}
+.about-card__ribbon::before,
+.about-card__ribbon::after{
+  content:"";position:absolute;width:20px;aspect-ratio:1/1;bottom:100%;
+  z-index:-2;background-color:var(--card-accent-dark);
+}
+.about-card__ribbon::before{left:0;transform-origin:left bottom;transform:rotate(45deg);}
+.about-card__ribbon::after{right:0;transform-origin:right bottom;transform:rotate(-45deg);}
+.about-card__label{
+  width:84px;aspect-ratio:1/1;background-color:#fff;position:relative;
+  transform:translateY(-50%);border-radius:50%;
+  border:8px solid var(--card-accent);
+  display:grid;place-items:center;
+  font-family:var(--display);font-weight:900;line-height:1;font-size:1.5rem;color:var(--ink);
+}
+.about-card__label::before,
+.about-card__label::after{content:"";position:absolute;width:25px;height:25px;bottom:50%;}
+.about-card__label::before{right:calc(100% + 4px);border-bottom-right-radius:20px;box-shadow:5px 5px 0 var(--card-accent);}
+.about-card__label::after{left:calc(100% + 4px);border-bottom-left-radius:20px;box-shadow:-5px 5px 0 var(--card-accent);}
+
+/* ---------- EQUIPA (Home, depois do About) ---------- */
+.team-section{max-width:1180px;margin:90px auto 0;padding:0 24px;}
+.team-circuit{display:grid;grid-template-columns:auto 1fr auto;gap:4px;align-items:center;}
+.team-col{display:flex;flex-direction:column;gap:64px;}
+.team-chip svg{width:100%;height:auto;display:block;}
+.team-chip-vertical{display:none;}
+.team-chip-vertical svg{width:100%;height:auto;display:block;}
+
+.trace-bg{stroke:var(--line-strong);stroke-width:1.8;fill:none;}
+.trace-flow{
+  stroke-width:1.8;fill:none;
+  stroke-dasharray:40 400;stroke-dashoffset:438;
+  filter:drop-shadow(0 0 6px currentColor);
+  animation:team-flow 3s cubic-bezier(0.5,0,0.9,1) infinite;
+}
+@keyframes team-flow{to{stroke-dashoffset:0;}}
+@media (prefers-reduced-motion:reduce){.trace-flow{animation:none;}}
+
+.team-slot{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.team-card{
+  position:relative;overflow:visible;border-radius:16px;
+  width:200px;height:172px;padding:14px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:10px;
+  background:var(--member-color);
+  border:4px solid var(--member-color-dark);
+  transform:rotate(-12deg);
+  transition:transform .3s;
+}
+.team-card:hover{transform:rotate(0deg);}
+/* coluna direita inclinada ao contrário — espelho da esquerda */
+.team-col-right .team-card{transform:rotate(12deg);}
+.team-col-right .team-card:hover{transform:rotate(0deg);}
+.team-card-top{color:var(--ink);z-index:2;}
+.team-card-initial{font-family:var(--display);font-weight:800;font-size:19px;line-height:1.15;}
+.team-card-login{margin:2px 0 0;font-size:11.5px;font-weight:600;opacity:.85;}
+.team-card-links{display:flex;align-items:center;gap:18px;z-index:2;}
+
+/* o recorte fica só no mascote — o botão LinkedIn pode sair do cartão */
+.team-mascot-clip{position:absolute;inset:0;border-radius:12px;overflow:hidden;pointer-events:none;z-index:1;}
+.team-mascot{
+  position:absolute;bottom:-2px;right:-46px;width:120px;height:120px;
+  fill:var(--paper);stroke:var(--member-color-dark);
+}
+.team-mascot.back{transition:transform .5s;}
+.team-mascot.front{stroke:var(--member-color);transition:transform .2s;}
+.team-card:hover .team-mascot{transform:scale(1.25);}
+
+/* círculo com a foto do membro (sem link — só o ícone do LinkedIn liga) */
+.team-photo{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:50px;height:50px;border-radius:50%;
+  outline:2px solid #fff;background:transparent;color:#fff;
+  font-family:var(--display);font-weight:800;font-size:18px;
+}
+.team-photo .team-photo-inner{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;border-radius:50%;overflow:hidden;
+}
+.team-photo img{width:100%;height:100%;object-fit:cover;}
+
+/* botão LinkedIn — o redondo da referência (icon-in), com a janela a subir */
+.team-linkedin-container{position:relative;z-index:5;}
+.team-icon-in{
+  display:inline-flex;width:50px;height:50px;text-decoration:none;font-size:25px;
+  outline:2px solid white;border-radius:50%;color:white;
+  transition-property:outline-offset,outline-color,background-color;
+  transition-duration:.25s;
+}
+.team-icon-in svg{margin:auto;width:26px;}
+.team-icon-in:hover{background-color:#0a66c2;outline-color:#0a66c2;outline-offset:4px;}
+.team-icon-in:hover svg{animation:team-shake .25s;}
+@keyframes team-shake{10%{transform:rotate(15deg);}20%{transform:rotate(-15deg);}}
+
+.team-tooltip{
+  position:absolute;left:50%;bottom:calc(100% + 8px);
+  transform:translate(-50%,16px);
+  padding:0;opacity:0;pointer-events:none;
+  transition:transform .3s ease,opacity .3s ease;
+  border-radius:15px;
+  box-shadow:5px 5px 15px rgba(0,0,0,0.3),-5px -5px 15px rgba(255,255,255,0.1);
+}
+.team-linkedin-container:hover .team-tooltip{
+  transform:translate(-50%,-12px);opacity:1;pointer-events:auto;
+}
+.team-tooltip .profile{
+  background:#2a2b2f;border-radius:10px 15px;padding:10px;
+  border:1px solid rgba(11,63,95,1);
+}
+.team-tooltip .user{display:flex;gap:10px;}
+.team-tooltip .img{
+  width:50px;height:50px;flex:none;font-size:25px;font-weight:700;
+  border:1px solid #1da1f2;border-radius:10px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;background:#fff;
+  color:var(--ink);
+}
+.team-tooltip .img img{width:100%;height:100%;object-fit:cover;}
+.team-tooltip .name{font-size:17px;font-weight:700;color:#1da1f2;white-space:nowrap;}
+.team-tooltip .username{white-space:nowrap;}
+.team-tooltip .details{display:flex;flex-direction:column;gap:0;color:#fff;}
+.team-tooltip .connections{color:#ccc;padding-top:5px;white-space:nowrap;font-size:13.5px;}
+
+.team-caption{display:flex;flex-direction:column;text-align:center;line-height:1.35;}
+.team-caption b{font-size:14.5px;color:var(--chalk);}
+.team-caption span{font-size:12px;color:var(--chalk-dim);}
+
+@media (max-width:980px){
+  .team-circuit{grid-template-columns:1fr;gap:0;}
+  .team-chip{display:none;}
+  .team-chip-vertical{display:block;max-width:340px;margin:-8px auto;}
+  .team-col{flex-direction:row;justify-content:center;flex-wrap:nowrap;gap:14px;}
+  .team-card{width:160px;height:150px;padding:12px;transform:rotate(-6deg);}
+  .team-col-right .team-card{transform:rotate(6deg);}
+  .team-card:hover,.team-col-right .team-card:hover{transform:rotate(0deg);}
+  .team-card-initial{font-size:15.5px;}
+  .team-card-links{gap:12px;}
+  .team-photo{width:42px;height:42px;font-size:16px;}
+  .team-icon-in{width:42px;height:42px;}
+  .team-icon-in svg{width:22px;}
+  .team-mascot{width:100px;height:100px;right:-40px;}
 }
 
 /* LOGIN */
@@ -425,8 +719,32 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .word-blank{letter-spacing:5px;font-weight:700;color:var(--yellow);}
 .timer{color:var(--red);font-weight:700;}
 
-.game-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:210px 1fr 260px;gap:18px;align-items:start;}
-@media (max-width:960px){.game-grid{grid-template-columns:1fr;}}
+/* desktop: quadro à esquerda com o placar horizontal por baixo; chat na lateral */
+.game-grid{
+  max-width:1180px;margin:0 auto;display:grid;gap:18px;align-items:start;
+  grid-template-columns:minmax(0,1fr) 280px;
+  grid-template-rows:auto auto;
+  grid-template-areas:"board chat" "score score";
+}
+.score-panel{grid-area:score;margin:0;display:flex;align-items:center;gap:30px;flex-wrap:wrap;}
+.score-panel h3{margin:0;}
+.score-panel .score-list{flex-direction:row;flex-wrap:wrap;gap:10px 40px;}
+.leave-btn{margin-left:auto;}
+.canvas-box{grid-area:board;}
+.game-grid .chat-box{grid-area:chat;height:100%;}
+.game-grid .chat-log{max-height:none;}
+/* na coluna lateral estreita, o botão Enviar fica por baixo da mensagem */
+.game-grid .chat-input-row{flex-direction:column;}
+.game-grid .chat-input-row input{min-width:0;}
+@media (max-width:960px){
+  .game-grid{grid-template-columns:1fr;grid-template-areas:"score" "board" "chat";}
+  .score-panel{flex-direction:column;align-items:stretch;gap:12px;}
+  .score-panel .score-list{flex-direction:column;gap:10px;}
+  .leave-btn{margin-left:0;}
+  .game-grid .chat-box{height:auto;}
+  .game-grid .chat-log{min-height:140px;max-height:220px;}
+  .game-grid .chat-input-row{flex-direction:row;}
+}
 
 .score-list{display:flex;flex-direction:column;gap:10px;}
 .score-row{display:flex;align-items:center;gap:9px;font-size:13.5px;}
@@ -582,3 +900,21 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .edit-avatar-preview img{width:100%;height:100%;object-fit:cover;}
 .edit-avatar-label{font-size:12.5px;font-weight:700;color:var(--chalk-dim);}
 .field-readonly{padding:11px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--canvas);color:var(--chalk-dim);font-size:14px;}
+
+/* spinner de sessão (usado por ProtectedRoute/Profile enquanto o backend
+   confirma o login — a equipa usa as classes, o estilo é nosso) */
+.auth-loading{min-height:50vh;display:flex;align-items:center;justify-content:center;}
+.auth-spinner{width:44px;height:44px;border-radius:50%;border:4px solid var(--line-strong);border-top-color:var(--red);animation:auth-spin .8s linear infinite;}
+@keyframes auth-spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce){.auth-spinner{animation-duration:2.5s;}}
+
+/* aviso de idioma da sala */
+.roomlang-text{color:var(--chalk-dim);font-size:14.5px;line-height:1.65;margin:0 0 12px;text-align:center;}
+.roomlang-text b{color:var(--yellow);}
+.roomlang-confirm{color:var(--chalk);font-size:14px;font-weight:600;text-align:center;margin:0 0 18px;}
+
+
+
+
+
+
