@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "demo:rooms": "node scripts/rooms-demo.js",
+    "test:rooms": "node scripts/rooms-test.js",
+    "test:scoring": "node scripts/scoring-test.js",
+    "test:words": "node scripts/words-test.js",
+    "test:round": "node scripts/round-test.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,6 +18,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.2",
+    "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^5.2.1",
