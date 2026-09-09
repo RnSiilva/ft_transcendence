@@ -9,8 +9,11 @@ const friendsRouter = require('./friends/friends.routes');
 const presence = require('./friends/presence');
 const jwt = require('jsonwebtoken');
 
-const { registerRoomHandlers } = require('./sockets/room.socket');
+const { registerRoomHandlers, startAbsenceSweeper } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
+const { registerRoundHandlers, startGameLoop } = require('./sockets/round.socket');
+const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
+const { seedWords } = require('./game/words.repository');
 
 const app = express();
 const server = http.createServer(app);
@@ -51,8 +54,14 @@ const io = new Server(server, {
 
 const PORT = process.env.BACKEND_PORT || 4000;
 
+// Rooms are for registered users: no valid session cookie, no connection.
+io.use(requireAuthenticatedSocket);
+
+startAbsenceSweeper(io);
+startGameLoop(io);
+
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('Client connected:', socket.id, 'as', socket.user.username);
 
   // Authenticate socket connection via session cookie if present
   const cookieHeader = socket.handshake?.headers?.cookie || '';
@@ -78,6 +87,7 @@ io.on('connection', (socket) => {
 
   registerRoomHandlers(io, socket);
   registerDrawHandlers(io, socket);
+  registerRoundHandlers(io, socket);
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
@@ -88,6 +98,13 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Backend running on port ${PORT}`);
+
+  // Fills the Word table the first time only; words added later are kept.
+  const seeded = await seedWords().catch((err) => {
+    console.error('[words] seeding failed:', err.message);
+    return 0;
+  });
+  if (seeded > 0) console.log(`[words] loaded ${seeded} starting words`);
 });

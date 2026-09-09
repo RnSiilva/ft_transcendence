@@ -1,19 +1,31 @@
 const jwt = require('jsonwebtoken');
 
-function requireAuth(req, res, next) {
-  const token = req.cookies?.token; // read the httpOnly token cookie parsed by cookieParser
-
+/* Verifies a raw JWT and returns the user it represents, or null.
+   Kept separate from requireAuth so the Socket.IO handshake can reuse it —
+   a socket has no req/res, but it does carry the same cookie.
+*/
+function verifyToken(token) {
   if (!token) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return null;
   }
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET); // verify the JWT signature using JWT_SECRET
-    req.user = { id: payload.sub, email: payload.email, username: payload.username }; // attach authenticated user details to the request object
-    next();
+    return { id: payload.sub, email: payload.email, username: payload.username };
   } catch {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return null;
   }
 }
 
-module.exports = { requireAuth };
+function requireAuth(req, res, next) {
+  const user = verifyToken(req.cookies?.token); // read the httpOnly token cookie parsed by cookieParser
+
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  req.user = user; // attach authenticated user details to the request object
+  next();
+}
+
+module.exports = { requireAuth, verifyToken };

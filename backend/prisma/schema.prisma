@@ -42,6 +42,7 @@ model Friend {
 
 model Word {
   id         Int     @id @default(autoincrement())
+  theme      String
   textPt     String  @unique
   textEn     String  @unique
   textEs     String  @unique

@@ -22,8 +22,11 @@ export type Stroke =
 export type RoomMember =
 {
 	id: string
+	userId: number
 	name: string
 	isDrawer: boolean
+	/** Milliseconds left before a disconnected player loses their seat. */
+	msToDrop: number | null
 }
 
 type RoomState =
@@ -33,21 +36,35 @@ type RoomState =
 	members: RoomMember[]
 }
 
+export type RoundScore =
+{
+	id: string
+	name: string
+	points: number
+	isDrawer: boolean
+	guessed: boolean
+}
+
+export type RoundState =
+{
+	phase: 'waiting' | 'drawing' | 'result' | 'finished'
+	round: number
+	totalRounds: number
+	/** Which player is drawing within this round, and how many will. */
+	turn: number
+	turnsPerRound: number
+	secondsLeft: number
+	maskedWord: string
+	/** Only filled once the round is over; until then everyone sees the mask. */
+	word: string | null
+	scores: RoundScore[]
+}
+
+export type ChatMessage = { name: string; text: string; system?: boolean }
+
 type Ack = { ok: boolean; room?: RoomState; error?: string; code?: string }
 
 const DEFAULT_COLOUR = '#15161B'
-
-/** Temporary until auth lands, when the name comes from the session. */
-function guestName()
-{
-	const stored = sessionStorage.getItem('guestName')
-	if (stored)
-		return stored
-
-	const name = `Jogador ${Math.floor(Math.random() * 900 + 100)}`
-	sessionStorage.setItem('guestName', name)
-	return name
-}
 
 function paintSegment(canvas: HTMLCanvasElement, stroke: Stroke)
 {
@@ -70,6 +87,10 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const socketRef = useRef<Socket | null>(null)
 	const [room, setRoom] = useState<RoomState | null>(null)
 	const [selfId, setSelfId] = useState<string | null>(null)
+	const [error, setError] = useState<string | null>(null)
+	const [round, setRound] = useState<RoundState | null>(null)
+	const [secretWord, setSecretWord] = useState<string | null>(null)
+	const [messages, setMessages] = useState<ChatMessage[]>([])
 
 	useEffect(() =>
 	{
@@ -82,19 +103,32 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 
 		const enterRoom = async () =>
 		{
-			const name = guestName()
+			// The server takes the player's name from the session cookie, so
+			// there is nothing to send: it would only be a name to spoof.
 			const wanted = new URLSearchParams(window.location.search).get('room')
 
 			let answer = wanted
-				? await request('room:join', { code: wanted, name })
-				: await request('room:create', { name })
+				? await request('room:join', { code: wanted })
+				: await request('room:create', {})
 
-			// Rooms disappear once empty, so a stale link falls back to a new one.
+			// Um link de uma sala que ja nao existe cai numa sala nova. Ja
+			// estares dentro e outra coisa: abrir outra sala escondia o erro.
+			if (!answer.ok && answer.code === 'ALREADY_IN_ROOM')
+			{
+				setError('ALREADY_IN_ROOM')
+				return
+			}
+
 			if (!answer.ok)
-				answer = await request('room:create', { name })
+				answer = await request('room:create', {})
 
 			if (!answer.ok || !answer.room)
+			{
+				setError(answer.code || 'ROOM_ERROR')
 				return
+			}
+
+			setError(null)
 
 			const url = new URL(window.location.href)
 			url.searchParams.set('room', answer.room.code)
@@ -118,6 +152,27 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		})
 
 		socket.on('room:state', setRoom)
+
+		socket.on('round:state', setRound)
+
+		// Only the drawer is ever sent this, so keeping it in state is safe.
+		socket.on('round:word', setSecretWord)
+
+		socket.on('round:over', ({ word }: { word: string }) =>
+		{
+			setSecretWord(null)
+			setMessages((all) => [...all, { name: '', text: `A palavra era: ${word}`, system: true }])
+		})
+
+		socket.on('round:correct', ({ name, points }: { name: string; points: number }) =>
+		{
+			setMessages((all) => [...all, { name: '', text: `${name} acertou! +${points}`, system: true }])
+		})
+
+		socket.on('chat:message', (message: ChatMessage) =>
+		{
+			setMessages((all) => [...all, message])
+		})
 
 		socket.on('draw:stroke', (stroke: Stroke) =>
 		{
@@ -160,7 +215,13 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		code: room?.code ?? null,
 		members: room?.members ?? [],
 		isDrawer,
+		error, // ALREADY_IN_ROOM: a sala ja esta aberta noutro separador
+		round,
+		messages,
+		// What goes in the word slot: the real thing if you are the one drawing.
+		wordToShow: (isDrawer && secretWord) || round?.word || round?.maskedWord || '',
 		sendStroke: (stroke: Stroke) => socketRef.current?.emit('draw:stroke', stroke),
 		sendClear: () => socketRef.current?.emit('draw:clear'),
+		sendChat: (text: string) => socketRef.current?.emit('chat:message', { text }),
 	}
 }

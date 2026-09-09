@@ -6,8 +6,6 @@ import { useGameSocket } from '../hooks/useGameSocket'
 
 const COLORS = ['#15161B', '#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 
-type ChatMessage = { name: string; text: string }
-
 function Game() {
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -16,8 +14,6 @@ function Game() {
   const drawingRef = useRef(false)
   const colorRef = useRef(COLORS[0])
   const [activeColor, setActiveColor] = useState(COLORS[0])
-  const [seconds, setSeconds] = useState(80)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatText, setChatText] = useState('')
   const [endgameOpen, setEndgameOpen] = useState(false)
 
@@ -31,18 +27,10 @@ function Game() {
     gameRef.current = game
   })
 
-  // AQUI O CODIGO DO SERVIDOR (o temporizador real é controlado pelo motor do
-  // jogo no servidor; este é só a demonstração visual do modelo aprovado)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSeconds((s) => (s > 0 ? s - 1 : s))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
+  // O tempo é do servidor: todos os jogadores da sala veem o mesmo número, e
+  // ninguém ganha segundos por ter a página mais lenta.
+  const seconds = game.round?.secondsLeft ?? 0
 
-  // AQUI O CODIGO DO JOGO (motor do jogo: transmitir os traços por Socket.IO
-  // — ex.: evento 'desenho:traco' — e desenhar também os traços recebidos dos
-  // outros jogadores; só quem está "a desenhar" pode usar o quadro)
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
@@ -123,7 +111,7 @@ function Game() {
   useEffect(() => {
     const log = chatLogRef.current
     if (log) log.scrollTop = log.scrollHeight
-  }, [messages])
+  }, [game.messages])
 
   function selectColor(color: string) {
     colorRef.current = color
@@ -136,12 +124,11 @@ function Game() {
     game.sendClear()
   }
 
+  // Um único campo serve para conversar e para adivinhar: o servidor compara
+  // a mensagem com a palavra secreta e decide o que ela foi.
   function sendChat() {
     if (!chatText.trim()) return
-    // AQUI O CODIGO DO CHAT/PALPITES (Socket.IO — a mensagem vai para todos
-    // os jogadores da sala; o SERVIDOR compara-a com a palavra secreta para
-    // validar palpites; o chat não é guardado na base de dados)
-    setMessages((m) => [...m, { name: 'utilizador_demo', text: chatText.trim() }])
+    game.sendChat(chatText.trim())
     setChatText('')
   }
 
@@ -152,8 +139,12 @@ function Game() {
           <div className="mini-avatar">U</div>
           utilizador_demo — <span>120</span> <span>{t('game.points')}</span>
         </div>
-        <div className="pill-stat"><span>{t('game.round')}</span> 1 / 3</div>
-        <div className="pill-stat word-blank"><span>{t('game.word')}</span>: _ _ _ _ _</div>
+        <div className="pill-stat">
+          <span>{t('game.round')}</span> {game.round ? `${game.round.round}/${game.round.totalRounds} (${game.round.turn}/${game.round.turnsPerRound})` : '—'}
+        </div>
+        <div className="pill-stat word-blank">
+          <span>{t('game.word')}</span>: {game.wordToShow || '—'}
+        </div>
         <div className="pill-stat">
           <span>{t('game.time')}</span>:{' '}
           <span className="timer" style={seconds <= 15 ? { color: 'var(--yellow)' } : undefined}>
@@ -173,25 +164,31 @@ function Game() {
       <div className="game-grid">
         <div className="panel score-panel">
           <h3>{t('game.score.heading')}</h3>
-          {/* AQUI O CODIGO DO JOGO (placar em tempo real vindo do SERVIDOR) */}
+          {/* Vem do servidor. Sem estilo próprio: só classes que já existiam,
+              incluindo o aviso de quem se desligou. @Thevaris à vontade. */}
           <div className="score-list">
-            <div className="score-row drawing">
-              <div className="mini-avatar">C</div>
-              <div className="nm">
-                Carlos <span className="drawing-tag">{t('game.drawing')}</span>
+            {game.members.map((member) => (
+              <div
+                key={member.id}
+                className={member.isDrawer ? 'score-row drawing' : 'score-row'}
+              >
+                <div className="mini-avatar">{member.name.charAt(0).toUpperCase()}</div>
+                <div className="nm">
+                  {member.name}
+                  {member.isDrawer && (
+                    <span className="drawing-tag"> {t('game.drawing')}</span>
+                  )}
+                  {member.msToDrop !== null && (
+                    <span className="drawing-tag">
+                      {' '}— desligou-se, {Math.ceil(member.msToDrop / 1000)}s
+                    </span>
+                  )}
+                </div>
+                <div className="pts">
+                  {game.round?.scores.find((s) => s.id === member.id)?.points ?? 0}
+                </div>
               </div>
-              <div className="pts">140</div>
-            </div>
-            <div className="score-row">
-              <div className="mini-avatar">U</div>
-              <div className="nm">utilizador_demo</div>
-              <div className="pts">120</div>
-            </div>
-            <div className="score-row">
-              <div className="mini-avatar">R</div>
-              <div className="nm">Renan</div>
-              <div className="pts">95</div>
-            </div>
+            ))}
           </div>
           <button
             type="button"
@@ -227,11 +224,9 @@ function Game() {
         <div className="chat-box">
             <h3>{t('game.chat.heading')}</h3>
             <div className="chat-log" ref={chatLogRef}>
-              <div className="msg"><b>Renan:</b> <span>{t('game.msg1')}</span></div>
-              <div className="msg"><b>Pedro:</b> <span>{t('game.msg2')}</span></div>
-              {messages.map((message, i) => (
+              {game.messages.map((message, i) => (
                 <div className="msg" key={i}>
-                  <b>{message.name}:</b> {message.text}
+                  {message.system ? <i>{message.text}</i> : <><b>{message.name}:</b> {message.text}</>}
                 </div>
               ))}
             </div>
