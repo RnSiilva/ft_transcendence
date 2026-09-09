@@ -9,6 +9,7 @@ type Props = {
   currentNickname: string
   currentEmail: string
   currentPhoto: string | null
+  hasPassword?: boolean
   onClose: () => void
   onSave: (updatedUser: Record<string, unknown>) => void
 }
@@ -17,6 +18,7 @@ function EditProfileModal({
   currentNickname,
   currentEmail,
   currentPhoto,
+  hasPassword = true,
   onClose,
   onSave,
 }: Props) {
@@ -46,12 +48,9 @@ function EditProfileModal({
     }
 
     if (newPassword) {
-      if (!currentPassword) {
-        setError(t('errors.fillAllFields'))
-        setSaving(false)
-        return
+      if (currentPassword) {
+        payload.currentPassword = currentPassword
       }
-      payload.currentPassword = currentPassword
       payload.newPassword = newPassword
     }
 
@@ -66,7 +65,11 @@ function EditProfileModal({
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error || t('errors.networkError'))
+        let errMessage = data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error || t('errors.networkError')
+        if (errMessage === 'Username already taken') {
+          errMessage = t('errors.usernameTaken')
+        }
+        setError(errMessage)
         setSaving(false)
         return
       }
@@ -123,12 +126,14 @@ function EditProfileModal({
 
         <div className="field-dark">
           <label>{t('profile.changepass')}</label>
-          <input
-            type="password"
-            placeholder={t('profile.currentpass')}
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-          />
+          {hasPassword && (
+            <input
+              type="password"
+              placeholder={t('profile.currentpass')}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+          )}
           <input
             type="password"
             placeholder={t('profile.newpass')}

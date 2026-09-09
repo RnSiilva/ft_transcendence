@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser } = require('./auth.service');
+const { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser, findOrCreate42User } = require('./auth.service');
 
 const COOKIE_NAME = 'token';
 const COOKIE_OPTIONS = {
@@ -31,8 +31,8 @@ async function register(req, res) {
   }
   if (!username || username.length < 3 || username.length > 20) {
     errors.username = 'Username must be 3–20 characters';
-  } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    errors.username = 'Username may only contain letters, numbers, and underscores';
+  } else if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    errors.username = 'Username may only contain letters, numbers, underscores, and hyphens';
   }
   if (!password || password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
     errors.password = 'Password must be at least 8 characters and contain a letter and a number';
@@ -153,4 +153,58 @@ async function deleteAccount(req, res) {
   }
 }
 
-module.exports = { register, login, updateLanguage, logout, me, updateProfile, deleteAccount };
+// GET /auth/42
+function loginWith42(req, res) {
+  const UID = process.env.FORTYTWO_CLIENT_ID;
+  const REDIRECT_URI = encodeURIComponent(process.env.FORTYTWO_CALLBACK_URL);
+  const authUrl = `https://api.intra.42.fr/oauth/authorize?client_id=${UID}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+  res.redirect(authUrl);
+}
+
+// GET /auth/42/callback
+async function fortyTwoCallback(req, res) {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.redirect('/login?error=MissingCode');
+  }
+
+  try {
+    // 1. Exchange code for access_token
+    const tokenRes = await fetch('https://api.intra.42.fr/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: process.env.FORTYTWO_CLIENT_ID,
+        client_secret: process.env.FORTYTWO_CLIENT_SECRET,
+        code,
+        redirect_uri: process.env.FORTYTWO_CALLBACK_URL,
+      }),
+    });
+
+    if (!tokenRes.ok) throw new Error('Failed to get 42 access token');
+    const tokenData = await tokenRes.json();
+    const accessToken = tokenData.access_token;
+
+    // 2. Fetch user profile
+    const profileRes = await fetch('https://api.intra.42.fr/v2/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!profileRes.ok) throw new Error('Failed to get 42 user profile');
+    const profileData = await profileRes.json();
+
+    // 3. Find or Create User
+    const user = await findOrCreate42User(profileData);
+
+    // 4. Issue token and redirect
+    const token = issueToken(user);
+    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
+    res.redirect('/profile');
+  } catch (err) {
+    console.error('[fortyTwoCallback]', err);
+    res.redirect('/login?error=OAuthFailed');
+  }
+}
+
+module.exports = { register, login, updateLanguage, logout, me, updateProfile, deleteAccount, loginWith42, fortyTwoCallback };
