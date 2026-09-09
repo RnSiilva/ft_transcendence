@@ -6,8 +6,9 @@ const cookieParser = require('cookie-parser');
 
 const authRouter = require('./auth/auth.routes');
 
-const { registerRoomHandlers } = require('./sockets/room.socket');
+const { registerRoomHandlers, startAbsenceSweeper } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
+const { registerRoundHandlers, startGameLoop } = require('./sockets/round.socket');
 const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
 const { seedWords } = require('./game/words.repository');
 
@@ -52,11 +53,15 @@ const PORT = process.env.BACKEND_PORT || 4000;
 // Rooms are for registered users: no valid session cookie, no connection.
 io.use(requireAuthenticatedSocket);
 
+startAbsenceSweeper(io);
+startGameLoop(io);
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'as', socket.user.username);
 
   registerRoomHandlers(io, socket);
   registerDrawHandlers(io, socket);
+  registerRoundHandlers(io, socket);
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);

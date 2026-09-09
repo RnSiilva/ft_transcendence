@@ -187,17 +187,17 @@ async function main()
 
 	step('2. As definicoes vem do cliente mas sao validadas');
 	const configured = await ask(bruno, 'room:create', {
-		settings: { roundSeconds: 30, theme: 'animals', language: 'en' },
+		settings: { rounds: 5, roundSeconds: 30, theme: 'animals', language: 'en' },
 	});
 	check('definicoes validas passam', configured.room.settings, {
-		roundSeconds: 30, theme: 'animals', language: 'en',
+		rounds: 5, roundSeconds: 30, theme: 'animals', language: 'en',
 	});
 
 	const nonsense = await ask(bruno, 'room:create', {
-		settings: { roundSeconds: 9999, theme: 'piratas', language: 'klingon' },
+		settings: { rounds: 99, roundSeconds: 9999, theme: 'piratas', language: 'klingon' },
 	});
 	check('definicoes invalidas caem no valor por omissao', nonsense.room.settings, {
-		roundSeconds: 60, theme: 'general', language: 'pt',
+		rounds: 3, roundSeconds: 60, theme: 'general', language: 'pt',
 	});
 
 	step('3. Bruno e Carla entram na sala da Ana');
@@ -245,6 +245,34 @@ async function main()
 	const delivery = waitFor(ana, 'draw:stroke', 2000);
 	carla.emit('draw:stroke', traco);
 	check('o traco da Carla, que tem o lapis, chega', (await delivery) !== null, true);
+
+	// Left until last: it kills a socket the earlier steps still rely on.
+	step('9. Um F5 nao custa o lapis');
+	const comLapis = await ask(ana, 'room:next-drawer');
+	const quemDesenha = drawerName(comLapis.room);
+	const aRecarregar = { testana: ana, testcarla: carla }[quemDesenha];
+
+	const ausente = waitForState(
+		quemDesenha === 'testana' ? carla : ana,
+		(room) => room.members.some((member) => member.msToDrop !== null),
+		3000,
+	);
+	aRecarregar.disconnect();
+	const comAusente = await ausente;
+
+	check('ninguem sai de imediato', comAusente && comAusente.members.length, 2);
+	check('o lapis fica com quem se desligou', drawerName(comAusente), quemDesenha);
+	check('os outros veem o tempo a contar', comAusente.members.some((m) => m.msToDrop > 0), true);
+
+	const devolta = await connect(cookies[quemDesenha]);
+	const recuperada = await waitForState(
+		devolta,
+		(room) => room.members.every((member) => member.msToDrop === null),
+		3000,
+	);
+	check('ao voltar deixa de estar ausente', recuperada !== null, true);
+	check('e continua com o lapis', drawerName(recuperada), quemDesenha);
+	devolta.close();
 
 	console.log(`\n${checks} verificacoes, ${failures.length} falhas.`);
 

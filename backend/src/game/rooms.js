@@ -12,6 +12,9 @@ const CODE_LENGTH = 6;
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const MAX_MEMBERS = 8;
+// A reload drops the socket. Holding the seat for a moment keeps a refresh,
+// or a brief network hiccup, from costing someone their turn with the pencil.
+const RECONNECT_GRACE_MS = 15000;
 // A drawing is a few hundred segments; this only bites on abuse.
 const MAX_STROKES = 5000;
 const MAX_NAME_LENGTH = 20;
@@ -19,10 +22,12 @@ const MAX_NAME_LENGTH = 20;
 // Chosen when the room is created. The client offers these same options, but
 // the server decides anything it does not recognise falls back to a default.
 const ROUND_SECONDS = [30, 60, 80, 120];
+const ROUND_COUNTS = [1, 2, 3, 4, 5];
 const THEMES = ['general', 'objects', 'animals', 'food', 'movies'];
 const LANGUAGES = ['pt', 'en', 'es'];
 
 const DEFAULT_SETTINGS = {
+	rounds: 3,
 	roundSeconds: 60,
 	theme: 'general',
 	language: 'pt',
@@ -85,8 +90,10 @@ function cleanSettings(raw)
 	const wanted = raw && typeof raw === 'object' ? raw : {};
 
 	const roundSeconds = Number(wanted.roundSeconds);
+	const rounds = Number(wanted.rounds);
 
 	return {
+		rounds: ROUND_COUNTS.includes(rounds) ? rounds : DEFAULT_SETTINGS.rounds,
 		roundSeconds: ROUND_SECONDS.includes(roundSeconds)
 			? roundSeconds
 			: DEFAULT_SETTINGS.roundSeconds,
@@ -115,6 +122,7 @@ function addMember(room, memberId, identity)
 		id: memberId,
 		userId: identity.userId,
 		name: identity.name,
+		disconnectedAt: null,
 	});
 	memberRoom.set(memberId, room.code);
 
@@ -248,6 +256,109 @@ function leaveRoom(memberId)
 	return room;
 }
 
+/**
+ * Holds someone's seat instead of removing them. They keep their place in the
+ * turn order and the pencil, if they had it, until the grace period runs out.
+ */
+function markAbsent(memberId, now = Date.now())
+{
+	const room = getRoomOf(memberId);
+	const member = room && room.members.get(memberId);
+
+	if (!member)
+		return null;
+
+	member.disconnectedAt = now;
+	return room;
+}
+
+/**
+ * Gives a returning player their old seat, with the new connection in place of
+ * the dead one. The Map is rebuilt in the same order so they do not fall to the
+ * back of the queue for having reloaded.
+ */
+function reclaimSeat(newMemberId, user, now = Date.now())
+{
+	if (!user)
+		return null;
+
+	for (const room of rooms.values())
+	{
+		const seat = [...room.members.values()].find(
+			(member) => member.userId === user.id && member.disconnectedAt,
+		);
+
+		if (!seat)
+			continue;
+
+		room.members = new Map(
+			[...room.members.entries()].map(([id, member]) =>
+				id === seat.id
+					? [newMemberId, { ...member, id: newMemberId, disconnectedAt: null }]
+					: [id, member],
+			),
+		);
+
+		memberRoom.delete(seat.id);
+		memberRoom.set(newMemberId, room.code);
+
+		if (room.drawerId === seat.id)
+			room.drawerId = newMemberId;
+
+		return room;
+	}
+
+	return null;
+}
+
+/** Milliseconds before an absent member loses their seat, or null if present. */
+function absenceLeft(member, now = Date.now())
+{
+	if (!member.disconnectedAt)
+		return null;
+
+	return Math.max(0, RECONNECT_GRACE_MS - (now - member.disconnectedAt));
+}
+
+/** Every room that currently exists, for the game loop to walk through. */
+function activeRooms()
+{
+	return [...rooms.values()];
+}
+
+/** Rooms where someone is away, so their countdown can keep being sent out. */
+function roomsWithAbsentees()
+{
+	return [...rooms.values()].filter((room) =>
+		[...room.members.values()].some((member) => member.disconnectedAt),
+	);
+}
+
+/**
+ * Removes whoever stayed away too long.
+ * Returns { room, memberId } pairs — the caller needs both, to tell the room
+ * and to settle whatever the person leaving had going.
+ */
+function dropAbsent(now = Date.now())
+{
+	const dropped = [];
+
+	for (const room of [...rooms.values()])
+	{
+		for (const member of [...room.members.values()])
+		{
+			if (member.disconnectedAt && absenceLeft(member, now) === 0)
+			{
+				const left = leaveRoom(member.id);
+				if (left)
+					dropped.push({ room: left, memberId: member.id });
+			}
+		}
+	}
+
+	return dropped;
+}
+
 /** Kept so a client that joins late, or reloads, gets the board as it stands. */
 function recordStroke(room, stroke)
 {
@@ -282,7 +393,7 @@ function isDrawer(memberId)
 }
 
 /** Shape sent to clients. Maps do not survive JSON. */
-function serialiseRoom(room)
+function serialiseRoom(room, now = Date.now())
 {
 	return {
 		code: room.code,
@@ -293,6 +404,8 @@ function serialiseRoom(room)
 			userId: member.userId,
 			name: member.name,
 			isDrawer: member.id === room.drawerId,
+			// Non-null while someone is away: the others can show the wait.
+			msToDrop: absenceLeft(member, now),
 		})),
 	};
 }
@@ -309,6 +422,12 @@ module.exports = {
 	joinRoom,
 	leaveRoom,
 	passPencil,
+	markAbsent,
+	reclaimSeat,
+	dropAbsent,
+	absenceLeft,
+	roomsWithAbsentees,
+	activeRooms,
 	recordStroke,
 	clearStrokes,
 	getRoom,
@@ -317,7 +436,9 @@ module.exports = {
 	serialiseRoom,
 	reset,
 	MAX_MEMBERS,
+	RECONNECT_GRACE_MS,
 	ROUND_SECONDS,
+	ROUND_COUNTS,
 	THEMES,
 	LANGUAGES,
 };

@@ -9,11 +9,11 @@
 const {
 	PHASE,
 	createGame,
-	startRound,
+	startTurn,
 	secondsLeft,
 	registerGuess,
 	isRoundOver,
-	endRound,
+	endTurn,
 	dropMember,
 	snapshot,
 } = require('../src/game/round');
@@ -55,7 +55,7 @@ check('sem tempo a contar', secondsLeft(novo, T0), 0);
 
 step('2. A ronda arranca com a palavra que lhe derem');
 const jogo = createGame(3, 60);
-startRound(jogo, 'gato', 'ana', T0);
+startTurn(jogo, 'gato', 'ana', 3, T0);
 check('esta a desenhar-se', jogo.phase, PHASE.drawing);
 check('e a ronda 1', jogo.round, 1);
 check('a Ana tem o lapis', jogo.drawerId, 'ana');
@@ -97,14 +97,14 @@ check('quem ja acertou esta marcado', durante.scores.find((s) => s.name === 'Bru
 
 step('6. A ronda acaba pelo tempo ou por todos acertarem');
 const porTempo = createGame(3, 60);
-startRound(porTempo, 'casa', 'ana', T0);
+startTurn(porTempo, 'casa', 'ana', 3, T0);
 check('a meio ainda nao', isRoundOver(porTempo, 2, at(30)), false);
 check('esgotado o tempo, sim', isRoundOver(porTempo, 2, at(60)), true);
 
 check('com os dois a acertar, acaba antes', isRoundOver(jogo, 2, at(31)), true);
 
 step('7. Quem desenhou recebe pelo que os outros perceberam');
-const fim = endRound(jogo, 2);
+const fim = endTurn(jogo, 2);
 check('a palavra e revelada', fim.word, 'gato');
 check('quem desenhou ganha pontos', fim.drawerPoints > 0, true);
 check('ainda faltam rondas, fica em resultado', jogo.phase, PHASE.result);
@@ -118,17 +118,37 @@ check('e sai do placar da ronda', jogo.correct.some((c) => c.memberId === 'bruno
 
 step('9. O jogo termina na ultima ronda');
 const curto = createGame(1, 60);
-startRound(curto, 'sol', 'ana', T0);
-endRound(curto, 2);
+startTurn(curto, 'sol', 'ana', 1, T0);
+endTurn(curto, 2);
 check('uma ronda so, acabou', curto.phase, PHASE.finished);
 
 step('10. Palavras nao se repetem no mesmo jogo');
 const repetidas = createGame(3, 60);
-startRound(repetidas, 'sol', 'ana', T0);
-startRound(repetidas, 'lua', 'bruno', at(60));
+startTurn(repetidas, 'sol', 'ana', 2, T0);
+startTurn(repetidas, 'lua', 'bruno', 2, at(60));
 check('guarda as que ja sairam', repetidas.usedWords, ['sol', 'lua']);
 
-step('11. Fora da ronda nao se adivinha');
+step('11. Uma ronda so acaba quando todos ja desenharam');
+const tresJogadores = createGame(2, 60); // 2 rondas, 3 jogadores = 6 turnos
+
+const percurso = [];
+for (let i = 0; i < 6; i += 1)
+{
+	startTurn(tresJogadores, `palavra${i}`, members[i % 3].id, 3, T0 + i * 70000);
+	percurso.push(`${tresJogadores.round}.${tresJogadores.turn}`);
+	endTurn(tresJogadores, 2);
+}
+
+check('cada um desenha uma vez por ronda', percurso, ['1.1', '1.2', '1.3', '2.1', '2.2', '2.3']);
+check('so acaba no fim do ultimo turno', tresJogadores.phase, PHASE.finished);
+check('e todos desenharam duas vezes', tresJogadores.usedWords.length, 6);
+
+const meio = createGame(2, 60);
+startTurn(meio, 'sol', 'ana', 3, T0);
+endTurn(meio, 2);
+check('a meio da primeira ronda ainda nao acabou', meio.phase, PHASE.result);
+
+step('12. Fora da ronda nao se adivinha');
 check('em espera, recusa', registerGuess(createGame(3, 60), 'ana', 'gato', T0).reason, 'NOT_DRAWING');
 check('em resultado, recusa', registerGuess(jogo, 'carla', 'gato', at(65)).reason, 'NOT_DRAWING');
 

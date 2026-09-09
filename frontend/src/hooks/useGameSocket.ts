@@ -25,6 +25,8 @@ export type RoomMember =
 	userId: number
 	name: string
 	isDrawer: boolean
+	/** Milliseconds left before a disconnected player loses their seat. */
+	msToDrop: number | null
 }
 
 type RoomState =
@@ -33,6 +35,32 @@ type RoomState =
 	drawerId: string | null
 	members: RoomMember[]
 }
+
+export type RoundScore =
+{
+	id: string
+	name: string
+	points: number
+	isDrawer: boolean
+	guessed: boolean
+}
+
+export type RoundState =
+{
+	phase: 'waiting' | 'drawing' | 'result' | 'finished'
+	round: number
+	totalRounds: number
+	/** Which player is drawing within this round, and how many will. */
+	turn: number
+	turnsPerRound: number
+	secondsLeft: number
+	maskedWord: string
+	/** Only filled once the round is over; until then everyone sees the mask. */
+	word: string | null
+	scores: RoundScore[]
+}
+
+export type ChatMessage = { name: string; text: string; system?: boolean }
 
 type Ack = { ok: boolean; room?: RoomState; error?: string; code?: string }
 
@@ -60,6 +88,9 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [room, setRoom] = useState<RoomState | null>(null)
 	const [selfId, setSelfId] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const [round, setRound] = useState<RoundState | null>(null)
+	const [secretWord, setSecretWord] = useState<string | null>(null)
+	const [messages, setMessages] = useState<ChatMessage[]>([])
 
 	useEffect(() =>
 	{
@@ -122,6 +153,27 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 
 		socket.on('room:state', setRoom)
 
+		socket.on('round:state', setRound)
+
+		// Only the drawer is ever sent this, so keeping it in state is safe.
+		socket.on('round:word', setSecretWord)
+
+		socket.on('round:over', ({ word }: { word: string }) =>
+		{
+			setSecretWord(null)
+			setMessages((all) => [...all, { name: '', text: `A palavra era: ${word}`, system: true }])
+		})
+
+		socket.on('round:correct', ({ name, points }: { name: string; points: number }) =>
+		{
+			setMessages((all) => [...all, { name: '', text: `${name} acertou! +${points}`, system: true }])
+		})
+
+		socket.on('chat:message', (message: ChatMessage) =>
+		{
+			setMessages((all) => [...all, message])
+		})
+
 		socket.on('draw:stroke', (stroke: Stroke) =>
 		{
 			if (canvasRef.current)
@@ -164,7 +216,12 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		members: room?.members ?? [],
 		isDrawer,
 		error, // ALREADY_IN_ROOM: a sala ja esta aberta noutro separador
+		round,
+		messages,
+		// What goes in the word slot: the real thing if you are the one drawing.
+		wordToShow: (isDrawer && secretWord) || round?.word || round?.maskedWord || '',
 		sendStroke: (stroke: Stroke) => socketRef.current?.emit('draw:stroke', stroke),
 		sendClear: () => socketRef.current?.emit('draw:clear'),
+		sendChat: (text: string) => socketRef.current?.emit('chat:message', { text }),
 	}
 }

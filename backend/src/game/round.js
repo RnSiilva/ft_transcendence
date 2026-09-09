@@ -22,7 +22,12 @@ function createGame(totalRounds, roundSeconds)
 {
 	return {
 		phase: PHASE.waiting,
+		// A round is everyone drawing once, so it holds as many turns as there
+		// are players. Counting rounds as single turns would leave whoever sits
+		// at the end of the order never drawing at all.
 		round: 0,
+		turn: 0,
+		turnsPerRound: 0,
 		totalRounds,
 		roundSeconds,
 		word: null,
@@ -35,14 +40,28 @@ function createGame(totalRounds, roundSeconds)
 }
 
 /**
- * Begins a round with the word given. The caller picks it, so the same
- * function serves a random draw and a word the drawer chose from a shortlist.
- * Who draws comes from the room's rotation, not from here.
+ * Begins one turn — a single person drawing. The caller picks the word, so the
+ * same function serves a random draw and a word chosen from a shortlist.
+ *
+ * `playerCount` sets how many turns the round holds, read when the round opens
+ * so that someone joining midway does not stretch it.
  */
-function startRound(game, word, drawerId, now = Date.now())
+function startTurn(game, word, drawerId, playerCount, now = Date.now())
 {
+	const roundIsOver = game.turn === 0 || game.turn >= game.turnsPerRound;
+
+	if (roundIsOver)
+	{
+		game.round += 1;
+		game.turn = 1;
+		game.turnsPerRound = Math.max(1, playerCount);
+	}
+	else
+	{
+		game.turn += 1;
+	}
+
 	game.phase = PHASE.drawing;
-	game.round += 1;
 	game.word = word;
 	game.drawerId = drawerId;
 	game.usedWords.push(word);
@@ -107,7 +126,7 @@ function isRoundOver(game, guesserCount, now = Date.now())
 }
 
 /** Reveals the word and pays the person who drew it. */
-function endRound(game, guesserCount)
+function endTurn(game, guesserCount)
 {
 	const drawerPoints = scoreDrawer({
 		secondsLeftPerGuess: game.correct.map((entry) => entry.secondsLeft),
@@ -118,7 +137,9 @@ function endRound(game, guesserCount)
 	if (game.drawerId)
 		game.totals.set(game.drawerId, (game.totals.get(game.drawerId) || 0) + drawerPoints);
 
-	game.phase = game.round >= game.totalRounds ? PHASE.finished : PHASE.result;
+	// Over only once the last person of the last round has drawn.
+	const lastTurn = game.turn >= game.turnsPerRound;
+	game.phase = lastTurn && game.round >= game.totalRounds ? PHASE.finished : PHASE.result;
 
 	return { word: game.word, drawerPoints, correct: [...game.correct] };
 }
@@ -142,6 +163,8 @@ function snapshot(game, members, now = Date.now())
 		phase: game.phase,
 		round: game.round,
 		totalRounds: game.totalRounds,
+		turn: game.turn,
+		turnsPerRound: game.turnsPerRound,
 		secondsLeft: secondsLeft(game, now),
 		maskedWord: game.word ? maskWord(game.word) : '',
 		word: revealed ? game.word : null,
@@ -160,11 +183,11 @@ function snapshot(game, members, now = Date.now())
 module.exports = {
 	PHASE,
 	createGame,
-	startRound,
+	startTurn,
 	secondsLeft,
 	registerGuess,
 	isRoundOver,
-	endRound,
+	endTurn,
 	dropMember,
 	snapshot,
 };
