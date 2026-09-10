@@ -15,6 +15,7 @@ const PHASE = {
 	waiting: 'waiting',   // not started yet
 	drawing: 'drawing',   // the word is secret and the clock is running
 	result: 'result',     // the word is revealed between rounds
+	paused: 'paused',     // too few players; the clock waits for them
 	finished: 'finished', // every round played
 };
 
@@ -34,6 +35,8 @@ function createGame(totalRounds, roundSeconds)
 		drawerId: null,
 		usedWords: [],
 		startedAt: null,
+		pausedFrom: null,
+		pausedSecondsLeft: 0,
 		correct: [],       // [{ memberId, secondsLeft }] in the order they got it
 		totals: new Map(), // memberId -> points so far this game
 	};
@@ -73,11 +76,46 @@ function startTurn(game, word, drawerId, playerCount, now = Date.now())
 
 function secondsLeft(game, now = Date.now())
 {
+	if (game.phase === PHASE.paused)
+		return game.pausedSecondsLeft;
+
 	if (game.phase !== PHASE.drawing || !game.startedAt)
 		return 0;
 
 	const elapsed = (now - game.startedAt) / 1000;
 	return Math.max(0, Math.ceil(game.roundSeconds - elapsed));
+}
+
+/**
+ * Stops the clock when the room empties out. Without this, "everyone has
+ * guessed" would be true of nobody and the rounds would run themselves to the
+ * end while a single player watched.
+ */
+function pauseGame(game, now = Date.now())
+{
+	if (game.phase === PHASE.paused || game.phase === PHASE.finished)
+		return game;
+
+	game.pausedFrom = game.phase;
+	game.pausedSecondsLeft = secondsLeft(game, now);
+	game.phase = PHASE.paused;
+
+	return game;
+}
+
+/** Picks up where it stopped, with the same time left on the clock. */
+function resumeGame(game, now = Date.now())
+{
+	if (game.phase !== PHASE.paused)
+		return game;
+
+	game.phase = game.pausedFrom || PHASE.drawing;
+
+	if (game.phase === PHASE.drawing)
+		game.startedAt = now - (game.roundSeconds - game.pausedSecondsLeft) * 1000;
+
+	game.pausedFrom = null;
+	return game;
 }
 
 const hasGuessed = (game, memberId) =>
@@ -185,6 +223,8 @@ module.exports = {
 	createGame,
 	startTurn,
 	secondsLeft,
+	pauseGame,
+	resumeGame,
 	registerGuess,
 	isRoundOver,
 	endTurn,

@@ -62,6 +62,31 @@ async function tickRoom(io, room)
 		return;
 	}
 
+	// Left alone, the clock has to stop. Otherwise "everyone has guessed" is
+	// true of nobody, every round closes the instant it opens, and the game
+	// burns through its words while one person watches.
+	if (room.members.size < MIN_PLAYERS)
+	{
+		if (game.phase !== round.PHASE.paused)
+		{
+			round.pauseGame(game);
+			announce(io, room, game);
+		}
+		return;
+	}
+
+	if (game.phase === round.PHASE.paused)
+	{
+		round.resumeGame(game);
+
+		// The pause ate into the gap between turns, so give it back.
+		if (game.phase === round.PHASE.result)
+			game.resultUntil = Date.now() + RESULT_PAUSE_MS;
+
+		announce(io, room, game);
+		return;
+	}
+
 	if (game.phase === round.PHASE.drawing)
 	{
 		if (round.isRoundOver(game, guesserCount))

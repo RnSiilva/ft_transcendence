@@ -45,6 +45,8 @@ function Game() {
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       ctx.lineWidth = 4
+      // Resizing a canvas wipes it, so the drawing has to be fetched again.
+      gameRef.current.repaint()
     }
     fitCanvas()
 
