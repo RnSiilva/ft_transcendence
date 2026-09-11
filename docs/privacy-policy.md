@@ -6,9 +6,9 @@
 
 ## 1. Quem somos
 
-O Gartic é operado pela **Garatuja Games, Lda.** (empresa fictícia), Rua da
+O Gartic é operado pela **Rabisco PRTC, Lda.** (empresa fictícia), Rua da
 Imaginação 42, 4000-000 Porto, Portugal.
-Contacto para questões de privacidade: `privacidade@garatuja.example`.
+Contacto para questões de privacidade: `privacidade@rabisco.example`.
 
 ## 2. Dados que recolhemos
 
@@ -37,7 +37,7 @@ Toda a comunicação entre o browser e o servidor é feita por HTTPS.
 ## 6. Direitos do utilizador
 
 O utilizador pode aceder, corrigir ou apagar os seus dados (incluindo apagar a
-conta) através do perfil ou contactando `privacidade@garatuja.example`.
+conta) através do perfil ou contactando `privacidade@rabisco.example`.
 
 ## 7. Chat das salas
 

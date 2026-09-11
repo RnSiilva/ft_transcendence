@@ -14,6 +14,7 @@ import Rules from './pages/Rules'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import About from './pages/About'
+import Rooms from './pages/Rooms'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
@@ -38,6 +39,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rooms"
+              element={
+                <ProtectedRoute>
+                  <Rooms />
                 </ProtectedRoute>
               }
             />

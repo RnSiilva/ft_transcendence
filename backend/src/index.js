@@ -9,6 +9,8 @@ const authRouter = require('./auth/auth.routes');
 const { registerRoomHandlers, startAbsenceSweeper } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
 const { registerRoundHandlers, startGameLoop } = require('./sockets/round.socket');
+// Lobby (sala de espera) — módulo à parte do Thiago; ver sockets/lobby.socket.js
+const { registerLobbyHandlers, startLobbySweeper } = require('./sockets/lobby.socket');
 const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
 const { seedWords } = require('./game/words.repository');
 
@@ -55,6 +57,7 @@ io.use(requireAuthenticatedSocket);
 
 startAbsenceSweeper(io);
 startGameLoop(io);
+startLobbySweeper(io); // relógio dos 5 minutos das salas em espera
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'as', socket.user.username);
@@ -62,6 +65,7 @@ io.on('connection', (socket) => {
   registerRoomHandlers(io, socket);
   registerDrawHandlers(io, socket);
   registerRoundHandlers(io, socket);
+  registerLobbyHandlers(io, socket); // depois dos de sala: precisa da sala já criada
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
