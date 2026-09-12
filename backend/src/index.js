@@ -5,6 +5,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
 const authRouter = require('./auth/auth.routes');
+const gameRouter = require('./routes/game.routes');
 
 const { registerRoomHandlers, startAbsenceSweeper } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
@@ -39,6 +40,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/games', gameRouter);
 
 // updates socket.io so rooms and drawing can also send and read cookies
 const io = new Server(server, {

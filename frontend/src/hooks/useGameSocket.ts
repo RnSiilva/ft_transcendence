@@ -47,7 +47,7 @@ export type RoundScore =
 
 export type RoundState =
 {
-	phase: 'waiting' | 'drawing' | 'result' | 'finished'
+	phase: 'waiting' | 'drawing' | 'result' | 'paused' | 'finished'
 	round: number
 	totalRounds: number
 	/** Which player is drawing within this round, and how many will. */
@@ -85,6 +85,7 @@ function paintSegment(canvas: HTMLCanvasElement, stroke: Stroke)
 export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | null>)
 {
 	const socketRef = useRef<Socket | null>(null)
+	const repaintRef = useRef<() => void>(() => {})
 	const [room, setRoom] = useState<RoomState | null>(null)
 	const [selfId, setSelfId] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -134,7 +135,16 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			url.searchParams.set('room', answer.room.code)
 			window.history.replaceState({}, '', url)
 
-			// Catch up on the board, otherwise a reload shows a blank canvas.
+			repaint()
+		}
+
+		/**
+		 * Repaints the board from the server's copy. Needed after a reload, and
+		 * again after a resize: changing a canvas's width or height wipes it,
+		 * and the strokes only live on the server.
+		 */
+		function repaint()
+		{
 			socket.emit('draw:history', {}, (strokes: Stroke[]) =>
 			{
 				const canvas = canvasRef.current
@@ -144,6 +154,8 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 				strokes.forEach((stroke) => paintSegment(canvas, stroke))
 			})
 		}
+
+		repaintRef.current = repaint
 
 		socket.on('connect', () =>
 		{
@@ -223,5 +235,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		sendStroke: (stroke: Stroke) => socketRef.current?.emit('draw:stroke', stroke),
 		sendClear: () => socketRef.current?.emit('draw:clear'),
 		sendChat: (text: string) => socketRef.current?.emit('chat:message', { text }),
+		/** Call after anything that wipes the canvas, such as a resize. */
+		repaint: () => repaintRef.current(),
 	}
 }

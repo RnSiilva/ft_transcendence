@@ -11,6 +11,8 @@ const {
 	createGame,
 	startTurn,
 	secondsLeft,
+	pauseGame,
+	resumeGame,
 	registerGuess,
 	isRoundOver,
 	endTurn,
@@ -148,7 +150,23 @@ startTurn(meio, 'sol', 'ana', 3, T0);
 endTurn(meio, 2);
 check('a meio da primeira ronda ainda nao acabou', meio.phase, PHASE.result);
 
-step('12. Fora da ronda nao se adivinha');
+step('12. Sozinho na sala, o relogio para');
+const pausado = createGame(3, 60);
+startTurn(pausado, 'gato', 'ana', 3, T0);
+
+pauseGame(pausado, at(20));
+check('fica em pausa', pausado.phase, PHASE.paused);
+check('guarda o tempo que faltava', secondsLeft(pausado, at(20)), 40);
+check('e o tempo nao anda', secondsLeft(pausado, at(300)), 40);
+check('a ronda nao fecha em pausa', isRoundOver(pausado, 0, at(300)), false);
+check('nem se adivinha', registerGuess(pausado, 'bruno', 'gato', at(300)).reason, 'NOT_DRAWING');
+
+resumeGame(pausado, at(300));
+check('ao voltar continua a desenhar', pausado.phase, PHASE.drawing);
+check('com o tempo onde ficou', secondsLeft(pausado, at(300)), 40);
+check('e volta a andar', secondsLeft(pausado, at(310)), 30);
+
+step('13. Fora da ronda nao se adivinha');
 check('em espera, recusa', registerGuess(createGame(3, 60), 'ana', 'gato', T0).reason, 'NOT_DRAWING');
 check('em resultado, recusa', registerGuess(jogo, 'carla', 'gato', at(65)).reason, 'NOT_DRAWING');
 
