@@ -15,7 +15,8 @@ function Game() {
   const colorRef = useRef(COLORS[0])
   const [activeColor, setActiveColor] = useState(COLORS[0])
   const [chatText, setChatText] = useState('')
-  const [endgameOpen, setEndgameOpen] = useState(false)
+  const [endgameClosed, setEndgameClosed] = useState(false)
+  const [testOpen, setTestOpen] = useState(false)
 
   // Server-side room engine: who is in the room, who holds the pencil, and
   // the transport for strokes. Kept in a ref so the canvas listeners below
@@ -30,6 +31,11 @@ function Game() {
   // O tempo é do servidor: todos os jogadores da sala veem o mesmo número, e
   // ninguém ganha segundos por ter a página mais lenta.
   const seconds = game.round?.secondsLeft ?? 0
+
+  // Derivado em vez de guardado: o fim de jogo aparece porque o servidor diz
+  // que acabou, e desaparece porque o jogador o fechou.
+  const finished = game.round?.phase === 'finished'
+  const endgameOpen = testOpen || (finished && !endgameClosed)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -157,7 +163,7 @@ function Game() {
         <button
           type="button"
           className="btn btn-ghost btn-sm"
-          onClick={() => setEndgameOpen(true)}
+          onClick={() => setTestOpen(true)}
         >
           {t('endgame.test')}
         </button>
@@ -247,7 +253,12 @@ function Game() {
         </div>
       </div>
 
-      {endgameOpen && <EndGameOverlay onClose={() => setEndgameOpen(false)} />}
+      {endgameOpen && (
+        <EndGameOverlay
+          onClose={() => { setTestOpen(false); setEndgameClosed(true) }}
+          scores={game.round?.scores.map((s) => ({ name: s.name, points: s.points })) ?? []}
+        />
+      )}
     </div>
   )
 }

@@ -9,6 +9,7 @@
 const rooms = require('../game/rooms');
 const round = require('../game/round');
 const { pickWord } = require('../game/words.repository');
+const { saveGame } = require('../game/games.repository');
 
 // Provisional: a game starts on its own once there are two people. The team
 // decided on three and a start button, but that lobby does not exist yet, and
@@ -94,6 +95,11 @@ async function tickRoom(io, room)
 			const result = round.endTurn(game, guesserCount);
 			game.resultUntil = Date.now() + RESULT_PAUSE_MS;
 			io.to(room.code).emit('round:over', result);
+
+			// Nothing reaches the database until the last round is played: a
+			// score only becomes real once it is final.
+			if (game.phase === round.PHASE.finished)
+				await storeGame(room, game);
 		}
 
 		announce(io, room, game);
@@ -102,10 +108,29 @@ async function tickRoom(io, room)
 
 	if (game.phase === round.PHASE.result && Date.now() >= game.resultUntil)
 	{
+		// A fresh word deserves a fresh board, and the stored strokes have to go
+		// with it — otherwise a reload would bring the old drawing back.
+		rooms.clearStrokes(room);
+		io.to(room.code).emit('draw:clear');
+
 		rooms.passPencil(room);
 		io.to(room.code).emit('room:state', rooms.serialiseRoom(room));
 		await beginRound(io, room, game);
 	}
+}
+
+/** Writes the finished game away, once. */
+async function storeGame(room, game)
+{
+	if (game.saved)
+		return;
+
+	game.saved = true;
+
+	const { scores } = round.snapshot(game, [...room.members.values()]);
+
+	await saveGame({ roomCode: room.code, settings: room.settings, scores })
+		.catch((err) => console.error('[games] could not save:', err.message));
 }
 
 /** One timer for every room, rather than one per room. */

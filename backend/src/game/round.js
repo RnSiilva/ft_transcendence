@@ -209,6 +209,7 @@ function snapshot(game, members, now = Date.now())
 		scores: members
 			.map((member) => ({
 				id: member.id,
+				userId: member.userId,
 				name: member.name,
 				points: game.totals.get(member.id) || 0,
 				isDrawer: member.id === game.drawerId,

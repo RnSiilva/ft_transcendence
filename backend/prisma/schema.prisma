@@ -24,6 +24,7 @@ model User {
   friendsReceived Friend[] @relation("FriendUser")
   reportsReceived Report[] @relation("Reported")
   reportsMade     Report[] @relation("Reporter")
+  gameScores      GameScore[]
 }
 
 model Friend {
@@ -60,4 +61,36 @@ model Report {
   reporter User @relation("Reporter", fields: [reporterId], references: [id])
 
   @@unique([reportedId, reporterId, roomCode])
+}
+
+model Game {
+  id          Int      @id @default(autoincrement())
+  roomCode    String
+  theme       String
+  language    String
+  rounds      Int
+  roundSeconds Int
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+
+  scores GameScore[]
+}
+
+/// One row per player per finished game: what they scored and whether they won.
+/// Leaderboards read this and group by finishedAt, so a daily or weekly table
+/// is a date filter rather than a second set of counters to keep in step.
+model GameScore {
+  id         Int      @id @default(autoincrement())
+  gameId     Int
+  userId     Int
+  points     Int
+  won        Boolean  @default(false)
+  finishedAt DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, userId])
+  @@index([finishedAt])
+  @@index([userId, finishedAt])
 }
