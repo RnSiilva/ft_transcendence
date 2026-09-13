@@ -205,23 +205,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		}
 	}, [canvasRef])
 
-	/** Temporary: no UI for this yet, so the P key moves the pencil along. */
-	useEffect(() =>
-	{
-		const onKey = (event: KeyboardEvent) =>
-		{
-			const typing = event.target instanceof HTMLInputElement
-			if (typing || event.key.toLowerCase() !== 'p')
-				return
-
-			socketRef.current?.emit('room:next-drawer')
-		}
-
-		window.addEventListener('keydown', onKey)
-		return () => window.removeEventListener('keydown', onKey)
-	}, [])
-
-	const isDrawer = Boolean(selfId && room && room.drawerId === selfId)
+	const isDrawer = Boolean(selfId && round?.scores.find((s) => s.id === selfId)?.isDrawer)
 
 	return {
 		code: room?.code ?? null,

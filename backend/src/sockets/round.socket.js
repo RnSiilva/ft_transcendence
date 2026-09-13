@@ -40,10 +40,16 @@ async function beginRound(io, room, game)
 	rooms.clearStrokes(room);
 	io.to(room.code).emit('draw:clear');
 
-	round.startTurn(game, word, room.drawerId, room.members.size);
+	// First round of the game: the creator draws first. After that,
+	// follows the order of entry, starting with who drew last.
+	const drawerId = game.drawerId
+		? rooms.nextDrawerId(room, game.drawerId)
+		: room.creatorId;
+
+	round.startTurn(game, word, drawerId, room.members.size);
 
 	// Only the person drawing is told what to draw.
-	io.to(room.drawerId).emit('round:word', word);
+	io.to(drawerId).emit('round:word', word);
 	announce(io, room, game);
 }
 
@@ -113,8 +119,6 @@ async function tickRoom(io, room)
 		rooms.clearStrokes(room);
 		io.to(room.code).emit('draw:clear');
 
-		rooms.passPencil(room);
-		io.to(room.code).emit('room:state', rooms.serialiseRoom(room));
 		await beginRound(io, room, game);
 	}
 }
@@ -202,4 +206,12 @@ function forgetMember(room, memberId)
 		games.delete(room.code);
 }
 
-module.exports = { registerRoundHandlers, startGameLoop, forgetMember };
+/** Keeps the drawer pointing at the right connection after a reload. */
+function reclaimInGame(room, oldMemberId, newMemberId)
+{
+	const game = gameOf(room);
+	if (game && game.drawerId === oldMemberId)
+		game.drawerId = newMemberId;
+}
+
+module.exports = { registerRoundHandlers, startGameLoop, forgetMember, gameOf, reclaimInGame };
