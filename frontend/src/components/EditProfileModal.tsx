@@ -73,6 +73,12 @@ function EditProfileModal({
   function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const MAX_SIZE = 2 * 1024 * 1024 // 2 MB
+    if (file.size > MAX_SIZE) {
+      setError(t('errors.avatarTooLarge'))
+      e.target.value = '' // clear the input so the user can try again
+      return
+    }
     const reader = new FileReader()
     reader.onload = (ev) => {
       setPhoto(ev.target?.result as string)

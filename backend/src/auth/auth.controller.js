@@ -125,6 +125,12 @@ async function me(req, res) {
 async function updateProfile(req, res) {
   const { username, avatarUrl, currentPassword, newPassword } = req.body;
 
+  // Reject avatar if the base64 string exceeds ~2 MB
+  const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+  if (avatarUrl && Buffer.byteLength(avatarUrl, 'utf8') > MAX_AVATAR_BYTES) {
+    return res.status(400).json({ error: 'Avatar image is too large. Maximum size: 2 MB.' });
+  }
+
   try {
     const user = await updateUserProfile(req.user.id, { username, avatarUrl, currentPassword, newPassword });
     // Re-issue token with updated username

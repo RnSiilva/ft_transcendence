@@ -97,7 +97,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.copyright': '© 2026 Rabisco PRTC, Lda. — empresa fictícia, projeto académico',
     'footer.privacy': 'Política de Privacidade', 'footer.terms': 'Termos de Serviço', 'footer.rules': 'Regras do jogo',
     'cookies.text': 'Este site usa apenas cookies essenciais (sessão de login).', 'cookies.more': 'Saber mais', 'cookies.accept': 'Aceitar',
-    'errors.invalidCredentials': 'Credenciais inválidas', 'errors.networkError': 'Ocorreu um erro de rede. Tenta de novo.', 'errors.fillAllFields': 'Por favor, preenche todos os campos obrigatórios.', 'errors.usernameTaken': 'Nome de utilizador já em uso', 'cookie.msg': 'Usamos um pequeno cookie para manter a tua sessão iniciada. Sem ele, a magia não acontece.',
+    'errors.invalidCredentials': 'Credenciais inválidas', 'errors.networkError': 'Ocorreu um erro de rede. Tenta de novo.', 'errors.fillAllFields': 'Por favor, preenche todos os campos obrigatórios.', 'errors.usernameTaken': 'Nome de utilizador já em uso', 'errors.avatarTooLarge': 'A imagem é demasiado grande. Tamanho máximo: 2 MB.', 'cookie.msg': 'Usamos um pequeno cookie para manter a tua sessão iniciada. Sem ele, a magia não acontece.',
   },
   en: {
     'nav.home': 'Home', 'nav.rules': 'Game rules', 'nav.aboutUs': 'About us', 'nav.login': 'Login', 'nav.profile': 'Profile', 'nav.logout': 'Sign Out',
@@ -192,7 +192,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.copyright': '© 2026 Rabisco PRTC, Ltd. — fictional company, academic project',
     'footer.privacy': 'Privacy Policy', 'footer.terms': 'Terms of Service', 'footer.rules': 'Game rules',
     'cookies.text': 'This site uses only essential cookies (login session).', 'cookies.more': 'Learn more', 'cookies.accept': 'Accept',
-    'errors.invalidCredentials': 'Invalid credentials', 'errors.networkError': 'A network error occurred. Please try again.', 'errors.fillAllFields': 'Please fill in all required fields.', 'errors.usernameTaken': 'Username already taken', 'cookie.msg': 'We use a tiny cookie to keep you logged in. Without it, the magic doesn\'t happen.',
+    'errors.invalidCredentials': 'Invalid credentials', 'errors.networkError': 'A network error occurred. Please try again.', 'errors.fillAllFields': 'Please fill in all required fields.', 'errors.usernameTaken': 'Username already taken', 'errors.avatarTooLarge': 'Image is too large. Maximum size: 2 MB.', 'cookie.msg': 'We use a tiny cookie to keep you logged in. Without it, the magic doesn\'t happen.',
   },
   es: {
     'nav.home': 'Inicio', 'nav.rules': 'Reglas del juego', 'nav.aboutUs': 'Sobre nosotros', 'nav.login': 'Login', 'nav.profile': 'Perfil', 'nav.logout': 'Cerrar sesión',
@@ -287,6 +287,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     'footer.copyright': '© 2026 Rabisco PRTC, Lda. — empresa ficticia, proyecto académico',
     'footer.privacy': 'Política de Privacidad', 'footer.terms': 'Términos de Servicio', 'footer.rules': 'Reglas del juego',
     'cookies.text': 'Este sitio usa solo cookies esenciales (sesión de login).', 'cookies.more': 'Saber más', 'cookies.accept': 'Aceptar',
-    'errors.invalidCredentials': 'Credenciales inválidas', 'errors.networkError': 'Ocurrió un error de red. Inténtalo de nuevo.', 'errors.fillAllFields': 'Por favor, rellena todos los campos obligatorios.', 'errors.usernameTaken': 'Nombre de usuario ya en uso', 'cookie.msg': 'Usamos una pequeña cookie para mantener tu sesión. Sin ella, la magia no ocurre.',
+    'errors.invalidCredentials': 'Credenciales inválidas', 'errors.networkError': 'Ocurrió un error de red. Inténtalo de nuevo.', 'errors.fillAllFields': 'Por favor, rellena todos los campos obligatorios.', 'errors.usernameTaken': 'Nombre de usuario ya en uso', 'errors.avatarTooLarge': 'La imagen es demasiado grande. Tamaño máximo: 2 MB.', 'cookie.msg': 'Usamos una pequeña cookie para mantener tu sesión. Sin ella, la magia no ocurre.',
   },
 }
