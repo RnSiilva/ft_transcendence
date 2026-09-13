@@ -9,6 +9,7 @@
 const rooms = require('../game/rooms');
 const round = require('../game/round');
 const { pickWord } = require('../game/words.repository');
+const { saveGame } = require('../game/games.repository');
 
 // Provisional: a game starts on its own once there are two people. The team
 // decided on three and a start button, but that lobby does not exist yet, and
@@ -39,10 +40,16 @@ async function beginRound(io, room, game)
 	rooms.clearStrokes(room);
 	io.to(room.code).emit('draw:clear');
 
-	round.startTurn(game, word, room.drawerId, room.members.size);
+	// First round of the game: the creator draws first. After that,
+	// follows the order of entry, starting with who drew last.
+	const drawerId = game.drawerId
+		? rooms.nextDrawerId(room, game.drawerId)
+		: room.creatorId;
+
+	round.startTurn(game, word, drawerId, room.members.size);
 
 	// Only the person drawing is told what to draw.
-	io.to(room.drawerId).emit('round:word', word);
+	io.to(drawerId).emit('round:word', word);
 	announce(io, room, game);
 }
 
@@ -62,6 +69,31 @@ async function tickRoom(io, room)
 		return;
 	}
 
+	// Left alone, the clock has to stop. Otherwise "everyone has guessed" is
+	// true of nobody, every round closes the instant it opens, and the game
+	// burns through its words while one person watches.
+	if (room.members.size < MIN_PLAYERS)
+	{
+		if (game.phase !== round.PHASE.paused)
+		{
+			round.pauseGame(game);
+			announce(io, room, game);
+		}
+		return;
+	}
+
+	if (game.phase === round.PHASE.paused)
+	{
+		round.resumeGame(game);
+
+		// The pause ate into the gap between turns, so give it back.
+		if (game.phase === round.PHASE.result)
+			game.resultUntil = Date.now() + RESULT_PAUSE_MS;
+
+		announce(io, room, game);
+		return;
+	}
+
 	if (game.phase === round.PHASE.drawing)
 	{
 		if (round.isRoundOver(game, guesserCount))
@@ -69,6 +101,11 @@ async function tickRoom(io, room)
 			const result = round.endTurn(game, guesserCount);
 			game.resultUntil = Date.now() + RESULT_PAUSE_MS;
 			io.to(room.code).emit('round:over', result);
+
+			// Nothing reaches the database until the last round is played: a
+			// score only becomes real once it is final.
+			if (game.phase === round.PHASE.finished)
+				await storeGame(room, game);
 		}
 
 		announce(io, room, game);
@@ -77,10 +114,27 @@ async function tickRoom(io, room)
 
 	if (game.phase === round.PHASE.result && Date.now() >= game.resultUntil)
 	{
-		rooms.passPencil(room);
-		io.to(room.code).emit('room:state', rooms.serialiseRoom(room));
+		// A fresh word deserves a fresh board, and the stored strokes have to go
+		// with it — otherwise a reload would bring the old drawing back.
+		rooms.clearStrokes(room);
+		io.to(room.code).emit('draw:clear');
+
 		await beginRound(io, room, game);
 	}
+}
+
+/** Writes the finished game away, once. */
+async function storeGame(room, game)
+{
+	if (game.saved)
+		return;
+
+	game.saved = true;
+
+	const { scores } = round.snapshot(game, [...room.members.values()]);
+
+	await saveGame({ roomCode: room.code, settings: room.settings, scores })
+		.catch((err) => console.error('[games] could not save:', err.message));
 }
 
 /** One timer for every room, rather than one per room. */
@@ -152,4 +206,12 @@ function forgetMember(room, memberId)
 		games.delete(room.code);
 }
 
-module.exports = { registerRoundHandlers, startGameLoop, forgetMember };
+/** Keeps the drawer pointing at the right connection after a reload. */
+function reclaimInGame(room, oldMemberId, newMemberId)
+{
+	const game = gameOf(room);
+	if (game && game.drawerId === oldMemberId)
+		game.drawerId = newMemberId;
+}
+
+module.exports = { registerRoundHandlers, startGameLoop, forgetMember, gameOf, reclaimInGame };

@@ -78,7 +78,8 @@ function Game() {
   const colorRef = useRef(COLORS[0])
   const [activeColor, setActiveColor] = useState(COLORS[0])
   const [chatText, setChatText] = useState('')
-  const [endgameOpen, setEndgameOpen] = useState(false)
+  const [endgameClosed, setEndgameClosed] = useState(false)
+  const [testOpen, setTestOpen] = useState(false)
 
   // Se chegámos aqui sem ?room= mas há uma sala recente, repõe-a no URL
   // ANTES do socket ligar: o servidor segura o lugar 15 s (reclaimSeat) e o
@@ -161,6 +162,11 @@ function Game() {
   // ninguém ganha segundos por ter a página mais lenta.
   const seconds = game.round?.secondsLeft ?? 0
 
+  // Derivado em vez de guardado: o fim de jogo aparece porque o servidor diz
+  // que acabou, e desaparece porque o jogador o fechou.
+  const finished = game.round?.phase === 'finished'
+  const endgameOpen = testOpen || (finished && !endgameClosed)
+
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
@@ -184,10 +190,8 @@ function Game() {
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       ctx.lineWidth = 4
-
-      if (prev.width > 0 && prev.height > 0) {
-        ctx.drawImage(prev, 0, 0, rect.width, rect.height)
-      }
+      // Resizing a canvas wipes it, so the drawing has to be fetched again.
+      gameRef.current.repaint()
     }
     fitCanvas()
 
@@ -755,7 +759,12 @@ function Game() {
       {/* Confetes do acerto (o key recria a chuva a cada acerto). */}
       {confettiAt && <Confetti key={confettiAt} />}
 
-      {endgameOpen && <EndGameOverlay onClose={() => setEndgameOpen(false)} />}
+      {endgameOpen && (
+        <EndGameOverlay
+          onClose={() => { setTestOpen(false); setEndgameClosed(true) }}
+          scores={game.round?.scores.map((s) => ({ name: s.name, points: s.points })) ?? []}
+        />
+      )}
     </div>
   )
 }

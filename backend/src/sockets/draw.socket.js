@@ -9,6 +9,8 @@
 
 const rooms = require('../game/rooms');
 
+const { gameOf } = require('./round.socket');
+
 const isNormalised = (n) =>
 	typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
 
@@ -35,7 +37,8 @@ function registerDrawHandlers(io, socket)
 			return;
 
 		// The client hides the canvas too, but this is the check that counts.
-		if (!rooms.isDrawer(socket.id))
+		const game = gameOf(room);
+		if (!game || game.drawerId !== socket.id)
 			return;
 
 		const segment = parseSegment(payload);
@@ -51,9 +54,13 @@ function registerDrawHandlers(io, socket)
 	socket.on('draw:clear', () =>
 	{
 		const room = rooms.getRoomOf(socket.id);
-		if (!room || !rooms.isDrawer(socket.id))
-			return;
+		if (!room)
+			return;	
 
+		const game = gameOf(room);
+		if (!game || game.drawerId !== socket.id)
+			return;
+		
 		rooms.clearStrokes(room);
 		socket.to(room.code).emit('draw:clear');
 	});
