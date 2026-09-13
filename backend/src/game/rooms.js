@@ -125,9 +125,6 @@ function addMember(room, memberId, identity)
 		disconnectedAt: null,
 	});
 	memberRoom.set(memberId, room.code);
-
-	if (!room.drawerId)
-		room.drawerId = memberId;
 }
 
 function createRoom(memberId, user, settings)
@@ -141,7 +138,8 @@ function createRoom(memberId, user, settings)
 	{
 		code: generateCode(),
 		members: new Map(),
-		drawerId: null,
+		creatorId: memberId, // NEW — fixed, never changes after creation
+		// drawerId: null,
 		strokes: [],
 		settings: cleanSettings(settings),
 		createdAt: new Date(),
@@ -191,22 +189,18 @@ function joinRoom(memberId, rawCode, user)
  * Hands the pencil to the next member in join order, wrapping around.
  * Rounds will call this on the timer, so they decide only *when*, never *how*.
  */
-function passPencil(room)
+function nextDrawerId(room, currentDrawerId)
 {
 	const order = [...room.members.keys()];
 
 	if (order.length === 0)
-	{
-		room.drawerId = null;
 		return null;
-	}
 
 	// indexOf returning -1 means the drawer is already gone, so (-1 + 1) === 0
 	// restarts the rotation from the top, which is what we want.
-	const current = order.indexOf(room.drawerId);
-	room.drawerId = order[(current + 1) % order.length];
+	const current = order.indexOf(currentDrawerId);
 
-	return room.drawerId;
+	return order[(current + 1) % order.length];
 }
 
 /**
@@ -225,33 +219,10 @@ function leaveRoom(memberId)
 	if (!room)
 		return null;
 
-	// Capture the order before the deletion, otherwise the position of the
-	// person leaving is lost and "next" becomes meaningless.
-	const orderBefore = [...room.members.keys()];
-	const heldPencil = room.drawerId === memberId;
-
 	room.members.delete(memberId);
 
 	if (room.members.size === 0)
-	{
 		rooms.delete(code);
-		room.drawerId = null;
-		return room;
-	}
-
-	if (heldPencil)
-	{
-		const from = orderBefore.indexOf(memberId);
-		for (let step = 1; step < orderBefore.length; step += 1)
-		{
-			const candidate = orderBefore[(from + step) % orderBefore.length];
-			if (room.members.has(candidate))
-			{
-				room.drawerId = candidate;
-				break;
-			}
-		}
-	}
 
 	return room;
 }
@@ -291,6 +262,8 @@ function reclaimSeat(newMemberId, user, now = Date.now())
 		if (!seat)
 			continue;
 
+		const oldMemberId = seat.id;   // new — save before overwriting
+
 		room.members = new Map(
 			[...room.members.entries()].map(([id, member]) =>
 				id === seat.id
@@ -302,10 +275,7 @@ function reclaimSeat(newMemberId, user, now = Date.now())
 		memberRoom.delete(seat.id);
 		memberRoom.set(newMemberId, room.code);
 
-		if (room.drawerId === seat.id)
-			room.drawerId = newMemberId;
-
-		return room;
+		return { room, oldMemberId };
 	}
 
 	return null;
@@ -385,25 +355,17 @@ function getRoomOf(memberId)
 	return code ? rooms.get(code) || null : null;
 }
 
-/** The server decides who may draw. Clients are never asked. */
-function isDrawer(memberId)
-{
-	const room = getRoomOf(memberId);
-	return Boolean(room && room.drawerId === memberId);
-}
-
 /** Shape sent to clients. Maps do not survive JSON. */
 function serialiseRoom(room, now = Date.now())
 {
 	return {
 		code: room.code,
-		drawerId: room.drawerId,
+		creatorId: room.creatorId,   // NEW — the front needs to know who the owner is.
 		settings: room.settings,
 		members: [...room.members.values()].map((member) => ({
 			id: member.id,
 			userId: member.userId,
 			name: member.name,
-			isDrawer: member.id === room.drawerId,
 			// Non-null while someone is away: the others can show the wait.
 			msToDrop: absenceLeft(member, now),
 		})),
@@ -421,7 +383,7 @@ module.exports = {
 	createRoom,
 	joinRoom,
 	leaveRoom,
-	passPencil,
+	nextDrawerId,
 	markAbsent,
 	reclaimSeat,
 	dropAbsent,
@@ -432,7 +394,6 @@ module.exports = {
 	clearStrokes,
 	getRoom,
 	getRoomOf,
-	isDrawer,
 	serialiseRoom,
 	reset,
 	MAX_MEMBERS,

@@ -5,7 +5,7 @@
  */
 
 const rooms = require('../game/rooms');
-const { forgetMember } = require('./round.socket');
+const { forgetMember, reclaimInGame } = require('./round.socket');
 
 /** Clients pass a callback to learn whether their request worked. */
 function reply(ack, payload)
@@ -70,9 +70,10 @@ function registerRoomHandlers(io, socket)
 	const reclaimed = rooms.reclaimSeat(socket.id, socket.user);
 	if (reclaimed)
 	{
-		socket.join(reclaimed.code);
-		socket.emit('room:state', rooms.serialiseRoom(reclaimed));
-		announce(reclaimed);
+		reclaimInGame(reclaimed.room, reclaimed.oldMemberId, socket.id);
+		socket.join(reclaimed.room.code);
+		socket.emit('room:state', rooms.serialiseRoom(reclaimed.room));
+		announce(reclaimed.room);
 	}
 
 	socket.on('room:create', (payload = {}, ack) =>
@@ -128,24 +129,6 @@ function registerRoomHandlers(io, socket)
 		}
 
 		reply(ack, { ok: true });
-		announce(room);
-	});
-
-	/** Manual rotation until the round timer exists to do it. */
-	socket.on('room:next-drawer', (_payload, ack) =>
-	{
-		const room = rooms.getRoomOf(socket.id);
-
-		if (!room)
-		{
-			const err = new Error('Not in a room');
-			err.code = 'NOT_IN_ROOM';
-			return error(ack, err);
-		}
-
-		rooms.passPencil(room);
-
-		ok(ack, room);
 		announce(room);
 	});
 
