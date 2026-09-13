@@ -6,7 +6,7 @@
 
 ## 1. Aceitação
 
-Ao criar conta ou jogar no Gartic, operado pela **Garatuja Games, Lda.**
+Ao criar conta ou jogar no Gartic, operado pela **Rabisco PRTC, Lda.**
 (empresa fictícia), o utilizador aceita estes termos.
 
 ## 2. Conta
@@ -28,9 +28,9 @@ indisponível ou perder dados a qualquer momento.
 
 ## 5. Suspensão e eliminação de conta
 
-O utilizador pode apagar a sua conta a qualquer momento. A Garatuja Games,
+O utilizador pode apagar a sua conta a qualquer momento. A Rabisco PRTC,
 Lda. reserva-se o direito de suspender contas que violem estes termos.
 
 ## 6. Contacto
 
-Dúvidas sobre estes termos: `suporte@garatuja.example`.
+Dúvidas sobre estes termos: `suporte@rabisco.example`.

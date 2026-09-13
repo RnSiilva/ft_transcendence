@@ -1,12 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
-import type { Lang } from '../i18n/translations'
 import { useAuth } from '../hooks/useAuth'
 import { getSocket } from '../socket'
 import EditProfileModal from '../components/EditProfileModal'
-import CreateRoomModal from '../components/CreateRoomModal'
-import RoomLanguageModal from '../components/RoomLanguageModal'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -14,6 +11,28 @@ const ROOMS: { name: string; meta: string; lang: Lang }[] = [
   { name: 'Sala do Carlos', meta: '3/6', lang: 'pt' },
   { name: 'sala-rapida-02', meta: '5/6', lang: 'en' },
 ]
+
+// AQUI O CODIGO DO SERVIDOR (rankings: top 3 por pontos totais, da semana e
+// do dia — consultas agregadas na base de dados; isto são dados de exemplo)
+type RankPeriod = 'general' | 'weekly' | 'daily'
+const RANKING: Record<RankPeriod, { name: string; pts: number }[]> = {
+  general: [
+    { name: 'garatuja_pro', pts: 4820 },
+    { name: 'duck_master', pts: 4310 },
+    { name: 'pixel_ninja', pts: 3990 },
+  ],
+  weekly: [
+    { name: 'pixel_ninja', pts: 640 },
+    { name: 'garatuja_pro', pts: 580 },
+    { name: 'rabisco_rei', pts: 455 },
+  ],
+  daily: [
+    { name: 'duck_master', pts: 180 },
+    { name: 'rabisco_rei', pts: 140 },
+    { name: 'garatuja_pro', pts: 120 },
+  ],
+}
+const RANK_PERIODS: RankPeriod[] = ['general', 'weekly', 'daily']
 
 type FriendUser = {
   friendshipId: number
@@ -28,7 +47,7 @@ type FriendUser = {
 
 function Profile() {
   const { user, loading, logout, refresh } = useAuth()
-  const { t, lang } = useLanguage()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
@@ -36,9 +55,8 @@ function Profile() {
   const [friendError, setFriendError] = useState('')
   const [friends, setFriends] = useState<FriendUser[]>([])
   const [editOpen, setEditOpen] = useState(false)
-  const [roomOpen, setRoomOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [pendingRoomLang, setPendingRoomLang] = useState<Lang | null>(null)
+  const [rankTab, setRankTab] = useState<RankPeriod>('general')
 
   async function loadFriends() {
     try {
@@ -233,32 +251,42 @@ function Profile() {
       </div>
 
       <div className="panel">
-        <h3>{t('profile.rooms.heading')}</h3>
-        {ROOMS.map((room) => (
-          <div className="room-row" key={room.name}>
-            <div>
-              <div className="room-name">{room.name}</div>
-              <div className="room-meta">
-                {room.meta} <span>{t('profile.rooms.players')}</span> ·{' '}
-                {room.lang.toUpperCase()}
+        <h3>{t('rank.heading')}</h3>
+        <div className="rank-tabs">
+          {RANK_PERIODS.map((period) => (
+            <button
+              key={period}
+              type="button"
+              className={rankTab === period ? 'rank-tab active' : 'rank-tab'}
+              onClick={() => setRankTab(period)}
+            >
+              {t(`rank.${period}`)}
+            </button>
+          ))}
+        </div>
+        <div className="rank-list">
+          {RANKING[rankTab].map((row, i) => (
+            <div className={`rank-row pos${i + 1}`} key={row.name}>
+              <span className="rank-medal">{i + 1}º</span>
+              <div className="mini-avatar">{row.name.charAt(0).toUpperCase()}</div>
+              <div className="rank-name">{row.name}</div>
+              <div className="rank-pts">
+                {row.pts} <span>{t('rank.points')}</span>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => enterRoom(room.lang)}
-            >
-              {t('profile.rooms.enter')}
-            </button>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3>{t('profile.rooms.heading')}</h3>
+        <p className="rooms-viewtext">{t('profile.rooms.viewtext')}</p>
         <button
           type="button"
           className="btn btn-primary btn-sm"
-          style={{ marginTop: 14 }}
-          onClick={() => setRoomOpen(true)}
+          onClick={() => navigate('/rooms')}
         >
-          {t('profile.rooms.create')}
+          {t('profile.rooms.view')}
         </button>
       </div>
 
@@ -406,21 +434,6 @@ function Profile() {
           onClose={() => setEditOpen(false)}
           onSave={() => {
             refresh()
-          }}
-        />
-      )}
-      <CreateRoomModal
-        open={roomOpen}
-        onClose={() => setRoomOpen(false)}
-        onCreate={() => navigate('/game')}
-      />
-      {pendingRoomLang && (
-        <RoomLanguageModal
-          roomLang={pendingRoomLang}
-          onClose={() => setPendingRoomLang(null)}
-          onConfirm={() => {
-            setPendingRoomLang(null)
-            navigate('/game')
           }}
         />
       )}

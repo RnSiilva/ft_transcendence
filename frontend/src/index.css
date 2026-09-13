@@ -719,31 +719,119 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .word-blank{letter-spacing:5px;font-weight:700;color:var(--yellow);}
 .timer{color:var(--red);font-weight:700;}
 
-/* desktop: quadro à esquerda com o placar horizontal por baixo; chat na lateral */
+/* desktop: quadro à esquerda, chat na lateral, placar em rodapé sempre
+   visível. A adivinhar (.guessing) as ferramentas somem, o quadro encolhe
+   um pouco e o chat alarga. */
 .game-grid{
   max-width:1180px;margin:0 auto;display:grid;gap:18px;align-items:start;
   grid-template-columns:minmax(0,1fr) 280px;
   grid-template-rows:auto auto;
   grid-template-areas:"board chat" "score score";
 }
-.score-panel{grid-area:score;margin:0;display:flex;align-items:center;gap:30px;flex-wrap:wrap;}
+.game-grid.guessing{grid-template-columns:minmax(0,1fr) 350px;}
+.score-panel{
+  grid-area:score;margin:0;display:flex;align-items:center;gap:30px;flex-wrap:wrap;
+  position:sticky;bottom:10px;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.45);
+}
 .score-panel h3{margin:0;}
 .score-panel .score-list{flex-direction:row;flex-wrap:wrap;gap:10px 40px;}
-.leave-btn{margin-left:auto;}
+.score-caret{display:none;}
+.report-btn{margin-left:auto;}
+/* o Sair da partida vive no fim da página, fora do rodapé fixo */
+.leave-row{max-width:1180px;margin:28px auto 0;display:flex;justify-content:flex-end;}
 .canvas-box{grid-area:board;}
 .game-grid .chat-box{grid-area:chat;height:100%;}
 .game-grid .chat-log{max-height:none;}
 /* na coluna lateral estreita, o botão Enviar fica por baixo da mensagem */
 .game-grid .chat-input-row{flex-direction:column;}
 .game-grid .chat-input-row input{min-width:0;}
+
+/* aviso da vez, entre as cores e o Limpar */
+.turn-notice{
+  font-family:var(--display);font-weight:700;font-size:14.5px;color:var(--yellow);
+  display:flex;align-items:center;gap:6px;animation:acerto-pop .4s;
+}
+.turn-notice.guess{color:var(--blue);}
+/* acerto: troféu + palavra + posição + pontos */
+.acerto-banner{
+  display:flex;align-items:center;gap:9px;font-family:var(--display);
+  font-weight:800;font-size:15.5px;animation:acerto-pop .55s;
+}
+.acerto-banner .word{color:var(--yellow);letter-spacing:2.5px;}
+.acerto-banner .place{color:var(--chalk-dim);font-size:13px;}
+.acerto-banner .pts{font-family:var(--mono);font-weight:400;color:var(--green);}
+@keyframes acerto-pop{
+  0%{transform:scale(.5);opacity:0;}
+  60%{transform:scale(1.18);}
+  100%{transform:scale(1);opacity:1;}
+}
+/* escolher a palavra (3 opções, 5 segundos) */
+.choose-words{display:flex;flex-direction:column;gap:10px;margin:6px 0 14px;}
+.choose-word{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:12px 16px;border:1.5px solid var(--line-strong);border-radius:12px;
+  background:var(--canvas);color:var(--chalk);font-weight:700;font-size:15px;
+  cursor:pointer;font-family:var(--body);transition:border-color .12s,transform .12s;
+}
+.choose-word:hover{border-color:var(--yellow);transform:translateY(-1px);}
+.choose-word .cat{color:var(--chalk-dim);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;}
+.choose-timer{text-align:center;font-family:var(--mono);font-weight:700;color:var(--red);}
+
+/* quadro em ecrã inteiro (telemóvel, vez de desenhar) */
+.fullscreen-btn{display:none;}
+.canvas-box.fullscreen{
+  position:fixed;inset:0;z-index:120;border-radius:0;margin:0;
+  display:flex;flex-direction:column;padding:12px;
+}
+.canvas-box.fullscreen #draw-canvas{aspect-ratio:auto;flex:1;min-height:0;}
+
+/* confetes do acerto */
+.confetti{position:fixed;inset:0;z-index:140;pointer-events:none;overflow:hidden;}
+.confetti span{
+  position:absolute;top:-14px;border-radius:2px;opacity:0;
+  animation-name:confetti-fall;animation-timing-function:linear;animation-fill-mode:forwards;
+}
+@keyframes confetti-fall{
+  0%{transform:translate(0,-10px) rotate(var(--tilt));opacity:1;}
+  100%{transform:translate(var(--sway),105vh) rotate(calc(var(--tilt) + 540deg));opacity:.85;}
+}
+
+/* votação de denúncia: canto direito de todos os ecrãs */
+.report-toast{
+  position:fixed;right:16px;bottom:96px;z-index:130;max-width:250px;
+  background:var(--canvas-2);border:1px solid var(--line-strong);border-radius:14px;
+  padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:acerto-pop .35s;
+}
+.report-toast p{margin:0 0 6px;font-size:13.5px;line-height:1.45;}
+.report-votes{font-family:var(--mono);color:var(--chalk-dim);}
+.report-warned{color:var(--yellow);font-weight:700;}
+.report-actions{display:flex;gap:8px;margin-top:8px;}
+.report-actions .btn{flex:1;}
+
 @media (max-width:960px){
-  .game-grid{grid-template-columns:1fr;grid-template-areas:"score" "board" "chat";}
-  .score-panel{flex-direction:column;align-items:stretch;gap:12px;}
-  .score-panel .score-list{flex-direction:column;gap:10px;}
-  .leave-btn{margin-left:0;}
+  .game-grid,.game-grid.guessing{grid-template-columns:1fr;grid-template-areas:"board" "chat" "score";}
+  .score-panel{position:sticky;bottom:8px;gap:10px 18px;padding:12px 14px;}
+  .score-panel .score-list{flex-direction:row;flex-wrap:wrap;gap:8px 18px;}
+  .score-panel .score-row{font-size:12.5px;}
   .game-grid .chat-box{height:auto;}
-  .game-grid .chat-log{min-height:140px;max-height:220px;}
   .game-grid .chat-input-row{flex-direction:row;}
+
+  /* vez de DESENHAR: quadro maior, chat menor */
+  .game-grid #draw-canvas{aspect-ratio:4/3;}
+  .game-grid .chat-log{min-height:100px;max-height:150px;}
+  /* vez de ADIVINHAR: quadro menor, chat maior */
+  .game-grid.guessing #draw-canvas{aspect-ratio:16/9;}
+  .game-grid.guessing .chat-log{min-height:220px;max-height:320px;}
+
+  /* ecrã inteiro só faz sentido no telemóvel */
+  .fullscreen-btn{display:inline-flex;}
+
+  /* placar recolhido: só o próprio jogador; toque no título abre todos */
+  .score-caret{display:inline;color:var(--chalk-dim);}
+  .score-panel h3{cursor:pointer;user-select:none;}
+  .score-panel .score-row{display:none;}
+  .score-panel .score-row.self{display:flex;}
+  .score-panel.open .score-row{display:flex;}
 }
 
 .score-list{display:flex;flex-direction:column;gap:10px;}
@@ -775,6 +863,9 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .msg b{color:var(--blue);font-weight:700;}
 .chat-input-row{display:flex;gap:8px;}
 .chat-input-row input{flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--canvas);color:var(--chalk);font-size:13.5px;}
+/* quem desenha não fala: input e Enviar apagados */
+.chat-input-row input:disabled{opacity:.45;cursor:not-allowed;}
+.chat-input-row .btn:disabled{opacity:.45;cursor:not-allowed;}
 
 /* RULES / LEGAL */
 .simple-wrap{padding:80px 32px 110px;max-width:720px;margin:0 auto;}
@@ -918,3 +1009,88 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 
 
 
+
+/* ROOMS PAGE (lista de salas em página própria, atualizada em tempo real) */
+.rooms-back{margin-bottom:20px;}
+.rooms-head{margin-bottom:22px;}
+.rooms-title{font-family:var(--display);font-size:30px;font-weight:800;margin:0 0 8px;}
+.rooms-live{display:flex;align-items:center;gap:9px;color:var(--chalk-dim);font-size:13px;margin:0;}
+.live-dot{
+  flex:none;width:9px;height:9px;border-radius:50%;background:var(--green);
+  animation:live-pulse 2s infinite;
+}
+@keyframes live-pulse{
+  0%{box-shadow:0 0 0 0 rgba(107,203,119,.45);}
+  70%{box-shadow:0 0 0 9px rgba(107,203,119,0);}
+  100%{box-shadow:0 0 0 0 rgba(107,203,119,0);}
+}
+.rooms-viewtext{color:var(--chalk-dim);font-size:13.5px;line-height:1.6;margin:0 0 12px;}
+
+/* LOBBY DA SALA (sala de espera antes da partida) */
+.lobby-panel{max-width:430px;}
+.lobby-top{
+  display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:13px;color:var(--chalk-dim);margin-bottom:12px;
+}
+.lobby-count b{color:var(--chalk);}
+.lobby-timer{color:var(--yellow);}
+.lobby-timer.danger{color:var(--red);}
+.lobby-list{display:flex;flex-direction:column;margin-bottom:14px;}
+.lobby-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.lobby-row:last-of-type{border-bottom:none;}
+.lobby-row .mini-avatar{
+  flex:none;width:32px;height:32px;border-radius:50%;background:var(--canvas);
+  border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;font-family:var(--display);
+}
+.lobby-name{flex:1;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.lobby-admin-tag{
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--ink);background:var(--yellow);border-radius:999px;padding:2px 8px;
+}
+.lobby-kick{color:var(--red);border-color:var(--red);}
+.lobby-rules{text-align:left;}
+.lobby-inner{z-index:95;}
+.lobby-small{max-width:340px;}
+.lobby-small .roomlang-text{text-align:center;}
+.lobby-starting{text-align:center;}
+.lobby-starting-icon{font-size:46px;margin-bottom:4px;}
+.lobby-starting h2{margin-bottom:4px;}
+
+/* RANKINGS (geral / semanal / diário) no perfil */
+.rank-tabs{display:flex;gap:8px;margin-bottom:14px;}
+.rank-tab{
+  flex:1;padding:8px 10px;border-radius:10px;border:1.5px solid var(--line-strong);
+  background:var(--canvas);color:var(--chalk-dim);font-weight:700;font-size:13px;cursor:pointer;
+  font-family:var(--body);transition:border-color .15s,color .15s;
+}
+.rank-tab:hover{border-color:var(--chalk-dim);}
+.rank-tab.active{border-color:var(--yellow);color:var(--yellow);}
+.rank-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.rank-row:last-of-type{border-bottom:none;}
+.rank-row .mini-avatar{
+  flex:none;width:32px;height:32px;border-radius:50%;background:var(--canvas);
+  border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;font-family:var(--display);
+}
+.rank-medal{font-family:var(--mono);font-weight:800;font-size:14px;width:26px;color:var(--chalk-dim);}
+.rank-row.pos1 .rank-medal{color:var(--yellow);}
+.rank-row.pos2 .rank-medal{color:var(--blue);}
+.rank-row.pos3 .rank-medal{color:var(--red);}
+.rank-name{flex:1;font-weight:600;font-size:14.5px;}
+.rank-pts{font-family:var(--mono);font-size:14px;color:var(--chalk);}
+.rank-pts span{color:var(--chalk-dim);font-size:11px;}
+
+/* FOTO DO PERFIL: arrastar dentro do círculo para posicionar */
+.edit-avatar-preview.draggable{cursor:grab;touch-action:none;user-select:none;}
+.edit-avatar-preview.draggable:active{cursor:grabbing;}
+.edit-avatar-preview{width:110px;height:110px;}
+.edit-avatar-upload{color:var(--blue);cursor:pointer;}
+.edit-avatar-upload:hover{text-decoration:underline;}
+.edit-avatar-hint{font-size:11.5px;color:var(--chalk-dim);}
+
+/* telemóvel: adicionar amigos em coluna (o botão saía do ecrã) */
+@media (max-width:560px){
+  .inline-add{flex-direction:column;}
+  .inline-add .btn{width:100%;}
+}

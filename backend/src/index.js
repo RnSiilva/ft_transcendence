@@ -8,10 +8,13 @@ const authRouter = require('./auth/auth.routes');
 const friendsRouter = require('./friends/friends.routes');
 const presence = require('./friends/presence');
 const jwt = require('jsonwebtoken');
+const gameRouter = require('./routes/game.routes');
 
 const { registerRoomHandlers, startAbsenceSweeper } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
 const { registerRoundHandlers, startGameLoop } = require('./sockets/round.socket');
+// Lobby (sala de espera) — módulo à parte do Thiago; ver sockets/lobby.socket.js
+const { registerLobbyHandlers, startLobbySweeper } = require('./sockets/lobby.socket');
 const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
 const { seedWords } = require('./game/words.repository');
 
@@ -43,6 +46,7 @@ app.get('/health', (req, res) => {
 
 app.use('/auth', authRouter);
 app.use('/friends', friendsRouter);
+app.use('/games', gameRouter);
 
 // updates socket.io so rooms and drawing can also send and read cookies
 const io = new Server(server, {
@@ -59,6 +63,7 @@ io.use(requireAuthenticatedSocket);
 
 startAbsenceSweeper(io);
 startGameLoop(io);
+startLobbySweeper(io); // relógio dos 5 minutos das salas em espera
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'as', socket.user.username);
@@ -88,6 +93,7 @@ io.on('connection', (socket) => {
   registerRoomHandlers(io, socket);
   registerDrawHandlers(io, socket);
   registerRoundHandlers(io, socket);
+  registerLobbyHandlers(io, socket); // depois dos de sala: precisa da sala já criada
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
