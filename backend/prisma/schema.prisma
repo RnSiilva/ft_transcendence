@@ -11,7 +11,8 @@ model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique
   username     String   @unique
-  passwordHash String
+  passwordHash String?
+  intraId      Int?     @unique
   avatarUrl    String?  @db.LongText // Optional: defaults to null until uploaded/selected by user
   language     String   @default("pt") // Default language is 'pt' (supports 'pt', 'en', 'es')
   rank         Int      @default(0)
@@ -20,24 +21,24 @@ model User {
   wins         Int      @default(0)
   createdAt    DateTime @default(now())
 
-  friendsSent     Friend[] @relation("UserFriends")
-  friendsReceived Friend[] @relation("FriendUser")
+  friendsSent     Friend[] @relation("FriendsSent")
+  friendsReceived Friend[] @relation("FriendsReceived")
   reportsReceived Report[] @relation("Reported")
   reportsMade     Report[] @relation("Reporter")
   gameScores      GameScore[]
 }
 
 model Friend {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  friendId  Int
-  status    String
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  receiverId Int
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
 
-  user   User @relation("UserFriends", fields: [userId], references: [id])
-  friend User @relation("FriendUser", fields: [friendId], references: [id])
+  sender   User @relation("FriendsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, friendId])
+  @@unique([senderId, receiverId])
 }
 
 model Word {

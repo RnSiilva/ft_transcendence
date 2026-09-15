@@ -1,8 +1,16 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
+import { getSocket } from '../socket'
 import EditProfileModal from '../components/EditProfileModal'
+
+const API = import.meta.env.VITE_API_URL ?? '/api'
+
+const ROOMS: { name: string; meta: string; lang: Lang }[] = [
+  { name: 'Sala do Carlos', meta: '3/6', lang: 'pt' },
+  { name: 'sala-rapida-02', meta: '5/6', lang: 'en' },
+]
 
 // AQUI O CODIGO DO SERVIDOR (rankings: top 3 por pontos totais, da semana e
 // do dia — consultas agregadas na base de dados; isto são dados de exemplo)
@@ -26,11 +34,16 @@ const RANKING: Record<RankPeriod, { name: string; pts: number }[]> = {
 }
 const RANK_PERIODS: RankPeriod[] = ['general', 'weekly', 'daily']
 
-const INITIAL_FRIENDS = [
-  { name: 'Renan', initial: 'R', online: true },
-  { name: 'Pedro', initial: 'P', online: false },
-  { name: 'Carlos', initial: 'C', online: true },
-]
+type FriendUser = {
+  friendshipId: number
+  id: number
+  username: string
+  avatarUrl: string | null
+  rank: number
+  totalPoints: number
+  isOnline: boolean
+  status: 'ACCEPTED' | 'SENT_PENDING' | 'RECEIVED_PENDING'
+}
 
 function Profile() {
   const { user, loading, logout, refresh } = useAuth()
@@ -38,26 +51,118 @@ function Profile() {
   const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
-  const [message, setMessage] = useState('')
-  const [friends, setFriends] = useState(INITIAL_FRIENDS)
+  const [sentTo, setSentTo] = useState('')
+  const [friendError, setFriendError] = useState('')
+  const [friends, setFriends] = useState<FriendUser[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [rankTab, setRankTab] = useState<RankPeriod>('general')
 
+  async function loadFriends() {
+    try {
+      const res = await fetch(`${API}/friends`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setFriends(data.friends || [])
+      }
+    } catch (err) {
+      console.error('Failed to load friends:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      loadFriends()
+      const socket = getSocket()
+      socket.emit('presence:join', { userId: user.id })
+
+      function onPresenceUpdate({ userId, isOnline }: { userId: number; isOnline: boolean }) {
+        setFriends((prev) =>
+          prev.map((f) => (f.id === userId ? { ...f, isOnline } : f))
+        )
+      }
+
+      socket.on('presence:update', onPresenceUpdate)
+      return () => {
+        socket.off('presence:update', onPresenceUpdate)
+      }
+    }
+  }, [user])
+
   async function handleLogout() {
     await logout()
-    navigate('/login', { replace: true })
+    window.location.href = '/login'
   }
 
-  function addFriend(e: FormEvent<HTMLFormElement>) {
+  function enterRoom(roomLang: Lang) {
+    if (roomLang !== lang) {
+      setPendingRoomLang(roomLang)
+      return
+    }
+    navigate('/game')
+  }
+
+  async function addFriend(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!search) return
-    setMessage(`Pedido enviado a ${search}`)
-    setSearch('')
+    setFriendError('')
+    setSentTo('')
+    const target = search.trim()
+    if (!target) return
+
+    try {
+      const res = await fetch(`${API}/friends/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: target }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setFriendError(data.error || t('errors.networkError'))
+        return
+      }
+      setSentTo(target)
+      setSearch('')
+      loadFriends()
+    } catch {
+      setFriendError(t('errors.networkError'))
+    }
   }
 
-  function removeFriend(name: string) {
-    setFriends((current) => current.filter((f) => f.name !== name))
+  async function removeFriend(id: number) {
+    try {
+      await fetch(`${API}/friends/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      loadFriends()
+    } catch (err) {
+      console.error('Failed to remove friend:', err)
+    }
+  }
+
+  async function acceptRequest(requestId: number) {
+    try {
+      await fetch(`${API}/friends/accept/${requestId}`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      loadFriends()
+    } catch (err) {
+      console.error('Failed to accept friend request:', err)
+    }
+  }
+
+  async function rejectRequest(requestId: number) {
+    try {
+      await fetch(`${API}/friends/reject/${requestId}`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      loadFriends()
+    } catch (err) {
+      console.error('Failed to reject friend request:', err)
+    }
   }
 
   async function deleteAccount() {
@@ -68,7 +173,7 @@ function Profile() {
       })
       setConfirmingDelete(false)
       await logout()
-      navigate('/', { replace: true })
+      window.location.href = '/'
     } catch (err) {
       console.error('Failed to delete account', err)
     }
@@ -82,9 +187,13 @@ function Profile() {
     )
   }
 
-  const displayName = user?.username ?? 'utilizador_demo'
-  const displayEmail = user?.email ?? 'utilizador_demo@exemplo.com'
-  const displayRank = user?.rank ?? 128
+  if (!user) {
+    return null
+  }
+
+  const displayName = user.username
+  const displayEmail = user.email
+  const displayRank = user?.rank ?? 0
   const displayPoints = user?.totalPoints ?? 0
   const displayGames = user?.gamesPlayed ?? 0
   const displayWins = user?.wins ?? 0
@@ -182,8 +291,88 @@ function Profile() {
       </div>
 
       <div className="panel">
-        <h3>{t('profile.addfriends.heading')}</h3>
-        <form className="inline-add" onSubmit={addFriend}>
+        <h3>{t('profile.friends.heading')}</h3>
+        {friends.length === 0 ? (
+          <p style={{ opacity: 0.7 }}>{t('profile.friends.none')}</p>
+        ) : (
+          friends.map((friend) => (
+            <div className="friend-row" key={friend.id}>
+              <div className="who">
+                <div className="mini-avatar">
+                  {friend.avatarUrl ? (
+                    <img
+                      src={friend.avatarUrl}
+                      alt=""
+                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    friend.username.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <span>{friend.username}</span>
+                {friend.status === 'SENT_PENDING' && (
+                  <span style={{ fontSize: 12, opacity: 0.7, marginLeft: 6 }}>
+                    ({t('profile.friends.pending_sent')})
+                  </span>
+                )}
+                {friend.status === 'RECEIVED_PENDING' && (
+                  <span style={{ fontSize: 12, opacity: 0.7, marginLeft: 6 }}>
+                    ({t('profile.friends.pending_received')})
+                  </span>
+                )}
+              </div>
+
+              {friend.status === 'RECEIVED_PENDING' ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => acceptRequest(friend.friendshipId)}
+                  >
+                    {t('profile.friends.accept')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => rejectRequest(friend.friendshipId)}
+                  >
+                    {t('profile.friends.reject')}
+                  </button>
+                </div>
+              ) : friend.status === 'SENT_PENDING' ? (
+                <div>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => removeFriend(friend.id)}
+                  >
+                    {t('profile.friends.cancel')}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <span className="status">
+                    <span className={friend.isOnline ? 'status-dot on' : 'status-dot off'}>
+                      {friend.isOnline ? '●' : '○'}
+                    </span>
+                    <span>
+                      {friend.isOnline ? t('profile.friends.online') : t('profile.friends.offline')}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => removeFriend(friend.id)}
+                  >
+                    {t('profile.friends.remove')}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+
+        <form className="inline-add" onSubmit={addFriend} style={{ marginTop: 16 }}>
           <input
             type="text"
             placeholder={t('profile.addfriends.placeholder')}
@@ -194,36 +383,8 @@ function Profile() {
             {t('profile.addfriends.add')}
           </button>
         </form>
-        {message && <p style={{ marginTop: 8 }}>{message}</p>}
-      </div>
-
-      <div className="panel">
-        <h3>{t('profile.friends.heading')}</h3>
-        {friends.map((friend) => (
-          <div className="friend-row" key={friend.name}>
-            <div className="who">
-              <div className="mini-avatar">{friend.initial}</div>
-              {friend.name}
-            </div>
-            <div>
-              <span className="status">
-                <span className={friend.online ? 'status-dot on' : 'status-dot off'}>
-                  {friend.online ? '●' : '○'}
-                </span>
-                <span>
-                  {friend.online ? t('profile.friends.online') : t('profile.friends.offline')}
-                </span>
-              </span>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => removeFriend(friend.name)}
-              >
-                {t('profile.friends.remove')}
-              </button>
-            </div>
-          </div>
-        ))}
+        {sentTo && <p style={{ marginTop: 8, color: 'var(--green, #22c55e)' }}>{t('profile.addfriends.sent')} {sentTo}</p>}
+        {friendError && <p style={{ marginTop: 8, color: 'var(--red, #ef4444)' }}>{friendError}</p>}
       </div>
 
       <div className="panel panel-danger">
@@ -269,6 +430,7 @@ function Profile() {
           currentNickname={displayName}
           currentEmail={displayEmail}
           currentPhoto={user?.avatarUrl || null}
+          hasPassword={user?.hasPassword}
           onClose={() => setEditOpen(false)}
           onSave={() => {
             refresh()

@@ -698,10 +698,10 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .status-dot.off{color:var(--chalk-dim);}
 .status{font-size:12.5px;color:var(--chalk-dim);margin-right:14px;}
 
-.inline-add{display:flex;gap:10px;}
+.inline-add{display:flex;gap:10px;align-items:center;}
 .inline-add input{
-  flex:1;padding:11px 14px;border-radius:10px;border:1.5px solid var(--line-strong);
-  background:var(--canvas);color:var(--chalk);font-size:14px;
+  flex:1;padding:8px 14px;border-radius:10px;border:1.5px solid var(--line-strong);
+  background:var(--canvas);color:var(--chalk);font-size:13.5px;
 }
 .inline-add input::placeholder{color:var(--chalk-dim);}
 .inline-add input:focus{border-color:var(--blue);}
