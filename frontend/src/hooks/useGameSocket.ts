@@ -62,6 +62,15 @@ export type RoundState =
 
 export type ChatMessage = { name: string; text: string; system?: boolean }
 
+/** A vote in progress. The player being voted on never receives this. */
+export type ReportVote =
+{
+	targetId: string
+	name: string
+	votes: number
+	needed: number
+}
+
 type Ack = { ok: boolean; room?: RoomState; error?: string; code?: string }
 
 const DEFAULT_COLOUR = '#15161B'
@@ -92,6 +101,11 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [round, setRound] = useState<RoundState | null>(null)
 	const [secretWord, setSecretWord] = useState<string | null>(null)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
+	const [reportVote, setReportVote] = useState<ReportVote | null>(null)
+	const [flagged, setFlagged] = useState(false)
+	const [expelled, setExpelled] = useState(false)
+	// O report:closed so traz o targetId, e o nome e lido dentro de um listener.
+	const voteRef = useRef<ReportVote | null>(null)
 
 	useEffect(() =>
 	{
@@ -198,6 +212,35 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
 		})
 
+		// Quem foi denunciado recebe report:flagged sem a contagem, para nao
+		// ficar a saber quantos ja votaram contra si.
+		socket.on('report:open', (vote: ReportVote) =>
+		{
+			voteRef.current = vote
+			setReportVote(vote)
+		})
+
+		socket.on('report:flagged', () => setFlagged(true))
+
+		socket.on('report:closed', ({ expelled: out }: { expelled: boolean }) =>
+		{
+			const name = voteRef.current?.name
+			voteRef.current = null
+			setReportVote(null)
+			setFlagged(false)
+
+			if (out && name)
+				setMessages((all) => [...all, { name: '', text: `${name} foi expulso da partida`, system: true }])
+		})
+
+		socket.on('report:expelled', () =>
+		{
+			voteRef.current = null
+			setReportVote(null)
+			setFlagged(false)
+			setExpelled(true)
+		})
+
 		return () =>
 		{
 			socket.disconnect()
@@ -206,6 +249,17 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	}, [canvasRef])
 
 	const isDrawer = Boolean(selfId && round?.scores.find((s) => s.id === selfId)?.isDrawer)
+
+	/** Sem ligacao responde logo, para nao esperar por um ack que nao vem. */
+	const ask = (event: string, payload: object): Promise<Ack> =>
+		new Promise((resolve) =>
+		{
+			const socket = socketRef.current
+			if (!socket)
+				return resolve({ ok: false, code: 'NO_SOCKET' })
+
+			socket.emit(event, payload, resolve)
+		})
 
 	return {
 		code: room?.code ?? null,
@@ -219,6 +273,13 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		sendStroke: (stroke: Stroke) => socketRef.current?.emit('draw:stroke', stroke),
 		sendClear: () => socketRef.current?.emit('draw:clear'),
 		sendChat: (text: string) => socketRef.current?.emit('chat:message', { text }),
+		/** A votacao a decorrer. Nunca chega a quem foi denunciado. */
+		reportVote,
+		/** Foste tu o denunciado: so o aviso, sem contagem nem botoes. */
+		flagged,
+		expelled,
+		startReport: (targetId: string) => ask('report:start', { targetId }),
+		voteExpel: () => ask('report:vote', {}),
 		/** Call after anything that wipes the canvas, such as a resize. */
 		repaint: () => repaintRef.current(),
 	}
