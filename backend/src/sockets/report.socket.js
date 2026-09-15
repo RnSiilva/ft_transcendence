@@ -46,7 +46,7 @@ function expel(io, room, targetId)
 {
 	const game = gameOf(room);
 
-	// Esgotar o relogio deixa o game loop fechar a vez como sempre faz.
+	// Running the clock out lets the game loop close the turn as it always does.
 	if (game && game.drawerId === targetId)
 		game.startedAt = Date.now() - game.roundSeconds * 1000;
 
@@ -117,7 +117,7 @@ function registerReportHandlers(io, socket)
 		if (!target)
 			return reply(ack, 'NOT_IN_ROOM');
 
-		// Com dois na sala um voto ja seria maioria: nem se abre a votacao.
+		// With two in the room one vote is already a majority: no vote opens.
 		if (room.members.size < 3)
 			return reply(ack, 'NEED_MORE_PLAYERS');
 
@@ -150,7 +150,7 @@ function registerReportHandlers(io, socket)
 
 		vote.voters.add(socket.id);
 
-		// O voto que expulsa tambem tem de responder a quem o deu.
+		// The vote that expels still has to answer whoever cast it.
 		if (vote.voters.size >= threshold(room))
 		{
 			close(io, room, true);

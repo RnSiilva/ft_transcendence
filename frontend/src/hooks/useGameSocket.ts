@@ -104,7 +104,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [reportVote, setReportVote] = useState<ReportVote | null>(null)
 	const [flagged, setFlagged] = useState(false)
 	const [expelled, setExpelled] = useState(false)
-	// O report:closed so traz o targetId, e o nome e lido dentro de um listener.
+	// report:closed only carries the targetId, and the name is read in a listener.
 	const voteRef = useRef<ReportVote | null>(null)
 
 	useEffect(() =>
@@ -126,8 +126,8 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 				? await request('room:join', { code: wanted })
 				: await request('room:create', {})
 
-			// Um link de uma sala que ja nao existe cai numa sala nova. Ja
-			// estares dentro e outra coisa: abrir outra sala escondia o erro.
+			// A link to a room that no longer exists falls back to a new one.
+			// Already being in a room is different: opening another would hide it.
 			if (!answer.ok && answer.code === 'ALREADY_IN_ROOM')
 			{
 				setError('ALREADY_IN_ROOM')
@@ -212,8 +212,8 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
 		})
 
-		// Quem foi denunciado recebe report:flagged sem a contagem, para nao
-		// ficar a saber quantos ja votaram contra si.
+		// The reported player gets report:flagged without the tally, so they
+		// never learn how many have voted against them.
 		socket.on('report:open', (vote: ReportVote) =>
 		{
 			voteRef.current = vote
@@ -250,7 +250,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 
 	const isDrawer = Boolean(selfId && round?.scores.find((s) => s.id === selfId)?.isDrawer)
 
-	/** Sem ligacao responde logo, para nao esperar por um ack que nao vem. */
+	/** With no socket it answers at once, rather than await an ack that never comes. */
 	const ask = (event: string, payload: object): Promise<Ack> =>
 		new Promise((resolve) =>
 		{
@@ -273,9 +273,9 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		sendStroke: (stroke: Stroke) => socketRef.current?.emit('draw:stroke', stroke),
 		sendClear: () => socketRef.current?.emit('draw:clear'),
 		sendChat: (text: string) => socketRef.current?.emit('chat:message', { text }),
-		/** A votacao a decorrer. Nunca chega a quem foi denunciado. */
+		/** The vote in progress. Never reaches the player being voted on. */
 		reportVote,
-		/** Foste tu o denunciado: so o aviso, sem contagem nem botoes. */
+		/** You are the reported one: the warning only, no tally, no buttons. */
 		flagged,
 		expelled,
 		startReport: (targetId: string) => ask('report:start', { targetId }),

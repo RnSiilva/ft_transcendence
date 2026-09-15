@@ -13,7 +13,7 @@ export type LeaderboardEntry = {
   games: number
 }
 
-/** "general" e todo o tempo, que a API exprime nao pedindo periodo nenhum. */
+/** "general" means all time, which the API expresses by asking for no period. */
 export function useLeaderboard(period: RankPeriod) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
 
@@ -26,7 +26,7 @@ export function useLeaderboard(period: RankPeriod) {
       .then((data) => { if (live) setEntries(data.entries ?? []) })
       .catch(() => { if (live) setEntries([]) })
 
-    // Mudar de separador depressa nao pode deixar a resposta velha ganhar.
+    // Switching tabs quickly must not let an older answer win.
     return () => { live = false }
   }, [period])
 
