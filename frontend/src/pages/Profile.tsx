@@ -3,27 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
 import EditProfileModal from '../components/EditProfileModal'
+import { useLeaderboard, type RankPeriod } from '../hooks/useLeaderboard'
+import { useMatchHistory } from '../hooks/useMatchHistory'
 
-// AQUI O CODIGO DO SERVIDOR (rankings: top 3 por pontos totais, da semana e
-// do dia — consultas agregadas na base de dados; isto são dados de exemplo)
-type RankPeriod = 'general' | 'weekly' | 'daily'
-const RANKING: Record<RankPeriod, { name: string; pts: number }[]> = {
-  general: [
-    { name: 'garatuja_pro', pts: 4820 },
-    { name: 'duck_master', pts: 4310 },
-    { name: 'pixel_ninja', pts: 3990 },
-  ],
-  weekly: [
-    { name: 'pixel_ninja', pts: 640 },
-    { name: 'garatuja_pro', pts: 580 },
-    { name: 'rabisco_rei', pts: 455 },
-  ],
-  daily: [
-    { name: 'duck_master', pts: 180 },
-    { name: 'rabisco_rei', pts: 140 },
-    { name: 'garatuja_pro', pts: 120 },
-  ],
-}
 const RANK_PERIODS: RankPeriod[] = ['general', 'weekly', 'daily']
 
 const INITIAL_FRIENDS = [
@@ -43,6 +25,8 @@ function Profile() {
   const [editOpen, setEditOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [rankTab, setRankTab] = useState<RankPeriod>('general')
+  const ranking = useLeaderboard(rankTab)
+  const history = useMatchHistory()
 
   async function handleLogout() {
     await logout()
@@ -156,17 +140,43 @@ function Profile() {
           ))}
         </div>
         <div className="rank-list">
-          {RANKING[rankTab].map((row, i) => (
-            <div className={`rank-row pos${i + 1}`} key={row.name}>
+          {ranking.map((row, i) => (
+            <div className={`rank-row pos${i + 1}`} key={row.userId}>
               <span className="rank-medal">{i + 1}º</span>
-              <div className="mini-avatar">{row.name.charAt(0).toUpperCase()}</div>
-              <div className="rank-name">{row.name}</div>
+              <div className="mini-avatar">{row.username.charAt(0).toUpperCase()}</div>
+              <div className="rank-name">{row.username}</div>
               <div className="rank-pts">
-                {row.pts} <span>{t('rank.points')}</span>
+                {row.points} <span>{t('rank.points')}</span>
               </div>
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="panel">
+        <h3>{t('history.heading')}</h3>
+        {history.length === 0 && <p className="rooms-viewtext">{t('history.empty')}</p>}
+        {history.map((game) => (
+          <div className="room-row" key={game.finishedAt}>
+            <div>
+              <div className="room-name">{t(`room.cat.${game.theme}`)}</div>
+              <div className="room-meta">
+                {new Date(game.finishedAt).toLocaleDateString()} · {game.rounds} {t('room.create.rounds')}
+              </div>
+            </div>
+            <div>
+              <span className="status">
+                <span className={game.won ? 'status-dot on' : 'status-dot off'}>
+                  {game.won ? '●' : '○'}
+                </span>
+                <span>{game.won ? t('history.win') : t('history.loss')}</span>
+              </span>
+              <span className="rank-pts">
+                {game.points} <span>{t('rank.points')}</span>
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="panel">
