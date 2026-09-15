@@ -464,7 +464,7 @@ function Game() {
         <button
           type="button"
           className="btn btn-ghost btn-sm"
-          onClick={() => setEndgameOpen(true)}
+          onClick={() => setTestOpen(true)}
         >
           {t('endgame.test')}
         </button>
