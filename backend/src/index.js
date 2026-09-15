@@ -12,6 +12,7 @@ const { registerDrawHandlers } = require('./sockets/draw.socket');
 const { registerRoundHandlers, startGameLoop } = require('./sockets/round.socket');
 // Lobby (sala de espera) — módulo à parte do Thiago; ver sockets/lobby.socket.js
 const { registerLobbyHandlers, startLobbySweeper } = require('./sockets/lobby.socket');
+const { registerReportHandlers, startReportSweeper } = require('./sockets/report.socket');
 const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
 const { seedWords } = require('./game/words.repository');
 
@@ -60,6 +61,7 @@ io.use(requireAuthenticatedSocket);
 startAbsenceSweeper(io);
 startGameLoop(io);
 startLobbySweeper(io); // relógio dos 5 minutos das salas em espera
+startReportSweeper(io); // fecha as votações que ninguém terminou
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'as', socket.user.username);
@@ -68,6 +70,7 @@ io.on('connection', (socket) => {
   registerDrawHandlers(io, socket);
   registerRoundHandlers(io, socket);
   registerLobbyHandlers(io, socket); // depois dos de sala: precisa da sala já criada
+  registerReportHandlers(io, socket);
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
