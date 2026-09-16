@@ -67,11 +67,11 @@
 - 🔴 **Minor (1pt):** Progressive Web App (PWA) with offline support and installability.
 - 🔴 **Minor (1pt):** Custom-made design system with reusable components, including a proper color palette, typography, and icons (minimum: 10 reusable components).
 - 🔴 **Minor (1pt):** Implement advanced search functionality with filters, sorting, and pagination.
-- 🟢 **Minor (1pt):** File upload and management system.
-  - 🟢 Support multiple file types (images, documents, etc.).
-  - 🟢 Client-side and server-side validation (type, size, format).
-  - 🟢 Secure file storage with proper access control.
-  - 🟢 File preview functionality where applicable.
+- 🔴 **Minor (1pt):** File upload and management system.
+  - 🔴 Support multiple file types (images, documents, etc.).
+  - 🔴 Client-side and server-side validation (type, size, format).
+  - 🔴 Secure file storage with proper access control.
+  - 🔴 File preview functionality where applicable.
   - 🔴 Progress indicators for uploads.
   - 🔴 Ability to delete uploaded files.
 
@@ -99,10 +99,10 @@
   - 🟢 Users can upload an avatar (with a default avatar if none provided).
   - 🟢 Users can add other users as friends and see their online status.
   - 🟢 Users have a profile page displaying their information.
-- 🔴 **Minor (1pt):** Game statistics and match history (requires a game module).
+- 🟢 **Minor (1pt):** Game statistics and match history (requires a game module).
   - 🟢 Track user game statistics (wins, losses, ranking, level, etc.).
-  - 🔴 Display match history (1v1 games, dates, results, opponents).
-  - 🔴 Show achievements and progression.
+  - 🟡 Display match history (1v1 games, dates, results, opponents). --> maybe we need to upgrade this part?
+  - 🟢 Show achievements and progression.
   - 🟢 Leaderboard integration.
 - 🔴 **Minor (1pt):** Implement remote authentication with OAuth 2.0 (Google, GitHub, 42, etc.).
 - 🔴 **Major (2pt):** Advanced permissions system:
@@ -155,10 +155,10 @@
   - 🟢 Handle network latency and disconnections gracefully.
   - 🟢 Provide a smooth user experience for remote gameplay.
   - 🟢 Implement reconnection logic.
-- 🔴 **Major (2pt):** Multiplayer game (more than two players).
-  - 🔴 Support for three or more players simultaneously.
-  - 🔴 Fair gameplay mechanics for all participants.
-  - 🔴 Proper synchronization across all clients.
+- 🟢 **Major (2pt):** Multiplayer game (more than two players).
+  - 🟢 Support for three or more players simultaneously.
+  - 🟢 Fair gameplay mechanics for all participants.
+  - 🟢 Proper synchronization across all clients.
 - 🔴 **Major (2pt):** Add another game with user history and matchmaking.
   - 🔴 Implement a second distinct game.
   - 🔴 Track user history and statistics for this game.
@@ -185,10 +185,10 @@
   - 🔴 Different maps or themes.
   - 🟢 Customizable game settings.
   - 🟢 Default options must be available.
-- 🔴 **Minor (1pt):** A gamification system to reward users for their actions.
+- 🟢 **Minor (1pt):** A gamification system to reward users for their actions.
   - 🟢 Implement at least 3 of the following: achievements, badges, leaderboards, XP/level system, daily challenges, rewards
   - 🟢 System must be persistent (stored in database)
-  - 🔴 Visual feedback for users (notifications, progress bars, etc.)
+  - 🟢 Visual feedback for users (notifications, progress bars, etc.)
   - 🟢 Clear rules and progression mechanics
 - 🔴 **Minor (1pt):** Implement spectator mode for games.
   - 🔴 Allow users to watch ongoing games.
