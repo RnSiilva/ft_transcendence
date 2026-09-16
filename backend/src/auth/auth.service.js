@@ -65,11 +65,17 @@ async function loginUser({ identifier, email, login, password }) {
     throw GENERIC_ERROR;
   }
 
+  if (!user.passwordHash) {
+    await bcrypt.compare(password, '$2a$12$DummyCompareNonExistingUserToMakeTheTimmingTheSame.1ms.vs.250ms');
+    throw GENERIC_ERROR;
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash); // extracts the salt from the hashed password, hashes the incoming one and compares hashes
   if (!valid)
     throw GENERIC_ERROR;
 
   const { passwordHash: _ph, ...safeUser } = user;
+  safeUser.hasPassword = !!_ph;
   return safeUser;
 }
 
@@ -115,8 +121,13 @@ async function getUserById(id) {
       gamesPlayed: true,
       wins: true,
       createdAt: true,
+      passwordHash: true,
     },
   });
+  if (user) {
+    user.hasPassword = !!user.passwordHash;
+    delete user.passwordHash;
+  }
   return user;
 }
 
@@ -141,25 +152,28 @@ async function updateUserProfile(userId, { username, avatarUrl, currentPassword,
   }
 
   if (newPassword) {
-    if (!currentPassword) {
-      const err = new Error('Current password is required to set a new password');
-      err.status = 400;
-      err.field = 'currentPassword';
-      throw err;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        const err = new Error('Current password is required to set a new password');
+        err.status = 400;
+        err.field = 'currentPassword';
+        throw err;
+      }
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) {
+        const err = new Error('Current password is incorrect');
+        err.status = 400;
+        err.field = 'currentPassword';
+        throw err;
+      }
     }
+
     if (newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
       const err = new Error('New password must be at least 8 characters and contain a letter and a number');
       err.status = 400;
       err.field = 'newPassword';
-      throw err;
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!valid) {
-      const err = new Error('Current password is incorrect');
-      err.status = 400;
-      err.field = 'currentPassword';
       throw err;
     }
 
@@ -180,20 +194,59 @@ async function updateUserProfile(userId, { username, avatarUrl, currentPassword,
       gamesPlayed: true,
       wins: true,
       createdAt: true,
+      passwordHash: true,
     },
   });
+
+  if (updatedUser) {
+    updatedUser.hasPassword = !!updatedUser.passwordHash;
+    delete updatedUser.passwordHash;
+  }
 
   return updatedUser;
 }
 
 async function deleteUser(userId) {
+  const id = Number(userId);
   await prisma.friend.deleteMany({
-    where: { OR: [{ userId }, { friendId: userId }] },
+    where: { OR: [{ senderId: id }, { receiverId: id }] },
   });
   await prisma.report.deleteMany({
-    where: { OR: [{ reportedId: userId }, { reporterId: userId }] },
+    where: { OR: [{ reportedId: id }, { reporterId: id }] },
   });
-  await prisma.user.delete({ where: { id: userId } });
+  await prisma.user.delete({ where: { id } });
 }
 
-module.exports = { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser };
+async function findOrCreate42User(profile) {
+  let user = await prisma.user.findUnique({ where: { intraId: profile.id } });
+  if (user) return user;
+
+  user = await prisma.user.findUnique({ where: { email: profile.email } });
+  if (user) {
+    return prisma.user.update({
+      where: { id: user.id },
+      data: { intraId: profile.id },
+    });
+  }
+
+  let username = profile.login;
+  let existingUsername = await prisma.user.findUnique({ where: { username } });
+  if (existingUsername) {
+    username = `${username}_42`;
+    let doubleCheck = await prisma.user.findUnique({ where: { username } });
+    if (doubleCheck) username = `${username}_${Math.floor(Math.random() * 10000)}`;
+  }
+
+  return prisma.user.create({
+    data: {
+      email: profile.email,
+      username,
+      intraId: profile.id,
+      avatarUrl: profile.image?.link || null,
+      passwordHash: null,
+      language: 'en',
+    },
+  });
+}
+
+module.exports = { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser, findOrCreate42User };

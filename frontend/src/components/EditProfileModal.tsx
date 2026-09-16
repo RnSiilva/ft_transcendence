@@ -44,6 +44,7 @@ type Props = {
   currentNickname: string
   currentEmail: string
   currentPhoto: string | null
+  hasPassword?: boolean
   onClose: () => void
   onSave: (updatedUser: Record<string, unknown>) => void
 }
@@ -52,6 +53,7 @@ function EditProfileModal({
   currentNickname,
   currentEmail,
   currentPhoto,
+  hasPassword = true,
   onClose,
   onSave,
 }: Props) {
@@ -71,6 +73,12 @@ function EditProfileModal({
   function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const MAX_SIZE = 2 * 1024 * 1024 // 2 MB
+    if (file.size > MAX_SIZE) {
+      setError(t('errors.avatarTooLarge'))
+      e.target.value = '' // clear the input so the user can try again
+      return
+    }
     const reader = new FileReader()
     reader.onload = (ev) => {
       setPhoto(ev.target?.result as string)
@@ -117,12 +125,9 @@ function EditProfileModal({
     }
 
     if (newPassword) {
-      if (!currentPassword) {
-        setError(t('errors.fillAllFields'))
-        setSaving(false)
-        return
+      if (currentPassword) {
+        payload.currentPassword = currentPassword
       }
-      payload.currentPassword = currentPassword
       payload.newPassword = newPassword
     }
 
@@ -137,7 +142,11 @@ function EditProfileModal({
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error || t('errors.networkError'))
+        let errMessage = data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error || t('errors.networkError')
+        if (errMessage === 'Username already taken') {
+          errMessage = t('errors.usernameTaken')
+        }
+        setError(errMessage)
         setSaving(false)
         return
       }
@@ -210,12 +219,14 @@ function EditProfileModal({
 
         <div className="field-dark">
           <label>{t('profile.changepass')}</label>
-          <input
-            type="password"
-            placeholder={t('profile.currentpass')}
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-          />
+          {hasPassword && (
+            <input
+              type="password"
+              placeholder={t('profile.currentpass')}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+            />
+          )}
           <input
             type="password"
             placeholder={t('profile.newpass')}

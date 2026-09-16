@@ -44,6 +44,8 @@ function Register() {
     }
     if (!usernameVal || usernameVal.length < 3 || usernameVal.length > 20) {
       errs.username = t('errors.usernameLength')
+    } else if (!/^[a-zA-Z0-9_-]+$/.test(usernameVal)) {
+      errs.username = t('errors.usernameInvalid') || 'Username may only contain letters, numbers, underscores, and hyphens'
     }
     if (!passwordVal || passwordVal.length < 8 || !/[a-zA-Z]/.test(passwordVal) || !/[0-9]/.test(passwordVal)) {
       errs.password = t('errors.passwordRequirements')
@@ -77,11 +79,18 @@ function Register() {
       const data = await res.json()
 
       if (!res.ok) {
-        setErrors(data.errors ?? { general: data.error ?? t('errors.registrationFailed') })
+        const mappedErrors = data.errors ? { ...data.errors } : undefined
+        if (mappedErrors?.username === 'Username already taken') {
+          mappedErrors.username = t('errors.usernameTaken')
+        }
+        let generalError = data.error ?? t('errors.registrationFailed')
+        if (generalError === 'Username already taken') generalError = t('errors.usernameTaken')
+        
+        setErrors(mappedErrors ?? { general: generalError })
         return
       }
 
-      navigate('/profile')
+      window.location.href = '/profile'
     } catch {
       setErrors({ general: t('errors.networkError') })
     } finally {
@@ -133,7 +142,7 @@ function Register() {
             <label>{t('signup.nickname')}</label>
             <input
               type="text"
-              placeholder="utilizador_demo"
+              placeholder="nickname"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -190,6 +199,28 @@ function Register() {
             {loading ? '...' : t('signup.create')}
           </button>
         </form>
+
+        <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+          <span style={{ padding: '0 10px', fontSize: 12, color: 'var(--chalk-dim)', textTransform: 'uppercase' }}>{t('login.or')}</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+        </div>
+        <a
+          href={`${API}/auth/42`}
+          className="btn btn-block"
+          style={{
+            background: '#00BABC',
+            color: '#fff',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px'
+          }}
+        >
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/8d/42_Logo.svg" alt="42" style={{ height: '18px', filter: 'brightness(0) invert(1)' }} />
+          {t('login.with42')}
+        </a>
 
         <p className="switch">
           <span>{t('signup.hasaccount')}</span>{' '}

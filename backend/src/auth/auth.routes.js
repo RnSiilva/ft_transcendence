@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { register, login, updateLanguage, logout, me, updateProfile, deleteAccount } = require('./auth.controller');
+const { register, login, updateLanguage, logout, me, updateProfile, deleteAccount, loginWith42, fortyTwoCallback } = require('./auth.controller');
 const { requireAuth } = require('./auth.middleware'); // if a user does not have a valid JWT cookie, the request is block with a 401 error
 
 const router = Router();
@@ -23,5 +23,9 @@ router.put('/profile', requireAuth, updateProfile);
 router.delete('/account', requireAuth, deleteAccount);
 router.post('/logout', logout);
 router.get('/me', requireAuth, me);
+
+// 42 OAuth 2.0 routes
+router.get('/42', loginWith42);
+router.get('/42/callback', fortyTwoCallback);
 
 module.exports = router;

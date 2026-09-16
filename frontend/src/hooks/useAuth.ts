@@ -8,6 +8,7 @@
 */
 
 import { useState, useEffect, useCallback } from 'react';
+import { disconnectSocket } from '../socket';
 
 const API = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -17,6 +18,7 @@ export interface AuthUser {
   username: string;
   avatarUrl?: string | null;
   language?: string | null;
+  hasPassword?: boolean;
   rank: number;
   totalPoints: number;
   gamesPlayed: number;
@@ -80,11 +82,15 @@ export function useAuth(): UseAuthReturn {
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch(`${API}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    setUser(null);
+    try {
+      await fetch(`${API}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } finally {
+      disconnectSocket();
+      setUser(null);
+    }
   }, []);
 
   return { user, loading, logout, refresh, updateLanguage };

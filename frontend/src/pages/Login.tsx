@@ -49,7 +49,7 @@ function Login() {
       }
 
       void data
-      navigate('/profile')
+      window.location.href = '/profile'
     } catch {
       setError(t('errors.networkError'))
     } finally {
@@ -70,11 +70,11 @@ function Login() {
 
         <form id="login-form" onSubmit={handleSubmit}>
           <div className="field">
-            <label>{t('login.email')}</label>
+            <label>{t('login.identifier')}</label>
             <input
               id="login-identifier"
               type="text"
-              placeholder="tu@exemplo.com"
+              placeholder={t('login.placeholder')}
               value={login}
               onChange={(e) => setLogin(e.target.value)}
               required
@@ -100,6 +100,28 @@ function Login() {
             {loading ? '...' : t('login.enter')}
           </button>
         </form>
+
+        <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+          <span style={{ padding: '0 10px', fontSize: 12, color: 'var(--chalk-dim)', textTransform: 'uppercase' }}>{t('login.or')}</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+        </div>
+        <a
+          href={`${API}/auth/42`}
+          className="btn btn-block"
+          style={{
+            background: '#00BABC',
+            color: '#fff',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px'
+          }}
+        >
+          <img src="https://upload.wikimedia.org/wikipedia/commons/8/8d/42_Logo.svg" alt="42" style={{ height: '18px', filter: 'brightness(0) invert(1)' }} />
+          {t('login.with42')}
+        </a>
 
         <p className="switch">
           <span>{t('login.noaccount')}</span>{' '}
