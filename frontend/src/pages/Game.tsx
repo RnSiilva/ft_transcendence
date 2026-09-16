@@ -142,21 +142,15 @@ function Game() {
   // ---- placar recolhido no telemóvel (só o próprio; toque mostra todos) --
   const [scoreOpen, setScoreOpen] = useState(false)
 
-  // ---- denunciar um jogador (demo local com votação simulada) ----
-  // AQUI O CODIGO DO SERVIDOR ('report:start' abre a votação e mostra o
-  // mini-modal a TODOS os ecrãs da sala; 'report:vote' conta 1 voto por
-  // jogador; com MAIS de 50% o denunciado é expulso como se saísse da
-  // partida — perde os pontos e sai direto; o denunciado recebe apenas o
-  // aviso, sem botões de voto)
+  // ---- denunciar um jogador ----
+  // A votação vive no servidor: conta 1 voto por jogador, precisa de MAIS de
+  // metade e expulsa como se a pessoa tivesse saído, perdendo os pontos.
   const [reportOpen, setReportOpen] = useState(false)
-  const [reportVote, setReportVote] = useState<
-    { name: string; votes: number; total: number } | null
-  >(null)
-  const [demoPlayers, setDemoPlayers] = useState([
+  const demoPlayers = [
     { id: 'c', name: 'Carlos', pts: 140 },
     { id: 'u', name: 'utilizador_demo', pts: 120 },
     { id: 'r', name: 'Renan', pts: 95 },
-  ])
+  ]
 
   // O tempo é do servidor: todos os jogadores da sala veem o mesmo número, e
   // ninguém ganha segundos por ter a página mais lenta.
@@ -408,35 +402,19 @@ function Game() {
         pts: player.pts,
       }))
 
-  function expelByName(name: string) {
-    // DEMO: no real é o SERVIDOR que expulsa (força o room:leave do
-    // denunciado quando os votos passam de 50%).
-    setDemoPlayers((list) => list.filter((p) => p.name !== name))
-    setDemoMessages((all) => [
-      ...all,
-      { name: '', text: `${name} ${t('game.report.expelled')}`, system: true },
-    ])
-    setReportVote(null)
-  }
-
-  function startReport(name: string) {
-    // Todos os jogadores da sala menos o denunciado podem votar.
+  // Se o servidor recusar, a razão vai para o chat: o silêncio era o que
+  // fazia isto parecer partido.
+  async function startReport(targetId: string) {
     setReportOpen(false)
-    setReportVote({ name, votes: 0, total: Math.max(scoreRows.length - 1, 1) })
-  }
 
-  function voteExpel() {
-    if (!reportVote) return
-    const updated = { ...reportVote, votes: reportVote.votes + 1 }
-    const majority = Math.floor(updated.total / 2) + 1
-    if (updated.votes >= majority) {
-      expelByName(updated.name)
-      return
-    }
-    setReportVote(updated)
-    // DEMO: o voto de outro jogador chega a seguir e fecha a votação.
-    const name = updated.name
-    window.setTimeout(() => expelByName(name), 1800)
+    const answer = await game.startReport(targetId)
+    if (answer.ok) return
+
+    const reason = answer.code === 'NEED_MORE_PLAYERS'
+      ? t('game.report.needplayers')
+      : t('game.report.failed')
+
+    setDemoMessages((all) => [...all, { name: '', text: reason, system: true }])
   }
 
   return (
@@ -486,7 +464,7 @@ function Game() {
         <button
           type="button"
           className="btn btn-ghost btn-sm"
-          onClick={() => setEndgameOpen(true)}
+          onClick={() => setTestOpen(true)}
         >
           {t('endgame.test')}
         </button>
@@ -713,7 +691,7 @@ function Game() {
                     key={member.id}
                     type="button"
                     className="choose-word"
-                    onClick={() => startReport(member.name)}
+                    onClick={() => startReport(member.id)}
                   >
                     <span className="cat">🚩</span>
                     <span>{member.name}</span>
@@ -729,30 +707,39 @@ function Game() {
         </div>
       )}
 
-      {/* Votação no canto direito de TODOS os ecrãs da sala; o denunciado
-          vê apenas o aviso, sem botões. */}
-      {reportVote && (
+      {/* Carregar duas vezes não muda nada: o servidor conta 1 voto por pessoa. */}
+      {game.flagged && (
         <div className="report-toast">
-          {reportVote.name === 'utilizador_demo' ? (
-            <p className="report-warned">🚩 {t('game.report.warned')}</p>
-          ) : (
-            <>
-              <p className="report-question">
-                🚩 <b>{t('lobby.kick')} {reportVote.name}?</b>
-              </p>
-              <p className="report-votes">
-                {reportVote.votes}/{reportVote.total} {t('game.report.votes')}
-              </p>
-              <div className="report-actions">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReportVote(null)}>
-                  {t('game.report.back')}
-                </button>
-                <button type="button" className="btn btn-danger btn-sm" onClick={voteExpel}>
-                  {t('lobby.kick')}
-                </button>
-              </div>
-            </>
-          )}
+          <p className="report-warned">🚩 {t('game.report.warned')}</p>
+        </div>
+      )}
+
+      {game.reportVote && (
+        <div className="report-toast">
+          <p className="report-question">
+            🚩 <b>{t('lobby.kick')} {game.reportVote.name}?</b>
+          </p>
+          <p className="report-votes">
+            {game.reportVote.votes}/{game.reportVote.needed} {t('game.report.votes')}
+          </p>
+          <div className="report-actions">
+            <button type="button" className="btn btn-danger btn-sm" onClick={() => game.voteExpel()}>
+              {t('lobby.kick')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {game.expelled && (
+        <div className="modal-overlay show">
+          <div className="modal-panel lobby-small">
+            <h2>🚩 {t('game.report.youwere')}</h2>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/rooms')}>
+                {t('game.report.back')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

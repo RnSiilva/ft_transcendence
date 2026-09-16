@@ -9,6 +9,7 @@
     "test:scoring": "node scripts/scoring-test.js",
     "test:words": "node scripts/words-test.js",
     "test:round": "node scripts/round-test.js",
+    "test:report": "node scripts/report-test.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
