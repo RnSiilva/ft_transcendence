@@ -100,11 +100,11 @@
   - 🟢 Users can add other users as friends and see their online status.
   - 🟢 Users have a profile page displaying their information.
 - 🔴 **Minor (1pt):** Game statistics and match history (requires a game module).
-  - 🔴 Track user game statistics (wins, losses, ranking, level, etc.).
+  - 🟢 Track user game statistics (wins, losses, ranking, level, etc.).
   - 🔴 Display match history (1v1 games, dates, results, opponents).
   - 🔴 Show achievements and progression.
-  - 🔴 Leaderboard integration.
-- 🟢 **Minor (1pt):** Implement remote authentication with OAuth 2.0 (Google, GitHub, 42, etc.).
+  - 🟢 Leaderboard integration.
+- 🔴 **Minor (1pt):** Implement remote authentication with OAuth 2.0 (Google, GitHub, 42, etc.).
 - 🔴 **Major (2pt):** Advanced permissions system:
   - 🔴 View, edit, and delete users (CRUD).
   - 🔴 Roles management (admin, user, guest, moderator, etc.).
@@ -183,13 +183,13 @@
 - 🔴 **Minor (1pt):** Game customization options.
   - 🔴 Power-ups, attacks, or special abilities.
   - 🔴 Different maps or themes.
-  - 🔴 Customizable game settings.
-  - 🔴 Default options must be available.
+  - 🟢 Customizable game settings.
+  - 🟢 Default options must be available.
 - 🔴 **Minor (1pt):** A gamification system to reward users for their actions.
-  - 🔴 Implement at least 3 of the following: achievements, badges, leaderboards, XP/level system, daily challenges, rewards
-  - 🔴 System must be persistent (stored in database)
+  - 🟢 Implement at least 3 of the following: achievements, badges, leaderboards, XP/level system, daily challenges, rewards
+  - 🟢 System must be persistent (stored in database)
   - 🔴 Visual feedback for users (notifications, progress bars, etc.)
-  - 🔴 Clear rules and progression mechanics
+  - 🟢 Clear rules and progression mechanics
 - 🔴 **Minor (1pt):** Implement spectator mode for games.
   - 🔴 Allow users to watch ongoing games.
   - 🔴 Real-time updates for spectators.

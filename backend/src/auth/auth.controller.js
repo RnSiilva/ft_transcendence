@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser, findOrCreate42User } = require('./auth.service');
+const { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser, findOrCreate42User, checkAchievements } = require('./auth.service');
 
 const COOKIE_NAME = 'token';
 const COOKIE_OPTIONS = {
@@ -111,6 +111,7 @@ function logout(req, res) {
 // Reads req.user.id from JWT and returns current user's profile and game statistics (used on page refresh)
 async function me(req, res) {
   try {
+    await checkAchievements(req.user.id);
     const user = await getUserById(req.user.id);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
     return res.status(200).json({ user });
