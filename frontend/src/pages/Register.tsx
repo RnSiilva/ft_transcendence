@@ -1,6 +1,7 @@
-import { useState, type FormEvent, type ChangeEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Link, Navigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
+import { useAuth } from '../hooks/useAuth'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -13,8 +14,16 @@ interface FieldErrors {
 }
 
 function Register() {
-  const navigate = useNavigate()
   const { t } = useLanguage()
+  const { user, loading: checkingSession } = useAuth()
+
+  if (checkingSession) {
+    return null
+  }
+  if (user) {
+    return <Navigate to="/profile" replace />
+  }
+
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -24,7 +33,7 @@ function Register() {
   const [photo, setPhoto] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
 
-  function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
+  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
@@ -56,7 +65,7 @@ function Register() {
     return errs
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     const clientErrors = validate(email, username, password, confirmPassword)

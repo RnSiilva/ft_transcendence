@@ -1,12 +1,11 @@
-import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Link, Navigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
 function Login() {
-  const navigate = useNavigate()
   const { t } = useLanguage()
   const { user, loading: checkingSession } = useAuth()
   const [login, setLogin] = useState('')
@@ -14,12 +13,16 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  if (checkingSession) {
+    return null
+  }
+
   // Quem já tem sessão não volta a ver o login: vai direto para o perfil.
-  if (!checkingSession && user) {
+  if (user) {
     return <Navigate to="/profile" replace />
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
 

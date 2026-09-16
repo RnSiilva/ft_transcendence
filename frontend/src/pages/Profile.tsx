@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
@@ -109,15 +109,7 @@ function Profile() {
     window.location.href = '/login'
   }
 
-  function enterRoom(roomLang: Lang) {
-    if (roomLang !== lang) {
-      setPendingRoomLang(roomLang)
-      return
-    }
-    navigate('/game')
-  }
-
-  async function addFriend(e: FormEvent<HTMLFormElement>) {
+  async function addFriend(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setFriendError('')
     setSentTo('')
@@ -356,13 +348,13 @@ function Profile() {
         {history.map((game) => (
           <div className="room-row" key={game.finishedAt}>
             <div>
-              <div className="room-name">{t(`room.cat.${game.theme}`)}</div>
+              <div className="room-name">{t(`room.cat.${(game.theme || '').toLowerCase()}`)}</div>
               <div className="room-meta">
                 {new Date(game.finishedAt).toLocaleDateString()} · {game.rounds} {t('room.create.rounds')}
               </div>
             </div>
-            <div>
-              <span className="status">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span className="status" style={{ marginRight: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span className={game.won ? 'status-dot on' : 'status-dot off'}>
                   {game.won ? '●' : '○'}
                 </span>

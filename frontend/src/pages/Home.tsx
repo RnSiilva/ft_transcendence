@@ -3,10 +3,12 @@ import { useLanguage } from '../i18n/LanguageContext'
 import HeroLogo from '../components/HeroLogo'
 import HeroIllustration from '../components/HeroIllustration'
 import PencilDivider from '../components/PencilDivider'
+import { useAuth } from '../hooks/useAuth'
 
 function Home() {
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   return (
     <section>
@@ -31,7 +33,7 @@ function Home() {
           type="button"
           className="btn btn-primary cta-btn"
           style={{ fontSize: 17, padding: '15px 34px' }}
-          onClick={() => navigate('/login')}
+          onClick={() => navigate(user ? '/rooms' : '/login')} /* access to the rooms if we're logged in, or the login page if we're not */
         >
           <span>{t('cta.play')}</span>
           {Array.from({ length: 11 }, (_, i) => (
