@@ -691,8 +691,13 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .room-row:last-of-type,.friend-row:last-of-type{border-bottom:none;}
 .room-row .room-name{font-weight:600;font-size:14.5px;}
 .room-row .room-meta{color:var(--chalk-dim);font-size:12.5px;}
-.friend-row .who{display:flex;align-items:center;gap:10px;min-width:0;flex:1;overflow:hidden;}
-.friend-row .who > span:first-of-type{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* sem overflow:hidden no .who: cortava o cartão de hover (posição absoluta);
+   o ellipsis de nomes longos vive agora no próprio nome (.phc-name) */
+.friend-row .who{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
+.friend-row .phc-name{
+  display:inline-block;max-width:190px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 .friend-row .mini-avatar{width:32px;height:32px;border-radius:50%;background:var(--canvas);border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:var(--display);}
 .status-dot{font-size:12px;margin-right:5px;}
 .status-dot.on{color:var(--green);}
@@ -741,8 +746,13 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 /* o Sair da partida vive no fim da página, fora do rodapé fixo */
 .leave-row{max-width:1180px;margin:28px auto 0;display:flex;justify-content:flex-end;}
 .canvas-box{grid-area:board;}
-.game-grid .chat-box{grid-area:chat;height:100%;}
-.game-grid .chat-log{max-height:none;}
+/* height:0 + min-height:100% = a caixa do chat NÃO conta para o tamanho da
+   linha da grelha (é o QUADRO que define a altura) e depois estica até ela.
+   Sem isto, cada mensagem esticava a linha e empurrava o Enviar para baixo.
+   O registo (flex:1, min-height:0) enche o espaço e ganha barra de rolagem
+   (o overflow-y:auto vem da regra base do .chat-log). */
+.game-grid .chat-box{grid-area:chat;height:0;min-height:100%;}
+.game-grid .chat-log{max-height:none;min-height:0;}
 /* na coluna lateral estreita, o botão Enviar fica por baixo da mensagem */
 .game-grid .chat-input-row{flex-direction:column;}
 .game-grid .chat-input-row input{min-width:0;}
@@ -797,6 +807,47 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
   100%{transform:translate(var(--sway),105vh) rotate(calc(var(--tilt) + 540deg));opacity:.85;}
 }
 
+/* cartão de jogador (hover no username: stats + amigo + report) */
+.phc{position:relative;display:inline-flex;}
+.phc-name{
+  background:none;border:none;padding:0;margin:0;cursor:pointer;
+  font:inherit;color:inherit;font-weight:inherit;
+  border-bottom:1.5px dashed var(--line-strong);
+}
+.phc-name:hover{border-bottom-color:var(--yellow);}
+.phc-card{
+  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
+  z-index:140;width:210px;display:flex;flex-direction:column;gap:10px;
+  background:var(--canvas-2);border:1px solid var(--line-strong);border-radius:14px;
+  padding:14px;box-shadow:0 12px 32px rgba(0,0,0,.55);animation:phc-pop .22s;
+  text-align:left;font-family:var(--body);font-size:13px;font-weight:400;
+  letter-spacing:normal;cursor:default;
+}
+/* animação própria: inclui o translateX para o cartão não saltar para o
+   lado quando a animação (que substitui o transform) termina */
+@keyframes phc-pop{
+  from{opacity:0;transform:translateX(-50%) scale(.92);}
+  to{opacity:1;transform:translateX(-50%) scale(1);}
+}
+.phc-head{display:flex;align-items:center;gap:8px;font-size:14px;}
+.phc-head .mini-avatar{
+  width:30px;height:30px;border-radius:50%;background:var(--canvas);
+  border:1.5px solid var(--line-strong);display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:700;font-family:var(--display);flex:none;
+}
+.phc-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;}
+.phc-stats span{display:flex;flex-direction:column;}
+.phc-stats i{font-style:normal;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--chalk-dim);}
+.phc-stats b{font-family:var(--mono);font-size:14px;color:var(--chalk);}
+.phc-actions{display:flex;flex-direction:column;gap:7px;}
+.phc-actions .btn{width:100%;}
+.phc-report{color:var(--red);border-color:var(--red);}
+.phc-tag{
+  text-align:center;font-size:12px;font-weight:700;color:var(--green);
+  border:1.5px dashed var(--line-strong);border-radius:10px;padding:7px 10px;
+}
+.phc-error{color:var(--red);font-size:11.5px;text-align:center;}
+
 /* votação de denúncia: canto direito de todos os ecrãs */
 .report-toast{
   position:fixed;right:16px;bottom:96px;z-index:130;max-width:250px;
@@ -811,7 +862,10 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 
 @media (max-width:960px){
   .game-grid,.game-grid.guessing{grid-template-columns:1fr;grid-template-areas:"board" "chat" "score";}
-  .score-panel{position:sticky;bottom:8px;gap:10px 18px;padding:12px 14px;}
+  /* Pedido do Thiago (2026-09-17): SEM placar fixo no telemóvel — fica no
+     fluxo normal, abaixo do chat/Enviar, sem tapar nada. position:static
+     anula o sticky da regra BASE (linha ~740), que continuava a colá-lo. */
+  .score-panel{gap:10px 18px;padding:12px 14px;position:static;box-shadow:none;}
   .score-panel .score-list{flex-direction:row;flex-wrap:wrap;gap:8px 18px;}
   .score-panel .score-row{font-size:12.5px;}
   .game-grid .chat-box{height:auto;}
@@ -849,7 +903,13 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .tools .spacer{flex:1;}
 #draw-canvas{
   width:100%;aspect-ratio:16/10;background:var(--paper);border-radius:14px;
-  display:block;cursor:crosshair;touch-action:none;
+  display:block;touch-action:none;
+}
+/* Cursor lápis SÓ na vez de desenhar (classe posta pelo Game.tsx). Cursor
+   próprio porque o crosshair do Windows é branco/invertido e desaparece
+   sobre o quadro branco. Ponta do lápis no canto (3,21). */
+#draw-canvas.drawing{
+  cursor:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M3 21 L5.5 14.5 L17 3 L21 7 L9.5 18.5 Z" fill="%23E64A3C" stroke="%2315161B" stroke-width="2" stroke-linejoin="round"/><path d="M3 21 L5.5 14.5 L9.5 18.5 Z" fill="%2315161B"/></svg>') 3 21, crosshair;
 }
 .guess-row{display:flex;gap:10px;margin-top:12px;}
 .guess-row input{
@@ -1036,6 +1096,11 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .lobby-count b{color:var(--chalk);}
 .lobby-timer{color:var(--yellow);}
 .lobby-timer.danger{color:var(--red);}
+.lobby-phase{
+  margin:0 0 12px;font-size:12.5px;font-weight:700;color:var(--blue);
+  display:flex;align-items:center;gap:7px;
+}
+.lobby-phase::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--blue);animation:live-pulse 2s infinite;}
 .lobby-list{display:flex;flex-direction:column;margin-bottom:14px;}
 .lobby-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
 .lobby-row:last-of-type{border-bottom:none;}
@@ -1069,6 +1134,9 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .rank-tab.active{border-color:var(--yellow);color:var(--yellow);}
 .rank-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
 .rank-row:last-of-type{border-bottom:none;}
+/* Linha do ranking clicável (abre o perfil): mão + realce no hover. */
+.rank-row.clickable{cursor:pointer;border-radius:8px;transition:background .15s;}
+.rank-row.clickable:hover{background:var(--canvas-2);}
 .rank-row .mini-avatar{
   flex:none;width:32px;height:32px;border-radius:50%;background:var(--canvas);
   border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;
@@ -1089,23 +1157,59 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .edit-avatar-upload{color:var(--blue);cursor:pointer;}
 .edit-avatar-upload:hover{text-decoration:underline;}
 .edit-avatar-hint{font-size:11.5px;color:var(--chalk-dim);}
+.remove-photo-btn{margin-top:6px;color:var(--red);border-color:var(--red);}
+
+/* títulos sketch nas páginas de conteúdo (Regras/Termos/Privacidade/Salas).
+   Altura fixa como no About (height:auto colapsava o reflexo); com
+   max-width, títulos longos encaixam dentro do SVG sem sair do ecrã. */
+.page-title{margin:0 auto 36px;}
+.page-title .sketch-text,
+.rooms-title .sketch-text{max-width:100%;height:auto;max-height:58px;}
+.sketch-title.left{align-items:flex-start;}
+.rooms-title.sketch-title{margin-bottom:10px;}
+.rooms-title .sketch-text{height:46px;}
+
+/* perfil público (só leitura) + links de username */
+.pub-back{display:inline-flex;margin-bottom:20px;}
+.pub-tags{display:flex;align-items:center;gap:12px;margin-top:4px;}
+.pub-friend-tag{font-size:12px;font-weight:700;color:var(--green);}
+.friend-link{color:inherit;font-weight:inherit;border-bottom:1.5px dashed var(--line-strong);}
+.friend-link:hover{border-bottom-color:var(--yellow);}
+.phc-link{color:inherit;}
+.phc-link:hover{color:var(--yellow);}
+
+/* resultado da pesquisa de amigos: pré-visualização antes do pedido */
+.found-user{background:var(--canvas);border:1.5px dashed var(--line-strong);border-radius:12px;padding:10px 14px;margin-top:12px;}
+.found-user-meta{color:var(--chalk-dim);font-size:12px;font-family:var(--mono);}
+
+/* sino de pedidos de amizade sobre a foto do perfil */
+.friend-notif{
+  position:absolute;top:-6px;right:-6px;min-width:27px;height:27px;
+  border-radius:999px;background:var(--red);color:#fff;
+  font-family:var(--display);font-weight:800;font-size:13px;
+  display:flex;align-items:center;justify-content:center;padding:0 7px;
+  border:3px solid var(--canvas);cursor:pointer;
+  box-shadow:0 4px 14px rgba(255,75,62,.45);animation:acerto-pop .45s;
+  transition:transform .12s;
+}
+.friend-notif:hover{transform:scale(1.12);}
 
 /* telemóvel: adicionar amigos em coluna (o botão saía do ecrã) */
 @media (max-width:560px){
   .inline-add{flex-direction:column;}
   .inline-add .btn{width:100%;}
   .inline-add input{width:100%; box-sizing:border-box;}
-  
+
   .stat{min-width:0;}
   .stat b{font-size:18px;}
   .stat span{font-size:10px;}
-  
+
   .achievement-name{display:none;}
   .achievement-card{padding: 18px 0;}
   .achievements-grid{gap:6px;}
 }
 
-/* ---------- ACHIEVEMENTS ---------- */
+/* ---------- ACHIEVEMENTS (badges do Carlos, ramo register-login) ---------- */
 .achievements-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1180,4 +1284,16 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
   color: var(--blue);
   font-weight: bold;
   margin-top: 4px;
+}
+
+/* Listas do perfil (últimas partidas e amigos): no máximo ~8 linhas
+   visíveis; acima disso ganham barra de rolagem para o perfil não crescer
+   sem fim. A altura é dada pelas próprias linhas — .scrolls é ativada só
+   quando há mais de 8 (ver Profile.tsx), por isso ≤8 não corta nada. */
+.scroll-list.scrolls{
+  /* ~8 linhas (cada ≈54px com avatar/padding) antes de rolar. */
+  max-height:440px;overflow-y:auto;
+  padding-right:6px;
+  /* separa a barra do conteúdo e evita salto de layout ao aparecer */
+  scrollbar-gutter:stable;
 }

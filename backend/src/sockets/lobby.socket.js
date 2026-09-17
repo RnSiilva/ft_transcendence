@@ -24,11 +24,18 @@ const rooms = require('../game/rooms');
 const { forgetMember } = require('./round.socket');
 
 const LOBBY_LIFETIME_MS = 5 * 60 * 1000;
+// Decisão final da equipa (2026-09-16): são precisos 3 para INICIAR; a meio
+// da partida pode continuar-se com 2 (round.socket só aborta abaixo de 2,
+// e aí a sala fecha de imediato sem pontos para ninguém).
 const READY_MIN_PLAYERS = 3;
 const READY_REPEAT_MS = 60 * 1000;
 
 /**
- * roomCode -> { creatorUserId, roomName, started, promptAt }
+ * roomCode -> { creatorUserId, roomName, waiting, started, promptAt }
+ * waiting: true só para salas abertas pela página de salas ('lobby:open') —
+ * essas ficam em sala de espera (room.lobbyWaiting trava o motor de rondas)
+ * até ao 'lobby:start'. Salas criadas diretamente pelo /game continuam a
+ * arrancar sozinhas com 2 jogadores, como antes.
  * promptAt: null = avisa assim que houver 3; timestamp = avisa a essa hora;
  * Infinity = modal está aberto no ecrã do criador, não repetir.
  */
@@ -66,7 +73,7 @@ function publicRooms()
 		.filter((room) =>
 		{
 			const lobby = lobbies.get(room.code);
-			return lobby && !lobby.started;
+			return lobby && lobby.waiting;
 		})
 		.map((room) =>
 		{
@@ -77,6 +84,8 @@ function publicRooms()
 				players: room.members.size,
 				max: rooms.MAX_MEMBERS,
 				lang: room.settings.language,
+				// Cadeado na lista; a senha em si nunca sai do servidor.
+				locked: Boolean(room.password),
 			};
 		});
 }
@@ -102,63 +111,105 @@ function emptyRoom(io, room, event)
 }
 
 /**
- * Um relógio para todas as salas (o tempo vive AQUI, nunca no browser):
- * conta os 5 minutos, manda o tick, expira salas e repete o aviso de
- * "já dá para começar" ao criador.
+ * Fase da sala de espera, calculada SEMPRE no servidor (pedido do Renan):
+ * 'waiting_players'  — ainda não há jogadores suficientes para iniciar;
+ * 'waiting_creator'  — já dá para iniciar; espera-se a decisão do criador.
+ * É emitida a TODOS os membros ('lobby:phase') sempre que muda.
  */
+function computePhase(room)
+{
+	return room.members.size >= READY_MIN_PLAYERS
+		? 'waiting_creator'
+		: 'waiting_players';
+}
+
+function announcePhase(io, room, lobby)
+{
+	const phase = computePhase(room);
+	if (lobby.phase === phase)
+		return;
+
+	lobby.phase = phase;
+	io.to(room.code).emit('lobby:phase', { phase });
+}
+
+/**
+ * Uma passagem do relógio das salas (o tempo vive AQUI, nunca no browser):
+ * conta os 5 minutos, manda o tick, anuncia a fase, expira salas e repete
+ * o aviso de "já dá para começar" ao criador. Extraída do setInterval para
+ * os testes a poderem chamar com um `now` à escolha (scripts/lobby-test.js).
+ */
+function sweepOnce(io, now = Date.now())
+{
+	// Salas que morreram por outras vias (toda a gente saiu).
+	for (const code of [...lobbies.keys()])
+	{
+		if (!rooms.getRoom(code))
+		{
+			lobbies.delete(code);
+			broadcastList(io);
+		}
+	}
+
+	for (const room of rooms.activeRooms())
+	{
+		const lobby = lobbies.get(room.code);
+		if (!lobby || !lobby.waiting)
+			continue;
+
+		const secondsLeft = Math.max(
+			0,
+			Math.ceil((room.createdAt.getTime() + LOBBY_LIFETIME_MS - now) / 1000),
+		);
+		// creatorUserId incluído: o frontend marca a tag "Criador" na lista.
+		io.to(room.code).emit('lobby:tick', {
+			secondsLeft,
+			creatorUserId: lobby.creatorUserId,
+		});
+
+		announcePhase(io, room, lobby);
+
+		if (secondsLeft === 0)
+		{
+			emptyRoom(io, room, 'lobby:expired');
+			broadcastList(io);
+			continue;
+		}
+
+		// Sala em espera SEM criador não faz sentido: ninguém pode iniciar,
+		// os outros ficariam pendurados até aos 5 minutos. Acontece quando o
+		// criador sai/cai por outra via que não o 'lobby:close'. Nota: um
+		// criador só ausente (reload/ecrã bloqueado) ainda conta como membro
+		// durante o período de tolerância — a sala sobrevive a um refresh.
+		if (!creatorSocketId(room, lobby))
+		{
+			emptyRoom(io, room, 'lobby:closed');
+			broadcastList(io);
+			continue;
+		}
+
+		if (room.members.size < READY_MIN_PLAYERS)
+		{
+			// Abaixo do mínimo outra vez: o próximo a entrar volta a avisar.
+			lobby.promptAt = null;
+			continue;
+		}
+
+		const due = lobby.promptAt === null
+			|| (lobby.promptAt !== Infinity && now >= lobby.promptAt);
+		if (due)
+		{
+			lobby.promptAt = Infinity;
+			const creator = creatorSocketId(room, lobby);
+			if (creator)
+				io.to(creator).emit('lobby:ready', { players: room.members.size });
+		}
+	}
+}
+
 function startLobbySweeper(io, everyMs = 1000)
 {
-	return setInterval(() =>
-	{
-		const now = Date.now();
-
-		// Salas que morreram por outras vias (toda a gente saiu).
-		for (const code of [...lobbies.keys()])
-		{
-			if (!rooms.getRoom(code))
-			{
-				lobbies.delete(code);
-				broadcastList(io);
-			}
-		}
-
-		for (const room of rooms.activeRooms())
-		{
-			const lobby = lobbies.get(room.code);
-			if (!lobby || lobby.started)
-				continue;
-
-			const secondsLeft = Math.max(
-				0,
-				Math.ceil((room.createdAt.getTime() + LOBBY_LIFETIME_MS - now) / 1000),
-			);
-			io.to(room.code).emit('lobby:tick', { secondsLeft });
-
-			if (secondsLeft === 0)
-			{
-				emptyRoom(io, room, 'lobby:expired');
-				broadcastList(io);
-				continue;
-			}
-
-			if (room.members.size < READY_MIN_PLAYERS)
-			{
-				// Voltou a ficar abaixo de 3: o próximo 3.º volta a avisar.
-				lobby.promptAt = null;
-				continue;
-			}
-
-			const due = lobby.promptAt === null
-				|| (lobby.promptAt !== Infinity && now >= lobby.promptAt);
-			if (due)
-			{
-				lobby.promptAt = Infinity;
-				const creator = creatorSocketId(room, lobby);
-				if (creator)
-					io.to(creator).emit('lobby:ready', { players: room.members.size });
-			}
-		}
-	}, everyMs);
+	return setInterval(() => sweepOnce(io), everyMs);
 }
 
 function registerLobbyHandlers(io, socket)
@@ -174,14 +225,39 @@ function registerLobbyHandlers(io, socket)
 		lobbies.set(room.code, {
 			creatorUserId: socket.user.id,
 			roomName: `Sala de ${socket.user.username}`,
+			waiting: false,
 			started: false,
 			promptAt: null,
 		});
 		broadcastList(io);
 	});
 
-	// Entradas e saídas mudam a lotação mostrada na lista.
-	socket.on('room:join', () => broadcastList(io));
+	// A página de salas abre a sala em modo de espera: entra na lista
+	// pública e o motor de rondas fica travado até ao lobby:start.
+	socket.on('lobby:open', () =>
+	{
+		const { room, lobby } = lobbyOf(socket.id);
+		if (!room || !isCreator(socket, lobby) || lobby.started)
+			return;
+
+		lobby.waiting = true;
+		room.lobbyWaiting = true;
+		broadcastList(io);
+		announcePhase(io, room, lobby);
+	});
+
+	// Entradas e saídas mudam a lotação da lista E a fase da sala; quem
+	// acabou de entrar recebe já a fase atual sem esperar pelo relógio.
+	socket.on('room:join', () =>
+	{
+		broadcastList(io);
+		const { room, lobby } = lobbyOf(socket.id);
+		if (room && lobby && lobby.waiting)
+		{
+			announcePhase(io, room, lobby);
+			socket.emit('lobby:phase', { phase: computePhase(room) });
+		}
+	});
 	socket.on('room:leave', () => broadcastList(io));
 	socket.on('disconnect', () => broadcastList(io));
 
@@ -189,6 +265,31 @@ function registerLobbyHandlers(io, socket)
 	{
 		if (typeof ack === 'function')
 			ack(publicRooms());
+	});
+
+	// Fotografia do estado atual da sala de espera, a pedido. Serve para:
+	// (1) o modal do lobby mostrar a lista JÁ ao montar — o broadcast do
+	// room:state da entrada chega antes de os listeners existirem e perdia-se;
+	// (2) um telemóvel que acordou do modo de espera descobrir se ainda está
+	// na sala (o socket morreu e o servidor pode tê-lo removido entretanto).
+	socket.on('lobby:sync', (_payload, ack) =>
+	{
+		if (typeof ack !== 'function')
+			return;
+
+		const { room, lobby } = lobbyOf(socket.id);
+		if (!room || !lobby)
+		{
+			ack({ ok: false });
+			return;
+		}
+
+		ack({
+			ok: true,
+			room: rooms.serialiseRoom(room),
+			phase: computePhase(room),
+			creatorUserId: lobby.creatorUserId,
+		});
 	});
 
 	socket.on('lobby:kick', (payload = {}, ack) =>
@@ -238,6 +339,9 @@ function registerLobbyHandlers(io, socket)
 		}
 
 		lobby.started = true;
+		lobby.waiting = false;
+		// Liberta o motor de rondas: no próximo tick a partida começa.
+		room.lobbyWaiting = false;
 		io.to(room.code).emit('room:start');
 		broadcastList(io);
 		if (typeof ack === 'function')
@@ -262,4 +366,12 @@ function registerLobbyHandlers(io, socket)
 	});
 }
 
-module.exports = { registerLobbyHandlers, startLobbySweeper };
+module.exports = {
+	registerLobbyHandlers,
+	startLobbySweeper,
+	// Exportados para o scripts/lobby-test.js: correr uma passagem do
+	// relógio com um `now` à escolha (testar a expiração dos 5 minutos sem
+	// esperar 5 minutos) e inspecionar o estado das salas em espera.
+	sweepOnce,
+	_lobbies: lobbies,
+};

@@ -1,0 +1,64 @@
+# CI do SketchGuess: corre em toda a PR contra a main.
+# A PR falha se o frontend não compilar (tsc + vite build) ou se qualquer
+# suite test:* do backend falhar contra um stack real (mariadb + backend).
+#
+# NOTA (pedido do Renan): depois do primeiro merge disto, validar o CI de
+# propósito — partir um teste numa PR, ver a PR ficar vermelha, e reverter.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend (tsc + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+
+  backend-tests:
+    name: Backend (todas as suites test:*)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # O .env real nunca vai para o git; o example chega para os testes
+      # (as credenciais da 42 são placeholders — nenhuma suite usa OAuth).
+      - name: Preparar .env
+        run: cp .env.example .env
+
+      - name: Arrancar mariadb + backend
+        run: docker compose up -d --build mariadb backend
+
+      - name: Esperar pelo backend
+        run: timeout 240 sh -c 'until docker logs backend 2>&1 | grep -q "Backend running"; do sleep 3; done'
+
+      - name: Correr todas as suites
+        run: |
+          set -e
+          for suite in words scoring round rooms report lobby; do
+            echo "== npm run test:$suite =="
+            docker exec backend npm run "test:$suite"
+          done
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker logs backend | tail -100
+
+      - name: Desligar
+        if: always()
+        run: docker compose down -v

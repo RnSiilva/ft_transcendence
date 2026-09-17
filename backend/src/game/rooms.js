@@ -142,6 +142,11 @@ function createRoom(memberId, user, settings)
 		// drawerId: null,
 		strokes: [],
 		settings: cleanSettings(settings),
+		// Sala privada: senha definida pelo criador (fora de `settings` para
+		// nunca ser serializada para os clientes). null = sala aberta.
+		password: typeof settings?.password === 'string' && settings.password.trim()
+			? settings.password.trim().slice(0, 32)
+			: null,
 		createdAt: new Date(),
 	};
 
@@ -152,7 +157,7 @@ function createRoom(memberId, user, settings)
 }
 
 /** Throws if the room is missing, full, or the user is already inside it. */
-function joinRoom(memberId, rawCode, user)
+function joinRoom(memberId, rawCode, user, password)
 {
 	const code = normaliseCode(rawCode);
 	const identity = identityOf(user);
@@ -165,6 +170,12 @@ function joinRoom(memberId, rawCode, user)
 
 	if (!alreadyHere)
 	{
+		// Sala privada: só entra quem souber a senha do criador. Quem já
+		// está dentro (alreadyHere) e quem retoma o próprio lugar
+		// (seizeSeat, verificado antes no room.socket) não a repetem.
+		if (room.password && String(password ?? '') !== room.password)
+			throw fail('Wrong password', 'WRONG_PASSWORD');
+
 		if (room.members.size >= MAX_MEMBERS)
 			throw fail('Room is full', 'ROOM_FULL');
 
@@ -281,6 +292,47 @@ function reclaimSeat(newMemberId, user, now = Date.now())
 	return null;
 }
 
+/**
+ * A conta retoma o PRÓPRIO lugar: o mesmo utilizador a entrar na sala por
+ * uma ligação nova (reabriu o jogo no telemóvel, outro separador) fica com o
+ * lugar que já era dele — pontos e vez preservados — e a ligação antiga é
+ * dispensada pelo chamador. Sem isto, uma ligação zombie (morta sem aviso)
+ * bloqueava o dono fora da sala ('ALREADY_IN_ROOM') até ao timeout.
+ * Continua a existir UM lugar por conta: nunca há dois lápis.
+ */
+function seizeSeat(newMemberId, rawCode, user)
+{
+	const code = normaliseCode(rawCode);
+	const room = rooms.get(code);
+	if (!room || !user)
+		return null;
+
+	const seat = [...room.members.values()].find(
+		(member) => member.userId === user.id && member.id !== newMemberId,
+	);
+	if (!seat)
+		return null;
+
+	const oldMemberId = seat.id;
+
+	// A ligação nova pode estar noutra sala: sai primeiro, como no joinRoom.
+	if (memberRoom.get(newMemberId) && memberRoom.get(newMemberId) !== code)
+		leaveRoom(newMemberId);
+
+	room.members = new Map(
+		[...room.members.entries()].map(([id, member]) =>
+			id === oldMemberId
+				? [newMemberId, { ...member, id: newMemberId, disconnectedAt: null }]
+				: [id, member],
+		),
+	);
+
+	memberRoom.delete(oldMemberId);
+	memberRoom.set(newMemberId, code);
+
+	return { room, oldMemberId };
+}
+
 /** Milliseconds before an absent member loses their seat, or null if present. */
 function absenceLeft(member, now = Date.now())
 {
@@ -386,6 +438,7 @@ module.exports = {
 	nextDrawerId,
 	markAbsent,
 	reclaimSeat,
+	seizeSeat,
 	dropAbsent,
 	absenceLeft,
 	roomsWithAbsentees,

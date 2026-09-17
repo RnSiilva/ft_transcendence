@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
+import { translateApiError } from '../utils/apiError'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -142,11 +143,9 @@ function EditProfileModal({
       const data = await res.json()
 
       if (!res.ok) {
-        let errMessage = data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error || t('errors.networkError')
-        if (errMessage === 'Username already taken') {
-          errMessage = t('errors.usernameTaken')
-        }
-        setError(errMessage)
+        // Mensagem do backend (inglês) → chave i18n → idioma do site.
+        setError(translateApiError(t,
+          data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error))
         setSaving(false)
         return
       }
@@ -194,6 +193,21 @@ function EditProfileModal({
             {t('profile.editphoto')}
           </label>
           {photo && <span className="edit-avatar-hint">{t('editprofile.drag')}</span>}
+          {/* Apagar o ficheiro carregado: volta ao avatar por omissão
+              (a inicial). Grava avatarUrl null no PUT /auth/profile. */}
+          {photo && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm remove-photo-btn"
+              onClick={() => {
+                setPhoto(null)
+                setPos({ x: 50, y: 50 })
+                setMoved(false)
+              }}
+            >
+              🗑 {t('editprofile.removephoto')}
+            </button>
+          )}
           <input
             type="file"
             id="edit-profile-photo"

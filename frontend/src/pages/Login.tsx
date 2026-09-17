@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
@@ -13,16 +13,17 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Enquanto a sessão é verificada não se mostra o formulário (evita o
+  // "flash" do login a quem já está autenticado).
   if (checkingSession) {
     return null
   }
-
   // Quem já tem sessão não volta a ver o login: vai direto para o perfil.
   if (user) {
     return <Navigate to="/profile" replace />
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
 

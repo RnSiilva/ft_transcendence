@@ -1,34 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
+import PlayerHoverCard from './PlayerHoverCard'
+import { useAuth } from '../hooks/useAuth'
+import { getSocket } from '../socket'
 
 /**
- * Sala de espera (lobby). Abre ao entrar numa sala ou ao criá-la.
- * Com 3+ jogadores o criador pode iniciar; a sala vive no máximo 5 minutos;
- * o criador é avisado com som (e notificação, se estiver noutra página) e
- * decide a cada minuto entre iniciar já ou esperar mais 1 minuto; o criador
- * pode expulsar e encerrar, qualquer jogador pode sair.
- *
- * O servidor deste circuito já existe: backend/src/sockets/lobby.socket.js
- * (eventos rooms:list, lobby:kick/kicked, lobby:tick, lobby:ready/wait,
- * lobby:start → room:start, lobby:close/closed, lobby:expired — o tempo é
- * contado lá, nunca no browser). O que está abaixo é a DEMO visual local;
- * ligar aos eventos reais é o próximo passo, dentro do Docker.
+ * Sala de espera (lobby) — 100% ligada ao servidor, sem dados simulados
+ * (backend/src/sockets/lobby.socket.js):
+ *  - jogadores reais por 'room:state'; criador marcado pelo creatorUserId
+ *    do 'lobby:tick'; relógio dos 5 minutos contado no servidor;
+ *  - fase da sala por 'lobby:phase' (aguardar jogadores / aguardar decisão
+ *    do criador), calculada no servidor;
+ *  - aviso 'lobby:ready' ao criador (som + notificação se estiver noutra
+ *    página) com o modal iniciar-agora/esperar-1-minuto ('lobby:wait');
+ *  - 'lobby:start' → 'room:start' a todos; 'lobby:kick'/'lobby:kicked';
+ *    'lobby:close'/'lobby:closed'; 'lobby:expired' ao fim dos 5 minutos.
  */
 
-const ROOM_LIFETIME = 5 * 60
-const DEMO_JOINERS = ['Renan', 'Pedro', 'Ana', 'Rita']
-
-type LobbyPlayer = { id: number; name: string; isAdmin: boolean }
+type LobbyPlayer = { id: string; name: string; isAdmin: boolean }
+type LobbyPhase = 'waiting_players' | 'waiting_creator'
 
 type Props = {
   roomName: string
+  code: string
   isAdmin: boolean
+  maxPlayers?: number
   onClose: () => void
   onStart: () => void
 }
 
 /* Três toques curtos, desenhados com WebAudio para não precisar de ficheiro
-   de som. É o aviso do criador quando o 3.º jogador entra. */
+   de som. Toca quando o servidor manda o 'lobby:ready' ao criador. */
 function beep() {
   try {
     const ctx = new AudioContext()
@@ -57,112 +59,199 @@ function notifyAdmin(title: string, body: string) {
   }
 }
 
-function RoomLobbyModal({ roomName, isAdmin, onClose, onStart }: Props) {
+function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 8, onClose, onStart }: Props) {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const selfName = user?.username ?? ''
 
-  // Lista demo: o criador começa sozinho; quem entra vê o criador + ele.
-  const [players, setPlayers] = useState<LobbyPlayer[]>(() =>
-    isAdmin
-      ? [{ id: 1, name: 'utilizador_demo', isAdmin: true }]
-      : [
-          { id: 1, name: 'Carlos', isAdmin: true },
-          { id: 2, name: 'utilizador_demo', isAdmin: false },
-        ],
-  )
-  const [secondsLeft, setSecondsLeft] = useState(ROOM_LIFETIME)
+  const [players, setPlayers] = useState<LobbyPlayer[]>([])
+  const [phase, setPhase] = useState<LobbyPhase>('waiting_players')
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
   const [decisionOpen, setDecisionOpen] = useState(false)
   const [starting, setStarting] = useState(false)
   const [expired, setExpired] = useState(false)
+  const [kicked, setKicked] = useState(false)
 
-  // Espelhos em ref para o relógio (interval) ler sempre o valor atual.
-  const playersRef = useRef(players)
-  const decisionRef = useRef(decisionOpen)
-  const startingRef = useRef(starting)
-  useEffect(() => {
-    playersRef.current = players
-    decisionRef.current = decisionOpen
-    startingRef.current = starting
-  })
-  // Momento (em segundos restantes) em que o modal de decisão volta a abrir.
-  const nextPromptAtRef = useRef<number | null>(ROOM_LIFETIME)
+  // Trava o resync no INSTANTE do clique em Sair/expulsão/fecho — num ref
+  // (e não numa variável do efeito) para o leaveRoom, que vive fora do
+  // efeito, o poder acionar antes de o modal desmontar.
+  const haltedRef = useRef(false)
 
   // O criador dá permissão de notificações logo ao abrir a sala, para o
-  // aviso "já tens 3" o encontrar mesmo estando noutra página.
+  // aviso "já dá para começar" o encontrar mesmo estando noutra página.
   useEffect(() => {
     if (isAdmin && 'Notification' in window && Notification.permission === 'default') {
       void Notification.requestPermission()
     }
   }, [isAdmin])
 
-  // DEMO: entra um jogador de vez em quando para se ver o fluxo completo.
-  // AQUI O CODIGO DO SERVIDOR (substituir por 'room:state' do Socket.IO)
+  // Tudo o que se vê vem do servidor.
   useEffect(() => {
-    let added = 0
-    const joiner = setInterval(() => {
-      if (added >= DEMO_JOINERS.length || startingRef.current) return
-      const name = DEMO_JOINERS[added]
-      added += 1
-      setPlayers((current) =>
-        current.length >= 6 || current.some((p) => p.name === name)
-          ? current
-          : [...current, { id: current.length + 1, name, isAdmin: false }],
+    const socket = getSocket()
+
+    type Member = { id: string; userId: number; name: string }
+    type SyncAnswer = {
+      ok: boolean
+      room?: { members: Member[] }
+      phase?: LobbyPhase
+      creatorUserId?: number
+    }
+    let creatorUserId: number | null = null
+    let members: Member[] = []
+
+    function publish() {
+      setPlayers(
+        members.map((m) => ({
+          id: m.id,
+          name: m.name,
+          isAdmin: creatorUserId !== null && m.userId === creatorUserId,
+        })),
       )
-    }, 6000)
-    return () => clearInterval(joiner)
-  }, [])
+    }
 
-  // Relógio da sala: 5 minutos no total, e é ele que decide quando o modal
-  // de decisão (re)aparece ao criador — na 1.ª vez com 3 jogadores e depois
-  // de minuto a minuto, como pedido.
-  useEffect(() => {
-    const tick = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (startingRef.current) return s
-        const next = s - 1
+    function onRoomState(state: { members: Member[] }) {
+      members = state.members
+      publish()
+    }
+    function onTick(payload: { secondsLeft: number; creatorUserId?: number }) {
+      setSecondsLeft(payload.secondsLeft)
+      if (payload.creatorUserId !== undefined && payload.creatorUserId !== creatorUserId) {
+        creatorUserId = payload.creatorUserId
+        publish()
+      }
+    }
+    function onPhase(payload: { phase: LobbyPhase }) {
+      setPhase(payload.phase)
+    }
+    function onReady() {
+      setDecisionOpen(true)
+      beep()
+      notifyAdmin(t('lobby.ready.title'), t('lobby.ready.text'))
+    }
+    function onStartEvent() {
+      haltedRef.current = true
+      setDecisionOpen(false)
+      setStarting(true)
+      window.setTimeout(onStart, 2600)
+    }
+    function onExpired() {
+      haltedRef.current = true
+      setDecisionOpen(false)
+      setExpired(true)
+    }
+    function onClosed() {
+      haltedRef.current = true
+      onClose()
+    }
+    function onKicked() {
+      haltedRef.current = true
+      setKicked(true)
+    }
 
-        if (next <= 0) {
-          setExpired(true)
-          setDecisionOpen(false)
-          return 0
+    // Depois de expulso/expirado/fechado/a começar/Sair, o resync PÁRA —
+    // senão o expulso (ou quem saiu) voltava a entrar sozinho na sala.
+    haltedRef.current = false
+
+    /**
+     * Autorreparação do lobby (bug dos telemóveis): pede a fotografia da
+     * sala ao servidor. Se já não estivermos nela (o socket caiu enquanto o
+     * ecrã esteve bloqueado e o servidor tirou-nos), tenta reentrar com o
+     * código; se a sala já nem existir, mostra "sala terminada". Corre ao
+     * montar (o room:state da entrada chega antes dos listeners e perdia-se),
+     * na reconexão do socket e de 3 em 3 segundos — assim nenhum broadcast
+     * perdido deixa um ecrã congelado.
+     */
+    function resync() {
+      if (haltedRef.current) return
+      socket.emit('lobby:sync', {}, (answer: SyncAnswer) => {
+        if (haltedRef.current) return
+        if (answer?.ok && answer.room) {
+          members = answer.room.members
+          if (answer.creatorUserId !== undefined) creatorUserId = answer.creatorUserId
+          publish()
+          if (answer.phase) setPhase(answer.phase)
+          return
         }
-
-        const enough = playersRef.current.length >= 3
-        const due =
-          nextPromptAtRef.current !== null && next <= nextPromptAtRef.current
-        if (isAdmin && enough && due && !decisionRef.current) {
-          nextPromptAtRef.current = null // volta a agendar quando ele adiar
-          setDecisionOpen(true)
-          beep()
-          notifyAdmin(t('lobby.ready.title'), t('lobby.ready.text'))
-        }
-
-        return next
+        socket.emit('room:join', { code }, (join: { ok: boolean }) => {
+          // O utilizador saiu/foi expulso ENQUANTO este pedido ia a caminho:
+          // o servidor já nos meteu na sala outra vez — desfaz imediatamente,
+          // senão fica um jogador fantasma na lista dos outros.
+          if (haltedRef.current) {
+            if (join?.ok) socket.emit('room:leave')
+            return
+          }
+          if (join?.ok) {
+            resync()
+          } else {
+            haltedRef.current = true
+            setExpired(true)
+          }
+        })
       })
-    }, 1000)
-    return () => clearInterval(tick)
-  }, [isAdmin, t])
+    }
+    resync()
+    const resyncTimer = window.setInterval(resync, 3000)
 
-  function kick(id: number) {
-    // AQUI O CODIGO DO SERVIDOR (emitir 'room:kick' com o id; o servidor
-    // valida que quem pede é o criador e avisa o expulso)
-    setPlayers((current) => current.filter((p) => p.id !== id))
+    socket.on('connect', resync)
+    socket.on('room:state', onRoomState)
+    socket.on('lobby:tick', onTick)
+    socket.on('lobby:phase', onPhase)
+    socket.on('lobby:ready', onReady)
+    socket.on('room:start', onStartEvent)
+    socket.on('lobby:expired', onExpired)
+    socket.on('lobby:closed', onClosed)
+    socket.on('lobby:kicked', onKicked)
+    return () => {
+      haltedRef.current = true
+      window.clearInterval(resyncTimer)
+      socket.off('connect', resync)
+      socket.off('room:state', onRoomState)
+      socket.off('lobby:tick', onTick)
+      socket.off('lobby:phase', onPhase)
+      socket.off('lobby:ready', onReady)
+      socket.off('room:start', onStartEvent)
+      socket.off('lobby:expired', onExpired)
+      socket.off('lobby:closed', onClosed)
+      socket.off('lobby:kicked', onKicked)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code])
+
+  function kick(id: string) {
+    getSocket().emit('lobby:kick', { memberId: id })
   }
 
   function waitOneMinute() {
     setDecisionOpen(false)
-    nextPromptAtRef.current = Math.max(secondsLeft - 60, 0)
+    getSocket().emit('lobby:wait')
   }
 
   function startGame() {
-    // AQUI O CODIGO DO SERVIDOR (emitir 'room:start'; TODOS os jogadores da
-    // sala recebem este aviso e são levados juntos para a partida)
+    // O servidor valida (só o criador, só com jogadores suficientes) e
+    // emite 'room:start' a TODOS; o aviso aparece quando ele chegar.
     setDecisionOpen(false)
-    setStarting(true)
-    window.setTimeout(onStart, 2600)
+    getSocket().emit('lobby:start', {}, () => {})
   }
 
-  const minutes = Math.floor(secondsLeft / 60)
-  const secs = String(secondsLeft % 60).padStart(2, '0')
+  function leaveRoom() {
+    // Trava o resync JÁ: a partir deste clique nenhuma reentrada automática
+    // pode acontecer, mesmo que haja um pedido a meio caminho.
+    haltedRef.current = true
+    const socket = getSocket()
+    if (isAdmin) {
+      // Se o servidor recusar o fecho (ex.: já não nos reconhece como
+      // criador), ao menos sai da sala — o sweeper fecha-a aos restantes.
+      socket.emit('lobby:close', {}, (answer?: { ok: boolean }) => {
+        if (!answer?.ok) socket.emit('room:leave')
+      })
+    } else {
+      socket.emit('room:leave')
+    }
+    onClose()
+  }
+
+  const minutes = secondsLeft === null ? '–' : Math.floor(secondsLeft / 60)
+  const secs = secondsLeft === null ? '––' : String(secondsLeft % 60).padStart(2, '0')
 
   return (
     <div className="modal-overlay show">
@@ -171,22 +260,28 @@ function RoomLobbyModal({ roomName, isAdmin, onClose, onStart }: Props) {
 
         <div className="lobby-top">
           <span className="lobby-count">
-            {t('lobby.players')}: <b>{players.length}</b>/6
+            {t('lobby.players')}: <b>{players.length}</b>/{maxPlayers}
           </span>
-          <span className={secondsLeft <= 60 ? 'lobby-timer danger' : 'lobby-timer'}>
+          <span className={secondsLeft !== null && secondsLeft <= 60 ? 'lobby-timer danger' : 'lobby-timer'}>
             {t('lobby.timeleft')}: {minutes}:{secs}
           </span>
         </div>
+
+        {/* Fase calculada no servidor, igual para todos os ecrãs. */}
+        <p className="lobby-phase">{t(`lobby.phase.${phase}`)}</p>
 
         <div className="lobby-list">
           {players.map((player) => (
             <div className="lobby-row" key={player.id}>
               <div className="mini-avatar">{player.name.charAt(0).toUpperCase()}</div>
               <div className="lobby-name">
-                {player.name}
+                {/* Cartão no hover: stats + adicionar amigo (some se já forem) */}
+                <PlayerHoverCard username={player.name} isSelf={player.name === selfName}>
+                  {player.name}
+                </PlayerHoverCard>
                 {player.isAdmin && <span className="lobby-admin-tag">{t('lobby.admin')}</span>}
               </div>
-              {isAdmin && !player.isAdmin && (
+              {isAdmin && !player.isAdmin && player.name !== selfName && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm lobby-kick"
@@ -208,20 +303,20 @@ function RoomLobbyModal({ roomName, isAdmin, onClose, onStart }: Props) {
         <div className="modal-actions">
           {isAdmin ? (
             <>
-              <button type="button" className="btn btn-danger" onClick={onClose}>
+              <button type="button" className="btn btn-danger" onClick={leaveRoom}>
                 {t('lobby.closeroom')}
               </button>
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={players.length < 3}
+                disabled={phase !== 'waiting_creator'}
                 onClick={startGame}
               >
                 {t('lobby.start')}
               </button>
             </>
           ) : (
-            <button type="button" className="btn btn-ghost" onClick={onClose}>
+            <button type="button" className="btn btn-ghost" onClick={leaveRoom}>
               {t('lobby.leave')}
             </button>
           )}
@@ -262,6 +357,21 @@ function RoomLobbyModal({ roomName, isAdmin, onClose, onStart }: Props) {
           <div className="modal-panel lobby-small">
             <h2>{t('rooms.title')}</h2>
             <p className="roomlang-text">{t('lobby.expired')}</p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={onClose}>
+                {t('endgame.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Foste expulso da sala. */}
+      {kicked && !starting && (
+        <div className="modal-overlay show lobby-inner">
+          <div className="modal-panel lobby-small">
+            <h2>{roomName}</h2>
+            <p className="roomlang-text">🚩 {t('lobby.kicked')}</p>
             <div className="modal-actions">
               <button type="button" className="btn btn-primary" onClick={onClose}>
                 {t('endgame.close')}

@@ -15,6 +15,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import About from './pages/About'
 import Rooms from './pages/Rooms'
+import PublicProfile from './pages/PublicProfile'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
@@ -47,6 +48,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Rooms />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/user/:username"
+              element={
+                <ProtectedRoute>
+                  <PublicProfile />
                 </ProtectedRoute>
               }
             />
