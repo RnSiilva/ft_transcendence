@@ -24,6 +24,7 @@ export interface AuthUser {
   gamesPlayed: number;
   wins: number;
   createdAt: string;
+  achievements?: any[];
 }
 
 interface UseAuthReturn {

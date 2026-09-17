@@ -36,7 +36,7 @@ services:
       - backend_node_modules:/app/node_modules
     env_file:
       - .env
-    command: sh -c "npx prisma generate && npx prisma db push --accept-data-loss && npm run dev" # synchronization and creation of tables
+    command: sh -c "npx prisma generate && npx prisma db push --accept-data-loss && node prisma/seed.js && npm run dev" # synchronization, creation of tables, and seeding of achievements
 
   frontend:
     build:
