@@ -16,14 +16,6 @@ interface FieldErrors {
 function Register() {
   const { t } = useLanguage()
   const { user, loading: checkingSession } = useAuth()
-
-  if (checkingSession) {
-    return null
-  }
-  if (user) {
-    return <Navigate to="/profile" replace />
-  }
-
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -32,6 +24,13 @@ function Register() {
   const [loading, setLoading] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
+
+  if (checkingSession) {
+    return null
+  }
+  if (user) {
+    return <Navigate to="/profile" replace />
+  }
 
   function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
