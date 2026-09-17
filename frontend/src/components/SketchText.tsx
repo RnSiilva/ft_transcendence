@@ -11,6 +11,8 @@ function SketchText({ text }: { text: string }) {
     <svg
       className="sketch-text"
       viewBox={`0 0 ${width} 78`}
+      width={width}
+      height={78}
       aria-hidden="true"
     >
       <text x={width / 2} y="64" textAnchor="middle">

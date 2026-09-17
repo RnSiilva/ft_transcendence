@@ -9,6 +9,7 @@ const friendsRouter = require('./friends/friends.routes');
 const presence = require('./friends/presence');
 const jwt = require('jsonwebtoken');
 const gameRouter = require('./routes/game.routes');
+const usersRouter = require('./routes/users.routes');
 
 const { registerRoomHandlers, startAbsenceSweeper } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
@@ -48,6 +49,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', authRouter);
 app.use('/friends', friendsRouter);
 app.use('/games', gameRouter);
+app.use('/users', usersRouter); // perfil público (só campos visíveis)
 
 // updates socket.io so rooms and drawing can also send and read cookies
 const io = new Server(server, {
@@ -55,7 +57,16 @@ const io = new Server(server, {
     origin: true,
     credentials: true,
   },
+  // Deteção de ligações mortas em ~15 s (por omissão era ~45 s): um
+  // telemóvel que adormece sem se despedir deixava um "fantasma" na sala
+  // durante quase um minuto antes de a tolerância de reconexão contar.
+  pingInterval: 10000,
+  pingTimeout: 5000,
 });
+
+// Routes can reach the socket server via req.app.get('io') — the friends API
+// uses it to tell the OTHER user their list changed (request sent/accepted).
+app.set('io', io);
 
 const PORT = process.env.BACKEND_PORT || 4000;
 
@@ -95,7 +106,12 @@ io.on('connection', (socket) => {
   registerRoomHandlers(io, socket);
   registerDrawHandlers(io, socket);
   registerRoundHandlers(io, socket);
-  registerLobbyHandlers(io, socket); // depois dos de sala: precisa da sala já criada
+  // DEPENDÊNCIA DE ORDEM: registerLobbyHandlers tem de vir DEPOIS de
+  // registerRoomHandlers. O lobby ouve os mesmos eventos ('room:create',
+  // 'room:join') em listeners próprios e o Socket.IO chama-os pela ordem de
+  // registo — só assim, quando o listener do lobby corre, a sala já foi
+  // criada/entrada pelo handler de salas e getRoomOf(socket.id) encontra-a.
+  registerLobbyHandlers(io, socket);
   registerReportHandlers(io, socket);
 
   socket.on('disconnect', () => {

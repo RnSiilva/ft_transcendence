@@ -1,18 +1,32 @@
 import { useLanguage } from '../i18n/LanguageContext'
+import SketchText from '../components/SketchText'
+import PencilDivider from '../components/PencilDivider'
 
 function Terms() {
   const { t } = useLanguage()
 
   return (
     <div className="simple-wrap">
-      <h1>{t('terms.title')}</h1>
+      {/* título com a mesma animação/reflexo do Sobre nós */}
+      <h1 className="sketch-title page-title">
+        <span className="sr-only">{t('terms.title')}</span>
+        <SketchText text={t('terms.title')} />
+        <span className="hero-logo-reflection" aria-hidden="true">
+          <span className="reflect-flip">
+            <SketchText text={t('terms.title')} />
+          </span>
+          <span className="reflection-fade" />
+        </span>
+      </h1>
       <p className="kicker">{t('legal.kicker')}</p>
-      {Array.from({ length: 6 }, (_, i) => (
+      {Array.from({ length: 7 }, (_, i) => (
         <div className="legal-section" key={i}>
           <h2>{t(`terms.s${i + 1}.title`)}</h2>
           <p>{t(`terms.s${i + 1}.text`)}</p>
         </div>
       ))}
+      {/* o computador desenhado fecha a página, como na Home e no About */}
+      <PencilDivider />
     </div>
   )
 }

@@ -28,4 +28,13 @@ function requireAuth(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, verifyToken };
+/* Like requireAuth, but never blocks: req.user is the session user or null.
+   Only /auth/me uses it — asking "who am I?" without a session is a normal
+   question (every page load on a fresh browser), not an error, so answering
+   401 just paints a red line in the console of every logged-out visitor. */
+function optionalAuth(req, _res, next) {
+  req.user = verifyToken(req.cookies?.token);
+  next();
+}
+
+module.exports = { requireAuth, optionalAuth, verifyToken };

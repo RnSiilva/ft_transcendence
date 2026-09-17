@@ -1,11 +1,17 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
 import { getSocket } from '../socket'
 import EditProfileModal from '../components/EditProfileModal'
+import AchievementsPanel from '../components/AchievementsPanel'
+import PlayerHoverCard from '../components/PlayerHoverCard'
 import { useLeaderboard, type RankPeriod } from '../hooks/useLeaderboard'
 import { useMatchHistory } from '../hooks/useMatchHistory'
+import { translateApiError } from '../utils/apiError'
+
+// Correção: a main usava API em 5 fetch sem nunca a definir (crash no perfil).
+const API = import.meta.env.VITE_API_URL ?? '/api'
 
 const RANK_PERIODS: RankPeriod[] = ['general', 'weekly', 'daily']
 
@@ -17,6 +23,9 @@ type FriendUser = {
   rank: number
   totalPoints: number
   isOnline: boolean
+  gamesPlayed?: number
+  wins?: number
+  achievements?: { achievement?: { nameKey?: string } }[]
   status: 'ACCEPTED' | 'SENT_PENDING' | 'RECEIVED_PENDING'
 }
 
@@ -27,7 +36,21 @@ function Profile() {
 
   const [search, setSearch] = useState('')
   const [sentTo, setSentTo] = useState('')
+  // A confirmação "Pedido enviado a X" apaga-se sozinha passados uns segundos.
+  const sentTimerRef = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (sentTimerRef.current) window.clearTimeout(sentTimerRef.current)
+  }, [])
   const [friendError, setFriendError] = useState('')
+  // Pesquisa de amigos em 2 passos: primeiro VÊ-SE o utilizador (via
+  // GET /api/users/:username), depois envia-se o pedido.
+  const [foundUser, setFoundUser] = useState<{
+    username: string
+    avatarUrl: string | null
+    rank: number
+    totalPoints: number
+  } | null>(null)
+  const [notFound, setNotFound] = useState(false)
   const [friends, setFriends] = useState<FriendUser[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -35,34 +58,63 @@ function Profile() {
   const ranking = useLeaderboard(rankTab)
   const history = useMatchHistory()
 
-  async function loadFriends() {
+  // Ao abrir o perfil, revalida a conta: o servidor verifica e desbloqueia
+  // conquistas novas (checkAchievements corre no /auth/me).
+  useEffect(() => {
+    refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Sino sobre a foto: quantos pedidos de amizade estão à espera de resposta.
+  const friendsPanelRef = useRef<HTMLHeadingElement | null>(null)
+  const pendingRequests = friends.filter((f) => f.status === 'RECEIVED_PENDING').length
+
+  // Carrega a lista de amigos. `alive` (opcional) evita atualizar estado
+  // depois de o componente desmontar, quando chamada a partir do efeito.
+  async function loadFriends(alive: () => boolean = () => true) {
     try {
       const res = await fetch(`${API}/friends`, { credentials: 'include' })
-      if (res.ok) {
-        const data = await res.json()
-        setFriends(data.friends || [])
-      }
+      if (!alive() || !res.ok) return
+      const data = await res.json()
+      if (alive()) setFriends(data.friends || [])
     } catch (err) {
       console.error('Failed to load friends:', err)
     }
   }
 
   useEffect(() => {
-    if (user) {
-      loadFriends()
-      const socket = getSocket()
-      socket.emit('presence:join', { userId: user.id })
+    if (!user) return
+    // Sem setState síncrono no corpo do efeito: o loadFriends só atualiza o
+    // estado depois do await do fetch, e a flag `alive` protege o desmonte.
+    let alive = true
+    const isAlive = () => alive
+    // Falso-positivo da regra: loadFriends só faz setState DEPOIS do await do
+    // fetch (não é síncrono no efeito) e a flag alive protege o desmonte. A
+    // regra não segue o await através de uma função nomeada partilhada.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadFriends(isAlive)
 
-      function onPresenceUpdate({ userId, isOnline }: { userId: number; isOnline: boolean }) {
-        setFriends((prev) =>
-          prev.map((f) => (f.id === userId ? { ...f, isOnline } : f))
-        )
-      }
+    const socket = getSocket()
+    socket.emit('presence:join', { userId: user.id })
 
-      socket.on('presence:update', onPresenceUpdate)
-      return () => {
-        socket.off('presence:update', onPresenceUpdate)
-      }
+    function onPresenceUpdate({ userId, isOnline }: { userId: number; isOnline: boolean }) {
+      setFriends((prev) =>
+        prev.map((f) => (f.id === userId ? { ...f, isOnline } : f))
+      )
+    }
+
+    // O servidor avisa quando o OUTRO lado mexe na amizade (pedido novo,
+    // aceite, recusado, removido) — recarrega a lista sem F5.
+    function onFriendsChanged() {
+      void loadFriends(isAlive)
+    }
+
+    socket.on('presence:update', onPresenceUpdate)
+    socket.on('friends:changed', onFriendsChanged)
+    return () => {
+      alive = false
+      socket.off('presence:update', onPresenceUpdate)
+      socket.off('friends:changed', onFriendsChanged)
     }
   }, [user])
 
@@ -71,34 +123,56 @@ function Profile() {
     window.location.href = '/login'
   }
 
-  function enterRoom(roomLang: Lang) {
-    if (roomLang !== lang) {
-      setPendingRoomLang(roomLang)
-      return
-    }
-    navigate('/game')
-  }
-
-  async function addFriend(e: FormEvent<HTMLFormElement>) {
+  // Passo 1: pesquisar — mostra o utilizador ANTES de enviar o pedido
+  // (GET /api/users/:username, a rota pública nova).
+  async function searchUser(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setFriendError('')
     setSentTo('')
+    setFoundUser(null)
+    setNotFound(false)
     const target = search.trim()
     if (!target) return
 
+    try {
+      const res = await fetch(`${API}/users/${encodeURIComponent(target)}`, {
+        credentials: 'include',
+      })
+      if (res.status === 404) {
+        setNotFound(true)
+        return
+      }
+      if (!res.ok) {
+        setFriendError(t('errors.networkError'))
+        return
+      }
+      const data = await res.json()
+      setFoundUser(data.user)
+    } catch {
+      setFriendError(t('errors.networkError'))
+    }
+  }
+
+  // Passo 2: enviar o pedido ao utilizador encontrado.
+  async function sendRequestTo(username: string) {
+    setFriendError('')
     try {
       const res = await fetch(`${API}/friends/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ username: target }),
+        body: JSON.stringify({ username }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setFriendError(data.error || t('errors.networkError'))
+        // Mensagem do backend (inglês) → chave i18n → idioma do site.
+        setFriendError(translateApiError(t, data.error))
         return
       }
-      setSentTo(target)
+      setSentTo(username)
+      if (sentTimerRef.current) window.clearTimeout(sentTimerRef.current)
+      sentTimerRef.current = window.setTimeout(() => setSentTo(''), 5000)
+      setFoundUser(null)
       setSearch('')
       loadFriends()
     } catch {
@@ -198,6 +272,18 @@ function Profile() {
           >
             ✎
           </button>
+          {pendingRequests > 0 && (
+            <button
+              type="button"
+              className="friend-notif"
+              title={t('profile.requests')}
+              onClick={() =>
+                friendsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            >
+              {pendingRequests}
+            </button>
+          )}
         </div>
         <div className="who">
           <div className="name">{displayName}</div>
@@ -220,12 +306,21 @@ function Profile() {
       <div className="panel">
         <h3>{t('profile.stats.heading')}</h3>
         <div className="stat-row">
-          <div className="stat"><b>#{displayRank}</b><span>{t('profile.stats.rank')}</span></div>
+          {/* rank 0 = ainda não jogou: — em vez de #0 */}
+          <div className="stat"><b>{Number(displayRank) > 0 ? `#${displayRank}` : '—'}</b><span>{t('profile.stats.rank')}</span></div>
           <div className="stat"><b>{displayPoints}</b><span>{t('profile.stats.points')}</span></div>
           <div className="stat"><b>{displayGames}</b><span>{t('profile.stats.matches')}</span></div>
           <div className="stat"><b>{displayWins}</b><span>{t('profile.stats.wins')}</span></div>
         </div>
       </div>
+
+      {/* Conquistas (badges) — desbloqueio validado no servidor */}
+      <AchievementsPanel
+        stats={{ ...(user ?? {}), friendsCount: friends.filter((f) => f.status === 'ACCEPTED').length }}
+        unlockedKeys={(user?.achievements ?? [])
+          .map((ua) => ua.achievement?.nameKey)
+          .filter((k): k is string => Boolean(k))}
+      />
 
       <div className="panel">
         <h3>{t('rank.heading')}</h3>
@@ -243,7 +338,23 @@ function Profile() {
         </div>
         <div className="rank-list">
           {ranking.map((row, i) => (
-            <div className={`rank-row pos${i + 1}`} key={row.userId}>
+            // Clicar abre o perfil (o próprio → /profile; outros → público),
+            // como já acontecia na lista de amigos.
+            <div
+              className={`rank-row pos${i + 1} clickable`}
+              key={row.userId}
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                navigate(row.username === user?.username ? '/profile' : `/user/${row.username}`)
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  navigate(row.username === user?.username ? '/profile' : `/user/${row.username}`)
+                }
+              }}
+            >
               <span className="rank-medal">{i + 1}º</span>
               <div className="mini-avatar">{row.username.charAt(0).toUpperCase()}</div>
               <div className="rank-name">{row.username}</div>
@@ -258,10 +369,13 @@ function Profile() {
       <div className="panel">
         <h3>{t('history.heading')}</h3>
         {history.length === 0 && <p className="rooms-viewtext">{t('history.empty')}</p>}
+        {/* Até ~8 linhas visíveis; o resto acede-se pela barra de rolagem
+            (senão o perfil de quem jogou muito ficava gigante). */}
+        <div className={history.length > 8 ? 'scroll-list scrolls' : 'scroll-list'}>
         {history.map((game) => (
           <div className="room-row" key={game.finishedAt}>
             <div>
-              <div className="room-name">{t(`room.cat.${game.theme}`)}</div>
+              <div className="room-name">{t(`room.cat.${(game.theme || '').toLowerCase()}`)}</div>
               <div className="room-meta">
                 {new Date(game.finishedAt).toLocaleDateString()} · {game.rounds} {t('room.create.rounds')}
               </div>
@@ -279,6 +393,7 @@ function Profile() {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       <div className="panel">
@@ -294,11 +409,13 @@ function Profile() {
       </div>
 
       <div className="panel">
-        <h3>{t('profile.friends.heading')}</h3>
+        <h3 ref={friendsPanelRef}>{t('profile.friends.heading')}</h3>
         {friends.length === 0 ? (
           <p style={{ opacity: 0.7 }}>{t('profile.friends.none')}</p>
         ) : (
-          friends.map((friend) => (
+          // Até ~8 amigos visíveis; o resto pela barra de rolagem.
+          <div className={friends.length > 8 ? 'scroll-list scrolls' : 'scroll-list'}>
+          {friends.map((friend) => (
             <div className="friend-row" key={friend.id}>
               <div className="who">
                 <div className="mini-avatar">
@@ -312,7 +429,16 @@ function Profile() {
                     friend.username.charAt(0).toUpperCase()
                   )}
                 </div>
-                <span>{friend.username}</span>
+                {/* clicar no nome navega para o perfil público (como
+                    antes); o hover mostra o cartão com o rank, sem botões */}
+                <PlayerHoverCard
+                  username={friend.username}
+                  showActions={false}
+                  to={`/user/${friend.username}`}
+                  stats={{ rank: friend.rank, points: friend.totalPoints, wins: friend.wins, matches: friend.gamesPlayed }}
+                >
+                  {friend.username}
+                </PlayerHoverCard>
                 {friend.status === 'SENT_PENDING' && (
                   <span style={{ fontSize: 12, opacity: 0.7, marginLeft: 6 }}>
                     ({t('profile.friends.pending_sent')})
@@ -372,10 +498,11 @@ function Profile() {
                 </div>
               )}
             </div>
-          ))
+          ))}
+          </div>
         )}
 
-        <form className="inline-add" onSubmit={addFriend} style={{ marginTop: 16 }}>
+        <form className="inline-add" onSubmit={searchUser} style={{ marginTop: 16 }}>
           <input
             type="text"
             placeholder={t('profile.addfriends.placeholder')}
@@ -383,9 +510,40 @@ function Profile() {
             onChange={(e) => setSearch(e.target.value)}
           />
           <button type="submit" className="btn btn-primary btn-sm">
-            {t('profile.addfriends.add')}
+            {t('profile.addfriends.searchbtn')}
           </button>
         </form>
+
+        {/* O utilizador encontrado aparece ANTES de se enviar o pedido. */}
+        {foundUser && (
+          <div className="friend-row found-user">
+            <div className="who">
+              <div className="mini-avatar">
+                {foundUser.avatarUrl ? (
+                  <img
+                    src={foundUser.avatarUrl}
+                    alt=""
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  foundUser.username.charAt(0).toUpperCase()
+                )}
+              </div>
+              <span>{foundUser.username}</span>
+              <span className="found-user-meta">
+                {foundUser.rank > 0 ? `#${foundUser.rank}` : '—'} · {foundUser.totalPoints} {t('rank.points')}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => sendRequestTo(foundUser.username)}
+            >
+              {t('profile.addfriends.add')}
+            </button>
+          </div>
+        )}
+        {notFound && <p style={{ marginTop: 8, color: 'var(--red, #ef4444)' }}>{t('profile.addfriends.notfound')}</p>}
         {sentTo && <p style={{ marginTop: 8, color: 'var(--green, #22c55e)' }}>{t('profile.addfriends.sent')} {sentTo}</p>}
         {friendError && <p style={{ marginTop: 8, color: 'var(--red, #ef4444)' }}>{friendError}</p>}
       </div>

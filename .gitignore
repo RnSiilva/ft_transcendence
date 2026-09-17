@@ -16,6 +16,8 @@ backend/prisma/generated/
 # Vite (cache interno)
 frontend/.vite/
 *.local
+# Referência de tipos gerada pelo Vite (não precisa de ser versionada)
+frontend/src/vite-env.d.ts
 
 # TypeScript (cache de build incremental)
 *.tsbuildinfo

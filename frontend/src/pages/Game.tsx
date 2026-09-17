@@ -2,24 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import EndGameOverlay from '../components/EndGameOverlay'
+import PlayerHoverCard from '../components/PlayerHoverCard'
+import { useAuth } from '../hooks/useAuth'
 import { useGameSocket } from '../hooks/useGameSocket'
 
 const COLORS = ['#15161B', '#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 
-// DEMO: no jogo real as 3 opções vêm do SERVIDOR (words.repository.pickWord
-// por tema; evento tipo 'round:choices' → escolha 'round:choose'; os 5 s
-// para decidir também são contados no servidor). AQUI O CODIGO DO SERVIDOR.
-const DEMO_CHOICES = [
-  { catKey: 'game.cat.animal', word: 'GATO' },
-  { catKey: 'game.cat.object', word: 'CADEIRA' },
-  { catKey: 'game.cat.country', word: 'JAPÃO' },
-]
-// DEMO: palavra secreta fixa para veres a animação de acerto no chat.
-const DEMO_SECRET = 'gato'
-const CHOOSE_SECONDS = 10
-
 type ChatMessage = { name: string; text: string; system?: boolean }
-type Acerto = { word: string; place: number; points: number }
+type Acerto = { word: string; place: number; points: number; turnKey: string }
 
 // Chuva de confetes do acerto: ~80 pedacinhos nas cores do projeto, cada um
 // com posição, atraso, tamanho e rotação aleatórios (só CSS, sem libraria).
@@ -72,6 +62,10 @@ function Trophy({ place }: { place: number }) {
 function Game() {
   const { t } = useLanguage()
   const navigate = useNavigate()
+  // Identidade real da sessão: o nome/pontos vêm da conta autenticada; o
+  // 'utilizador_demo' fica só como recurso quando não há sessão (dev local).
+  const { user } = useAuth()
+  const selfName = user?.username ?? 'utilizador_demo'
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const chatLogRef = useRef<HTMLDivElement | null>(null)
   const drawingRef = useRef(false)
@@ -79,7 +73,6 @@ function Game() {
   const [activeColor, setActiveColor] = useState(COLORS[0])
   const [chatText, setChatText] = useState('')
   const [endgameClosed, setEndgameClosed] = useState(false)
-  const [testOpen, setTestOpen] = useState(false)
 
   // Se chegámos aqui sem ?room= mas há uma sala recente, repõe-a no URL
   // ANTES do socket ligar: o servidor segura o lugar 15 s (reclaimSeat) e o
@@ -110,27 +103,63 @@ function Game() {
     if (game.code) sessionStorage.setItem('sg-room', game.code)
   }, [game.code])
 
-  // ---- vez de desenhar (real: game.isDrawer; demo: botões na topbar) ----
-  // Sozinho numa sala real és sempre o desenhador; o "Testar adivinhar"
-  // (demoGuesser) força o modo de adivinhar por cima disso, para testes.
-  const [demoDrawer, setDemoDrawer] = useState(false)
-  const [demoGuesser, setDemoGuesser] = useState(false)
-  const [chosenWord, setChosenWord] = useState<string | null>(null)
-  const [wordChoices, setWordChoices] = useState<typeof DEMO_CHOICES | null>(null)
-  const [chooseLeft, setChooseLeft] = useState(CHOOSE_SECONDS)
-  const isMe = demoGuesser ? false : (game.isDrawer || demoDrawer)
+  // ---- vez de desenhar: decidida pelo servidor, sem botões de teste ----
+  const isMe = game.isDrawer
   const isMeRef = useRef(isMe)
   useEffect(() => {
     isMeRef.current = isMe
   })
 
-  // ---- acerto (demo local; no real vem do servidor: 'round:correct') ----
-  const [demoMessages, setDemoMessages] = useState<ChatMessage[]>([])
+  // Contagem visual dos 10 s para escolher a palavra (quem manda é o
+  // servidor: se ela chegar a zero, ele escolhe a primeira por ti).
+  // O par {src,left} liga a contagem a ESTA oferta: enquanto o relógio não
+  // bate, mostra os segundos anunciados — sem setState síncrono no effect.
+  const [choiceTick, setChoiceTick] = useState<{ src: unknown; left: number } | null>(null)
+  useEffect(() => {
+    const offer = game.choices
+    if (!offer) return
+    const end = Date.now() + offer.seconds * 1000
+    const tick = setInterval(() => {
+      setChoiceTick({ src: offer, left: Math.max(0, Math.ceil((end - Date.now()) / 1000)) })
+    }, 250)
+    return () => clearInterval(tick)
+  }, [game.choices])
+  const choiceLeft = game.choices
+    ? (choiceTick && choiceTick.src === game.choices ? choiceTick.left : game.choices.seconds)
+    : 0
+
+  // ---- acerto real: 'round:correct' do servidor + o que eu escrevi ----
+  // O servidor nunca envia a palavra no acerto (senão entregava-a aos
+  // outros); a que aparece no MEU banner é a que eu próprio escrevi.
+  const [notices, setNotices] = useState<ChatMessage[]>([])
   const [acerto, setAcerto] = useState<Acerto | null>(null)
   const [confettiAt, setConfettiAt] = useState<number | null>(null)
-  const acertoCount = useRef(0)
-  // Quem já acertou não pode voltar a pontuar na mesma ronda.
-  const hasGuessedRef = useRef(false)
+  const lastGuessRef = useRef('')
+  // Identifica o turno atual; o banner só vive dentro do turno em que nasceu.
+  const turnKey = game.round ? `${game.round.round}-${game.round.turn}` : ''
+  const seenCorrectRef = useRef(0)
+  useEffect(() => {
+    const hit = game.lastCorrect
+    if (!hit || hit.at === seenCorrectRef.current) return
+    seenCorrectRef.current = hit.at
+    if (hit.name !== selfName) return
+    setAcerto({
+      word: lastGuessRef.current.toUpperCase(),
+      place: hit.position,
+      points: hit.points,
+      turnKey,
+    })
+    const burst = hit.at
+    setConfettiAt(burst)
+    const timer = window.setTimeout(() => {
+      setConfettiAt((current) => (current === burst ? null : current))
+    }, 3800)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.lastCorrect, selfName])
+
+  // Derivado: o banner some sozinho quando o turno seguinte começa.
+  const acertoVisible = acerto && acerto.turnKey === turnKey ? acerto : null
 
   // ---- modais de saída ----
   const [confirmLeave, setConfirmLeave] = useState(false)
@@ -146,11 +175,6 @@ function Game() {
   // A votação vive no servidor: conta 1 voto por jogador, precisa de MAIS de
   // metade e expulsa como se a pessoa tivesse saído, perdendo os pontos.
   const [reportOpen, setReportOpen] = useState(false)
-  const demoPlayers = [
-    { id: 'c', name: 'Carlos', pts: 140 },
-    { id: 'u', name: 'utilizador_demo', pts: 120 },
-    { id: 'r', name: 'Renan', pts: 95 },
-  ]
 
   // O tempo é do servidor: todos os jogadores da sala veem o mesmo número, e
   // ninguém ganha segundos por ter a página mais lenta.
@@ -159,7 +183,7 @@ function Game() {
   // Derivado em vez de guardado: o fim de jogo aparece porque o servidor diz
   // que acabou, e desaparece porque o jogador o fechou.
   const finished = game.round?.phase === 'finished'
-  const endgameOpen = testOpen || (finished && !endgameClosed)
+  const endgameOpen = finished && !endgameClosed
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -168,6 +192,14 @@ function Game() {
 
     function fitCanvas() {
       if (!canvas || !ctx) return
+      // Tamanho igual ao atual: nada a fazer. Nos telemóveis o browser
+      // dispara 'resize' constantemente (barra de endereço, teclado) e cada
+      // refit apaga o quadro e repinta o histórico inteiro — era isso que
+      // deixava o desenho em ecrã inteiro lentíssimo.
+      const size = canvas.getBoundingClientRect()
+      if (canvas.width === Math.round(size.width * 2) && canvas.height === Math.round(size.height * 2)) {
+        return
+      }
       // Mudar width/height APAGA o canvas: antes disso o desenho atual é
       // copiado para um canvas temporário e volta a ser pintado à escala.
       const prev = document.createElement('canvas')
@@ -177,9 +209,9 @@ function Game() {
         prev.getContext('2d')?.drawImage(canvas, 0, 0)
       }
 
-      const rect = canvas.getBoundingClientRect()
-      canvas.width = rect.width * 2
-      canvas.height = rect.height * 2
+      const rect = size
+      canvas.width = Math.round(rect.width * 2)
+      canvas.height = Math.round(rect.height * 2)
       ctx.scale(2, 2)
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
@@ -199,21 +231,23 @@ function Game() {
       // strokes from anyone else too — this just avoids the dead cursor.
       if (!gameRef.current.isDrawer && !isMeRef.current) return
       drawingRef.current = true
-      const p = pos(e)
-      lastPointRef.current = p
-      ctx!.beginPath()
-      ctx!.moveTo(p.x, p.y)
+      lastPointRef.current = pos(e)
     }
     function move(e: MouseEvent | TouchEvent) {
       if (!drawingRef.current) return
       const p = pos(e)
+      const from = lastPointRef.current
       ctx!.strokeStyle = colorRef.current
+      // UM segmento por evento. Antes, lineTo acumulava o traço inteiro num
+      // caminho só e cada stroke() redesenhava TUDO desde o início — O(n²):
+      // era isto que travava o desenho no telemóvel (pior em ecrã inteiro).
+      ctx!.beginPath()
+      ctx!.moveTo((from ?? p).x, (from ?? p).y)
       ctx!.lineTo(p.x, p.y)
       ctx!.stroke()
 
       // Normalised to 0..1 so windows of different sizes stay in sync.
       const rect = canvas!.getBoundingClientRect()
-      const from = lastPointRef.current
       if (from) {
         gameRef.current.sendStroke({
           x0: from.x / rect.width,
@@ -237,7 +271,17 @@ function Game() {
     canvas.addEventListener('touchstart', start)
     canvas.addEventListener('touchmove', move, { passive: false })
     canvas.addEventListener('touchend', end)
-    window.addEventListener('resize', fitCanvas)
+    // Debounce do refit: rajadas de 'resize' (típicas no telemóvel) fazem UM
+    // ajuste no fim, em vez de apagar+repintar o quadro dezenas de vezes.
+    let fitTimer: number | null = null
+    function scheduleFit() {
+      if (fitTimer !== null) window.clearTimeout(fitTimer)
+      fitTimer = window.setTimeout(() => {
+        fitTimer = null
+        fitCanvas()
+      }, 150)
+    }
+    window.addEventListener('resize', scheduleFit)
     return () => {
       canvas.removeEventListener('mousedown', start)
       canvas.removeEventListener('mousemove', move)
@@ -245,7 +289,8 @@ function Game() {
       canvas.removeEventListener('touchstart', start)
       canvas.removeEventListener('touchmove', move)
       canvas.removeEventListener('touchend', end)
-      window.removeEventListener('resize', fitCanvas)
+      window.removeEventListener('resize', scheduleFit)
+      if (fitTimer !== null) window.clearTimeout(fitTimer)
     }
   }, [])
 
@@ -279,29 +324,7 @@ function Game() {
     }
   }, [])
 
-  // Contagem dos 5 segundos para escolher a palavra (demo; no real é o
-  // servidor que conta e escolhe por ti se não decidires).
-  useEffect(() => {
-    if (!wordChoices) return
-    const tick = setInterval(() => {
-      setChooseLeft((s) => {
-        if (s <= 1) {
-          setWordChoices((choices) => {
-            if (choices) {
-              setChosenWord(choices[0].word)
-              setDemoDrawer(true)
-            }
-            return null
-          })
-          return CHOOSE_SECONDS
-        }
-        return s - 1
-      })
-    }, 1000)
-    return () => clearInterval(tick)
-  }, [wordChoices])
-
-  const shownMessages: ChatMessage[] = [...game.messages, ...demoMessages]
+  const shownMessages: ChatMessage[] = [...game.messages, ...notices]
 
   useEffect(() => {
     const log = chatLogRef.current
@@ -319,88 +342,31 @@ function Game() {
     game.sendClear()
   }
 
-  function startTurnDemo() {
-    setDemoGuesser(false)
-    setChooseLeft(CHOOSE_SECONDS)
-    setWordChoices(DEMO_CHOICES)
-  }
-
-  function chooseWord(word: string) {
-    // AQUI O CODIGO DO SERVIDOR (enviar a escolha: 'round:choose' { word })
-    setChosenWord(word)
-    setDemoDrawer(true)
-    setWordChoices(null)
-    setChooseLeft(CHOOSE_SECONDS)
-  }
-
-  // Um único campo serve para conversar e para adivinhar: o servidor compara
-  // a mensagem com a palavra secreta e decide o que ela foi.
-  // Quem está a desenhar NÃO pode escrever (senão entregava a palavra);
-  // o input fica desativado e isto é a segunda tranca. AQUI O CODIGO DO
-  // SERVIDOR (o round.socket também deve ignorar chat vindo do desenhador).
+  // Um único campo serve para conversar e para adivinhar: o SERVIDOR compara
+  // a mensagem com a palavra secreta e decide o que ela foi ('round:correct'
+  // com nome/pontos/posição). Quem desenha não escreve: o input está
+  // desativado e o round.js ignora palpites do desenhador.
   function sendChat() {
     if (isMe) return
     const text = chatText.trim()
     if (!text) return
-
-    // DEMO local: no modo "Testar adivinhar" (ou sem socket ligado) a
-    // mensagem não vai ao servidor — "gato" em qualquer capitalização
-    // acerta. No real quem valida é o SERVIDOR ('round:correct' com nome,
-    // pontos e posição — round.socket.js).
-    const demoMode = demoGuesser || !game.code
-    if (!demoMode) {
-      game.sendChat(text)
-    } else {
-      if (text.toLowerCase() === DEMO_SECRET) {
-        // Já acertou nesta ronda: não pontua outra vez (e a palavra não é
-        // reenviada ao chat, senão entregava-a aos outros).
-        if (hasGuessedRef.current) {
-          setDemoMessages((all) => [
-            ...all,
-            { name: '', text: t('game.correct.already'), system: true },
-          ])
-          setChatText('')
-          return
-        }
-        hasGuessedRef.current = true
-        acertoCount.current += 1
-        const place = acertoCount.current
-        const points = Math.max(100 - (place - 1) * 25, 25)
-        setAcerto({ word: DEMO_SECRET.toUpperCase(), place, points })
-        // Confetes a acompanhar o troféu; somem sozinhos.
-        const burst = Date.now()
-        setConfettiAt(burst)
-        window.setTimeout(() => {
-          setConfettiAt((current) => (current === burst ? null : current))
-        }, 3800)
-        setDemoMessages((all) => [
-          ...all,
-          { name: '', text: `${t('game.correct.you')} +${points}`, system: true },
-        ])
-      } else {
-        setDemoMessages((all) => [...all, { name: 'utilizador_demo', text }])
-      }
-    }
+    // Guardada para o banner: se isto for o acerto, é esta a palavra.
+    lastGuessRef.current = text
+    game.sendChat(text)
     setChatText('')
   }
 
-  // Placar: com 2+ jogadores reais vem do servidor; sozinho (ou sem socket)
-  // mostra um exemplo com outros utilizadores e pontos, para se ver o layout.
-  const scoreRows = game.members.length >= 2
-    ? game.members.map((member) => ({
-        id: member.id,
-        name: member.name,
-        isDrawer: member.isDrawer,
-        msToDrop: member.msToDrop,
-        pts: game.round?.scores.find((s) => s.id === member.id)?.points ?? 0,
-      }))
-    : demoPlayers.map((player) => ({
-        id: player.id,
-        name: player.name,
-        isDrawer: player.name === 'utilizador_demo' ? isMe : player.name === 'Carlos' && !isMe,
-        msToDrop: null as number | null,
-        pts: player.pts,
-      }))
+  // Placar 100% do servidor: quem está na sala e os pontos da partida.
+  const scoreRows = game.members.map((member) => ({
+    id: member.id,
+    name: member.name,
+    isDrawer: member.isDrawer,
+    msToDrop: member.msToDrop,
+    pts: game.round?.scores.find((s) => s.id === member.id)?.points ?? 0,
+  }))
+
+  // Os meus pontos nesta partida, para a topbar.
+  const myPoints = game.round?.scores.find((s) => s.name === selfName)?.points ?? 0
 
   // Se o servidor recusar, a razão vai para o chat: o silêncio era o que
   // fazia isto parecer partido.
@@ -414,21 +380,21 @@ function Game() {
       ? t('game.report.needplayers')
       : t('game.report.failed')
 
-    setDemoMessages((all) => [...all, { name: '', text: reason, system: true }])
+    setNotices((all) => [...all, { name: '', text: reason, system: true }])
   }
 
   return (
     <div className="game-wrap">
       <div className="game-topbar">
         <div className="who">
-          <div className="mini-avatar">U</div>
-          utilizador_demo — <span>120</span> <span>{t('game.points')}</span>
+          <div className="mini-avatar">{selfName.charAt(0).toUpperCase()}</div>
+          {selfName} — <span>{myPoints}</span> <span>{t('game.points')}</span>
         </div>
         <div className="pill-stat">
           <span>{t('game.round')}</span> {game.round ? `${game.round.round}/${game.round.totalRounds} (${game.round.turn}/${game.round.turnsPerRound})` : '—'}
         </div>
         <div className="pill-stat word-blank">
-          <span>{t('game.word')}</span>: {(isMe && chosenWord) || game.wordToShow || '—'}
+          <span>{t('game.word')}</span>: {game.wordToShow || '—'}
         </div>
         <div className="pill-stat">
           <span>{t('game.time')}</span>:{' '}
@@ -437,37 +403,6 @@ function Game() {
           </span>
           s
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={startTurnDemo}
-        >
-          {t('game.turn.test')}
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            // Força o modo de adivinhar (mesmo sendo o desenhador real da
-            // sala, o que acontece sempre que estás sozinho nela) e começa
-            // uma "ronda" demo limpa: pode acertar-se de novo.
-            setDemoGuesser(true)
-            setDemoDrawer(false)
-            setChosenWord(null)
-            setAcerto(null)
-            acertoCount.current = 0
-            hasGuessedRef.current = false
-          }}
-        >
-          {t('game.guess.test')}
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => setTestOpen(true)}
-        >
-          {t('endgame.test')}
-        </button>
       </div>
 
       <div className={isMe ? 'game-grid' : 'game-grid guessing'}>
@@ -498,23 +433,22 @@ function Game() {
                   {fullscreen ? '✕' : '⛶'}
                 </button>
               </>
-            ) : acerto ? (
+            ) : acertoVisible ? (
               // Acerto: palavra, troféu (ouro/prata/bronze pela ordem) e
-              // pontos. AQUI O CODIGO DO SERVIDOR (a palavra SÓ pode
-              // aparecer a quem já acertou e ao desenhador — os outros
-              // recebem 'round:correct' apenas com nome/pontos/posição,
-              // nunca com a palavra; o servidor é que garante isso)
-              <div className="acerto-banner" key={acerto.place}>
-                <Trophy place={acerto.place} />
-                <span className="word">{acerto.word}</span>
-                <span className="place">{acerto.place}º</span>
-                <span className="pts">+{acerto.points} {t('game.points')}</span>
+              // pontos. A palavra é a que EU escrevi — o servidor nunca a
+              // envia no 'round:correct', para os outros não a lerem.
+              <div className="acerto-banner" key={acertoVisible.place}>
+                <Trophy place={acertoVisible.place} />
+                <span className="word">{acertoVisible.word}</span>
+                <span className="place">{acertoVisible.place}º</span>
+                <span className="pts">+{acertoVisible.points} {t('game.points')}</span>
               </div>
             ) : (
               <span className="turn-notice guess">🎯 {t('game.guess.notice')}</span>
             )}
           </div>
-          <canvas id="draw-canvas" ref={canvasRef} />
+          {/* O cursor-lápis só na vez de desenhar; a adivinhar é seta normal. */}
+          <canvas id="draw-canvas" ref={canvasRef} className={isMe ? 'drawing' : ''} />
         </div>
 
         <div className="chat-box">
@@ -561,18 +495,25 @@ function Game() {
                 className={[
                   'score-row',
                   member.isDrawer ? 'drawing' : '',
-                  member.name === 'utilizador_demo' ? 'self' : '',
+                  member.name === selfName ? 'self' : '',
                 ].join(' ').trim()}
               >
                 <div className="mini-avatar">{member.name.charAt(0).toUpperCase()}</div>
                 <div className="nm">
-                  {member.name}
+                  {/* Pousar/tocar no nome abre o cartão: stats + amigo + report */}
+                  <PlayerHoverCard
+                    username={member.name}
+                    isSelf={member.name === selfName}
+                    onReport={() => startReport(member.id)}
+                  >
+                    {member.name}
+                  </PlayerHoverCard>
                   {member.isDrawer && (
                     <span className="drawing-tag"> {t('game.drawing')}</span>
                   )}
                   {member.msToDrop !== null && (
                     <span className="drawing-tag">
-                      {' '}— desligou-se, {Math.ceil(member.msToDrop / 1000)}s
+                      {' '}— {t('game.dropped')} {Math.ceil(member.msToDrop / 1000)}s
                     </span>
                   )}
                 </div>
@@ -601,26 +542,26 @@ function Game() {
         </button>
       </div>
 
-      {/* É a tua vez: 3 palavras, 5 segundos para escolher. */}
-      {wordChoices && (
+      {/* É a tua vez: 3 palavras REAIS do servidor, 10 s para escolher
+          (contados no servidor; ao chegar a zero vai a primeira). */}
+      {game.choices && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
             <h2>{t('game.choose.title')}</h2>
             <p className="roomlang-text">{t('game.choose.text')}</p>
             <div className="choose-words">
-              {wordChoices.map((choice) => (
+              {game.choices.options.map((word) => (
                 <button
-                  key={choice.word}
+                  key={word}
                   type="button"
                   className="choose-word"
-                  onClick={() => chooseWord(choice.word)}
+                  onClick={() => game.sendChoice(word)}
                 >
-                  <span className="cat">{t(choice.catKey)}</span>
-                  <span>{choice.word}</span>
+                  <span>{word}</span>
                 </button>
               ))}
             </div>
-            <div className="choose-timer">{chooseLeft}s {t('game.choose.timer')}</div>
+            <div className="choose-timer">{choiceLeft}s {t('game.choose.timer')}</div>
           </div>
         </div>
       )}
@@ -638,9 +579,11 @@ function Game() {
               <button
                 type="button"
                 className="btn btn-danger"
-                onClick={() => {
-                  // AQUI O CODIGO DO SERVIDOR ('room:leave' — o servidor
-                  // remove o jogador e os pontos desta partida perdem-se)
+                onClick={async () => {
+                  // Sair confirmado: ESPERA o ack do room:leave antes de
+                  // navegar — navegar já desligava o socket e o aviso
+                  // podia perder-se (fantasma vivo readotado pelo perfil).
+                  await game.leaveRoom()
                   sessionStorage.removeItem('sg-room')
                   navigate('/profile')
                 }}
@@ -665,7 +608,9 @@ function Game() {
               <button
                 type="button"
                 className="btn btn-danger"
-                onClick={() => {
+                onClick={async () => {
+                  // Mesma correção do botão Sair: esperar o ack primeiro.
+                  await game.leaveRoom()
                   sessionStorage.removeItem('sg-room')
                   navigate(pendingNav)
                 }}
@@ -685,7 +630,7 @@ function Game() {
             <p className="roomlang-text">{t('game.report.choose')}</p>
             <div className="choose-words">
               {scoreRows
-                .filter((member) => member.name !== 'utilizador_demo')
+                .filter((member) => member.name !== selfName)
                 .map((member) => (
                   <button
                     key={member.id}
@@ -730,6 +675,28 @@ function Game() {
         </div>
       )}
 
+      {/* Ficaste sozinho a meio da partida: a sala fechou, sem pontos. */}
+      {game.aborted && (
+        <div className="modal-overlay show">
+          <div className="modal-panel lobby-small">
+            <h2>{t('game.aborted.title')}</h2>
+            <p className="roomlang-text">{t('game.aborted.text')}</p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  sessionStorage.removeItem('sg-room')
+                  navigate('/rooms')
+                }}
+              >
+                {t('endgame.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {game.expelled && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -748,7 +715,22 @@ function Game() {
 
       {endgameOpen && (
         <EndGameOverlay
-          onClose={() => { setTestOpen(false); setEndgameClosed(true) }}
+          onClose={async () => {
+            // Fim de jogo: sair para /rooms tem de acontecer SEMPRE. A ordem
+            // importa — remover o sg-room e navegar NUNCA podem ficar reféns
+            // do await do room:leave: se esse await for interrompido (rede
+            // lenta, ou um recarregamento do Vite a remontar o componente a
+            // meio), o navigate no finally corre à mesma e o jogador não
+            // fica preso no tabuleiro. Os pontos já foram gravados no fim da
+            // última ronda, por isso sair aqui não perde nada.
+            sessionStorage.removeItem('sg-room')
+            setEndgameClosed(true)
+            try {
+              await game.leaveRoom()
+            } finally {
+              navigate('/rooms')
+            }
+          }}
           scores={game.round?.scores.map((s) => ({ name: s.name, points: s.points })) ?? []}
         />
       )}

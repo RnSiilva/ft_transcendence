@@ -1,6 +1,8 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
+import { useAuth } from '../hooks/useAuth'
+import { translateApiError } from '../utils/apiError'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -13,8 +15,8 @@ interface FieldErrors {
 }
 
 function Register() {
-  const navigate = useNavigate()
   const { t } = useLanguage()
+  const { user, loading: checkingSession } = useAuth()
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -23,6 +25,15 @@ function Register() {
   const [loading, setLoading] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
+
+  // Depois de TODOS os hooks (regras dos hooks): sessão a verificar não
+  // mostra o formulário; quem já está autenticado vai para o perfil.
+  if (checkingSession) {
+    return null
+  }
+  if (user) {
+    return <Navigate to="/profile" replace />
+  }
 
   function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -79,14 +90,17 @@ function Register() {
       const data = await res.json()
 
       if (!res.ok) {
-        const mappedErrors = data.errors ? { ...data.errors } : undefined
-        if (mappedErrors?.username === 'Username already taken') {
-          mappedErrors.username = t('errors.usernameTaken')
+        // Todas as mensagens do backend passam pelo mapa i18n (apiError.ts),
+        // campo a campo — nada aparece em inglês cru.
+        if (data.errors) {
+          const mappedErrors: FieldErrors = {}
+          for (const [field, message] of Object.entries(data.errors)) {
+            mappedErrors[field as keyof FieldErrors] = translateApiError(t, message as string)
+          }
+          setErrors(mappedErrors)
+        } else {
+          setErrors({ general: translateApiError(t, data.error ?? undefined) })
         }
-        let generalError = data.error ?? t('errors.registrationFailed')
-        if (generalError === 'Username already taken') generalError = t('errors.usernameTaken')
-        
-        setErrors(mappedErrors ?? { general: generalError })
         return
       }
 

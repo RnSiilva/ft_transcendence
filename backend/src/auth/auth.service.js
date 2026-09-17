@@ -122,11 +122,19 @@ async function getUserById(id) {
       wins: true,
       createdAt: true,
       passwordHash: true,
+      achievements: {
+        include: { achievement: true }
+      },
+      friendsSent: { where: { status: 'ACCEPTED' } },
+      friendsReceived: { where: { status: 'ACCEPTED' } },
     },
   });
   if (user) {
     user.hasPassword = !!user.passwordHash;
     delete user.passwordHash;
+    user.friendsCount = user.friendsSent.length + user.friendsReceived.length;
+    delete user.friendsSent;
+    delete user.friendsReceived;
   }
   return user;
 }
@@ -249,4 +257,42 @@ async function findOrCreate42User(profile) {
   });
 }
 
-module.exports = { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser, findOrCreate42User };
+async function checkAchievements(userId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      achievements: true,
+      friendsSent: { where: { status: 'ACCEPTED' } },
+      friendsReceived: { where: { status: 'ACCEPTED' } },
+    }
+  });
+  
+  if (!user) return;
+  
+  const friendsCount = user.friendsSent.length + user.friendsReceived.length;
+  const allAchievements = await prisma.achievement.findMany();
+  const unlockedIds = new Set(user.achievements.map(ua => ua.achievementId));
+  
+  const newUnlocks = [];
+  
+  for (const ach of allAchievements) {
+    if (unlockedIds.has(ach.id)) continue;
+    
+    let met = false;
+    if (ach.category === 'GAMES_PLAYED' && user.gamesPlayed >= ach.targetValue) met = true;
+    else if (ach.category === 'WINS' && user.wins >= ach.targetValue) met = true;
+    else if (ach.category === 'TOTAL_POINTS' && user.totalPoints >= ach.targetValue) met = true;
+    else if (ach.category === 'RANK' && user.rank > 0 && user.rank <= ach.targetValue) met = true;
+    else if (ach.category === 'FRIENDS' && friendsCount >= ach.targetValue) met = true;
+    
+    if (met) {
+      newUnlocks.push({ userId: user.id, achievementId: ach.id });
+    }
+  }
+  
+  if (newUnlocks.length > 0) {
+    await prisma.userAchievement.createMany({ data: newUnlocks, skipDuplicates: true });
+  }
+}
+
+module.exports = { registerUser, loginUser, updateUserLanguage, getUserById, updateUserProfile, deleteUser, findOrCreate42User, checkAchievements };

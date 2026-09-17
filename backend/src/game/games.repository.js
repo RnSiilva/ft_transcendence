@@ -58,6 +58,20 @@ async function saveGame({ roomCode, settings, scores })
 			});
 		}
 
+		// Recalcula o rank guardado de TODOS os que já jogaram (posição por
+		// pontos totais, desempate por vitórias). A coluna nascia a 0 e nunca
+		// era atualizada — o perfil e o cartão mostravam "#0" para sempre.
+		const ranked = await tx.user.findMany({
+			where: { gamesPlayed: { gt: 0 } },
+			orderBy: [{ totalPoints: 'desc' }, { wins: 'desc' }],
+			select: { id: true, rank: true },
+		});
+		for (let i = 0; i < ranked.length; i += 1)
+		{
+			if (ranked[i].rank !== i + 1)
+				await tx.user.update({ where: { id: ranked[i].id }, data: { rank: i + 1 } });
+		}
+
 		return game;
 	});
 }

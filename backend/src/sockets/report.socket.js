@@ -16,8 +16,12 @@ const votes = new Map();
 
 const voterCount = (room) => Math.max(1, room.members.size - 1);
 
-/** More than half, never exactly half: with four voters it takes three. */
-const threshold = (room) => Math.floor(voterCount(room) / 2) + 1;
+/**
+ * More than half, never exactly half: with four voters it takes three.
+ * Never below two: in a two-player room the single voter would otherwise
+ * expel the other player on their own, which a vote is meant to prevent.
+ */
+const threshold = (room) => Math.max(2, Math.floor(voterCount(room) / 2) + 1);
 
 function announce(io, room, vote)
 {

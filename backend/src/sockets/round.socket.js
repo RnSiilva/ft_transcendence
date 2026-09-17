@@ -11,13 +11,17 @@ const round = require('../game/round');
 const { pickWord } = require('../game/words.repository');
 const { saveGame } = require('../game/games.repository');
 
-// Provisional: a game starts on its own once there are two people. The team
-// decided on three and a start button, but that lobby does not exist yet, and
-// without something here no round would ever begin.
+// A game still starts on its own once there are two people — but only in
+// rooms without a waiting lobby. Rooms opened through the lobby page carry
+// room.lobbyWaiting until the creator presses start (see lobby.socket.js).
 const MIN_PLAYERS = 2;
 
 // How long the answer stays on screen before the next round starts.
 const RESULT_PAUSE_MS = 5000;
+
+// How long the drawer has to pick one of the three suggested words before
+// the first one is chosen for them. Counted here, never in the browser.
+const CHOOSE_MS = 10000;
 
 /** roomCode -> game */
 const games = new Map();
@@ -29,22 +33,62 @@ function announce(io, room, game)
 	io.to(room.code).emit('round:state', round.snapshot(game, [...room.members.values()]));
 }
 
+/**
+ * Opens a turn by offering the drawer three words. round.startTurn was built
+ * for exactly this ("lets the caller decide whether the word was drawn at
+ * random or chosen by the person drawing") — the turn itself only starts in
+ * startChosenTurn, once the drawer picks or the 10 s run out.
+ */
 async function beginRound(io, room, game)
 {
-	const word = await pickWord(room.settings.theme, room.settings.language, game.usedWords);
-	if (!word)
+	const options = [];
+	for (let i = 0; i < 3; i += 1)
+	{
+		const word = await pickWord(
+			room.settings.theme,
+			room.settings.language,
+			[...game.usedWords, ...options],
+		);
+		if (word)
+			options.push(word);
+	}
+	if (options.length === 0)
 		return;
+
+	// First round of the game: the creator draws first. After that,
+	// follows the order of entry, starting with who drew last.
+	let drawerId = game.drawerId
+		? rooms.nextDrawerId(room, game.drawerId)
+		: room.creatorId;
+
+	// room.creatorId pode apontar para um socket antigo (o criador trocou de
+	// ligação ao navegar do lobby para o /game). Um desenhador que não é
+	// membro atual deixaria o turno sem dono: recua para o primeiro membro.
+	if (!room.members.has(drawerId))
+		drawerId = [...room.members.keys()][0];
+
+	game.choosing = {
+		options,
+		drawerId,
+		deadline: Date.now() + CHOOSE_MS,
+	};
+
+	// Only the person drawing sees the three words.
+	io.to(drawerId).emit('round:choices', {
+		options,
+		seconds: CHOOSE_MS / 1000,
+	});
+}
+
+async function startChosenTurn(io, room, game, word)
+{
+	const { drawerId } = game.choosing;
+	delete game.choosing;
 
 	// A fresh board for each turn: otherwise the next person draws on top of
 	// the last picture, and whoever reloads sees both at once.
 	rooms.clearStrokes(room);
 	io.to(room.code).emit('draw:clear');
-
-	// First round of the game: the creator draws first. After that,
-	// follows the order of entry, starting with who drew last.
-	const drawerId = game.drawerId
-		? rooms.nextDrawerId(room, game.drawerId)
-		: room.creatorId;
 
 	round.startTurn(game, word, drawerId, room.members.size);
 
@@ -60,6 +104,11 @@ async function tickRoom(io, room)
 
 	if (!game)
 	{
+		// A room still sitting in the lobby only starts when the creator says
+		// so (lobby.socket.js clears the flag on lobby:start).
+		if (room.lobbyWaiting)
+			return;
+
 		if (room.members.size < MIN_PLAYERS)
 			return;
 
@@ -69,15 +118,43 @@ async function tickRoom(io, room)
 		return;
 	}
 
-	// Left alone, the clock has to stop. Otherwise "everyone has guessed" is
-	// true of nobody, every round closes the instant it opens, and the game
-	// burns through its words while one person watches.
+	// The drawer is picking a word: the clock only starts once they do (or
+	// once their 10 s run out and the first option is picked for them).
+	if (game.choosing)
+	{
+		if (Date.now() >= game.choosing.deadline)
+			await startChosenTurn(io, room, game, game.choosing.options[0]);
+		return;
+	}
+
+	// Fim de jogo: continua a anunciar o estado final a quem ainda cá está.
+	// O anúncio único do fim podia perder-se (telemóvel suspenso no último
+	// segundo) e esse jogador ficava preso "a meio do jogo" para sempre —
+	// a sala ainda existia, por isso nem a sonda o salvava. Reanunciar é
+	// idempotente: o frontend deriva o ecrã do troféu do phase 'finished'.
+	if (game.phase === round.PHASE.finished)
+	{
+		announce(io, room, game);
+		return;
+	}
+
+	// Left alone mid-match the room closes AT ONCE and nobody keeps the
+	// points — they were never saved, since that only happens at the finish
+	// line. Accidental disconnects are unaffected: the absent player keeps
+	// their seat (and the member count) for the 15 s grace period.
 	if (room.members.size < MIN_PLAYERS)
 	{
-		if (game.phase !== round.PHASE.paused)
+		if (game.phase !== round.PHASE.finished)
 		{
-			round.pauseGame(game);
-			announce(io, room, game);
+			io.to(room.code).emit('game:aborted');
+
+			for (const member of [...room.members.values()])
+			{
+				rooms.leaveRoom(member.id);
+				forgetMember(room, member.id);
+				io.sockets.sockets.get(member.id)?.leave(room.code);
+			}
+			games.delete(room.code);
 		}
 		return;
 	}
@@ -166,6 +243,11 @@ function registerRoundHandlers(io, socket)
 			return;
 
 		const game = gameOf(room);
+
+		// The drawer stays silent while drawing: the input is disabled in the
+		// browser, but this is the lock that stops a spelled-out word.
+		if (game && game.phase === round.PHASE.drawing && game.drawerId === socket.id)
+			return;
 		const guess = game ? round.registerGuess(game, socket.id, text) : { correct: false };
 
 		if (guess.correct)
@@ -180,6 +262,24 @@ function registerRoundHandlers(io, socket)
 			return;
 		}
 
+		// Quem JÁ acertou não pode soprar a resposta: se voltar a escrever a
+		// palavra (ou qualquer pista), a mensagem só chega ao desenhador e a
+		// quem também já acertou — nunca a quem ainda está a adivinhar.
+		if (game && game.phase === round.PHASE.drawing
+			&& game.correct.some((entry) => entry.memberId === socket.id))
+		{
+			const message = { name: socket.user.username, text };
+			for (const member of room.members.values())
+			{
+				const mayRead = member.id === socket.id
+					|| member.id === game.drawerId
+					|| game.correct.some((entry) => entry.memberId === member.id);
+				if (mayRead)
+					io.to(member.id).emit('chat:message', message);
+			}
+			return;
+		}
+
 		io.to(room.code).emit('chat:message', { name: socket.user.username, text });
 	});
 
@@ -190,6 +290,24 @@ function registerRoundHandlers(io, socket)
 
 		if (game)
 			socket.emit('round:state', round.snapshot(game, [...room.members.values()]));
+	});
+
+	// The drawer picked one of the three offered words. Only the drawer of
+	// the pending choice is heard, and only for a word that was offered.
+	socket.on('round:choose', (payload = {}) =>
+	{
+		const room = rooms.getRoomOf(socket.id);
+		const game = room && gameOf(room);
+
+		if (!game || !game.choosing)
+			return;
+		if (socket.id !== game.choosing.drawerId)
+			return;
+		if (!game.choosing.options.includes(payload.word))
+			return;
+
+		startChosenTurn(io, room, game, payload.word)
+			.catch((err) => console.error('[round]', err.message));
 	});
 }
 
@@ -207,11 +325,33 @@ function forgetMember(room, memberId)
 }
 
 /** Keeps the drawer pointing at the right connection after a reload. */
-function reclaimInGame(room, oldMemberId, newMemberId)
+function reclaimInGame(io, room, oldMemberId, newMemberId)
 {
 	const game = gameOf(room);
-	if (game && game.drawerId === oldMemberId)
+	if (!game)
+		return;
+	if (game.drawerId === oldMemberId)
+	{
 		game.drawerId = newMemberId;
+		// Reenviar a palavra: um desenhador que reconectou a meio da vez
+		// ficava a ver só a máscara e sem saber o que desenhar.
+		if (game.phase === round.PHASE.drawing && game.word)
+			io.to(newMemberId).emit('round:word', game.word);
+	}
+	// A reload in the middle of picking a word keeps the choice open.
+	if (game.choosing && game.choosing.drawerId === oldMemberId)
+	{
+		game.choosing.drawerId = newMemberId;
+		// Reenviar as 3 opções com o tempo restante: no arranque via lobby o
+		// primeiro 'round:choices' vai para o socket antigo (a página de
+		// salas), que não o mostra — o socket novo do /game recupera o lugar
+		// AQUI e sem este reenvio nunca via o modal de escolha (bug visto
+		// primeiro no telemóvel, mas afetava o 1.º turno em todo o lado).
+		io.to(newMemberId).emit('round:choices', {
+			options: game.choosing.options,
+			seconds: Math.max(1, Math.ceil((game.choosing.deadline - Date.now()) / 1000)),
+		});
+	}
 }
 
 module.exports = { registerRoundHandlers, startGameLoop, forgetMember, gameOf, reclaimInGame };

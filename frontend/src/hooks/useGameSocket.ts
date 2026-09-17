@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
+import { useLanguage } from '../i18n/LanguageContext'
 
 /**
  * Connects the game screen to the room engine on the server.
@@ -93,6 +94,15 @@ function paintSegment(canvas: HTMLCanvasElement, stroke: Stroke)
 
 export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | null>)
 {
+	const { t } = useLanguage()
+	// O efeito do socket corre uma só vez; o ref dá-lhe sempre o t do idioma
+	// atual sem obrigar a religar os listeners a cada mudança de língua.
+	const tRef = useRef(t)
+	useEffect(() =>
+	{
+		tRef.current = t
+	}, [t])
+
 	const socketRef = useRef<Socket | null>(null)
 	const repaintRef = useRef<() => void>(() => {})
 	const [room, setRoom] = useState<RoomState | null>(null)
@@ -104,6 +114,14 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [reportVote, setReportVote] = useState<ReportVote | null>(null)
 	const [flagged, setFlagged] = useState(false)
 	const [expelled, setExpelled] = useState(false)
+	// A sala fechou a meio (ficou só um jogador): ninguém ganha os pontos.
+	const [aborted, setAborted] = useState(false)
+	// As 3 palavras oferecidas ao desenhador (só ele as recebe do servidor).
+	const [choices, setChoices] = useState<{ options: string[]; seconds: number } | null>(null)
+	// Último acerto anunciado pela sala — alimenta o banner/confetes.
+	const [lastCorrect, setLastCorrect] = useState<
+		{ name: string; points: number; position: number; at: number } | null
+	>(null)
 	// report:closed only carries the targetId, and the name is read in a listener.
 	const voteRef = useRef<ReportVote | null>(null)
 
@@ -116,7 +134,29 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		const request = (event: string, payload: object): Promise<Ack> =>
 			new Promise((resolve) => socket.emit(event, payload, resolve))
 
+		// Já estivemos dentro da sala nesta página? Numa RECONEXÃO falhada
+		// (a sala morreu com o telemóvel em espera) o jogo terminou — nunca
+		// criar uma sala nova em silêncio, senão o jogador fica sozinho num
+		// jogo fantasma sem dar por isso.
+		let everEntered = false
+		// Entrada/reentrada a decorrer: a sonda abaixo não deve tirar
+		// conclusões a meio de um room:join ainda sem resposta.
+		let joining = false
+
 		const enterRoom = async () =>
+		{
+			joining = true
+			try
+			{
+				await doEnterRoom()
+			}
+			finally
+			{
+				joining = false
+			}
+		}
+
+		const doEnterRoom = async () =>
 		{
 			// The server takes the player's name from the session cookie, so
 			// there is nothing to send: it would only be a name to spoof.
@@ -135,7 +175,14 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			}
 
 			if (!answer.ok)
+			{
+				if (everEntered)
+				{
+					setAborted(true)
+					return
+				}
 				answer = await request('room:create', {})
+			}
 
 			if (!answer.ok || !answer.room)
 			{
@@ -143,6 +190,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 				return
 			}
 
+			everEntered = true
 			setError(null)
 
 			const url = new URL(window.location.href)
@@ -182,17 +230,61 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		socket.on('round:state', setRound)
 
 		// Only the drawer is ever sent this, so keeping it in state is safe.
-		socket.on('round:word', setSecretWord)
+		socket.on('round:word', (word: string) =>
+		{
+			setSecretWord(word)
+			// A palavra chegou: a escolha (se estava aberta) fechou no servidor.
+			setChoices(null)
+		})
+
+		socket.on('round:choices', (payload: { options: string[]; seconds: number }) =>
+		{
+			setChoices(payload)
+		})
+
+		socket.on('game:aborted', () =>
+		{
+			setChoices(null)
+			setAborted(true)
+		})
+
+		// A conta entrou na mesma sala por outra ligação (outro separador ou o
+		// telemóvel a retomar o lugar): esta ligação foi dispensada. Reusa o
+		// ecrã do ALREADY_IN_ROOM ("a sala está aberta noutro lado").
+		socket.on('room:replaced', () =>
+		{
+			setError('ALREADY_IN_ROOM')
+		})
+
+		// Autorreparação (igual à do lobby): pergunta ao servidor de 5 em 5 s
+		// se ainda estamos numa sala. Um 'game:aborted'/fecho perdido com o
+		// telemóvel em espera deixava o jogo aberto "fantasma" durante minutos.
+		const probe = window.setInterval(() =>
+		{
+			if (!socket.connected || joining || !everEntered)
+				return
+			socket.timeout(4000).emit('lobby:sync', {}, (err: unknown, answer?: { ok?: boolean }) =>
+			{
+				if (err || joining)
+					return
+				if (answer && answer.ok === false)
+				{
+					setChoices(null)
+					setAborted(true)
+				}
+			})
+		}, 5000)
 
 		socket.on('round:over', ({ word }: { word: string }) =>
 		{
 			setSecretWord(null)
-			setMessages((all) => [...all, { name: '', text: `A palavra era: ${word}`, system: true }])
+			setMessages((all) => [...all, { name: '', text: `${tRef.current('game.chat.wordwas')} ${word}`, system: true }])
 		})
 
-		socket.on('round:correct', ({ name, points }: { name: string; points: number }) =>
+		socket.on('round:correct', ({ name, points, position }: { name: string; points: number; position: number }) =>
 		{
-			setMessages((all) => [...all, { name: '', text: `${name} acertou! +${points}`, system: true }])
+			setMessages((all) => [...all, { name: '', text: `${name} ${tRef.current('game.chat.correctverb')} +${points}`, system: true }])
+			setLastCorrect({ name, points, position, at: Date.now() })
 		})
 
 		socket.on('chat:message', (message: ChatMessage) =>
@@ -230,7 +322,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			setFlagged(false)
 
 			if (out && name)
-				setMessages((all) => [...all, { name: '', text: `${name} foi expulso da partida`, system: true }])
+				setMessages((all) => [...all, { name: '', text: `${name} ${tRef.current('game.chat.expelledmsg')}`, system: true }])
 		})
 
 		socket.on('report:expelled', () =>
@@ -243,6 +335,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 
 		return () =>
 		{
+			window.clearInterval(probe)
 			socket.disconnect()
 			socketRef.current = null
 		}
@@ -280,6 +373,28 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		expelled,
 		startReport: (targetId: string) => ask('report:start', { targetId }),
 		voteExpel: () => ask('report:vote', {}),
+		/** As 3 palavras à escolha (só o desenhador as tem) e a resposta. */
+		choices,
+		sendChoice: (word: string) =>
+		{
+			socketRef.current?.emit('round:choose', { word })
+			setChoices(null)
+		},
+		/** Último acerto da sala, para o banner/confetes de quem acertou. */
+		lastCorrect,
+		/** Ficaste sozinho a meio: a sala fechou e os pontos perderam-se. */
+		aborted,
+		/** Saída DELIBERADA: espera a CONFIRMAÇÃO do servidor antes de deixar
+		    navegar. Sem esperar, a navegação desligava o socket e podia matar
+		    o aviso a meio — e o socket da página seguinte (perfil) recuperava
+		    o lugar "abandonado" em silêncio: o jogador voltava à sala como
+		    fantasma vivo e a regra do 1-fecha-tudo nunca disparava. O teto de
+		    1,5 s garante que o botão nunca fica preso se a rede falhar. */
+		leaveRoom: () =>
+			Promise.race([
+				ask('room:leave', {}),
+				new Promise((resolve) => { window.setTimeout(resolve, 1500) }),
+			]),
 		/** Call after anything that wipes the canvas, such as a resize. */
 		repaint: () => repaintRef.current(),
 	}

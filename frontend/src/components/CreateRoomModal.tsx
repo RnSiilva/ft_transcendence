@@ -1,22 +1,38 @@
 import { useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 
+// Definições que o SERVIDOR aceita (game/rooms.js valida com cleanSettings;
+// password é lida à parte e nunca é devolvida aos clientes).
+export type RoomSettings = {
+  rounds: number
+  roundSeconds: number
+  theme: string
+  language: string
+  password?: string
+}
+
 type Props = {
   open: boolean
   onClose: () => void
-  onCreate: () => void
+  onCreate: (settings: RoomSettings) => void
 }
 
 function CreateRoomModal({ open, onClose, onCreate }: Props) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [players, setPlayers] = useState(6)
+  const [rounds, setRounds] = useState(3)
+  const [roundSeconds, setRoundSeconds] = useState(80)
+  const [language, setLanguage] = useState<string>(lang)
+  const [theme, setTheme] = useState('general')
   const [isPrivate, setIsPrivate] = useState(false)
+  const [password, setPassword] = useState('')
 
   function handleCreate() {
-    // AQUI O CODIGO DO SERVIDOR (criar sala real: gerar código de convite,
-    // room do Socket.IO, guardar configurações da sala)
+    // As definições vão para o servidor no room:create (Rooms.tsx emite).
+    // Sala privada: a senha segue junto e o rooms.js exige-a no room:join.
     onClose()
-    onCreate()
+    const pass = isPrivate ? password.trim() : ''
+    onCreate({ rounds, roundSeconds, theme, language, ...(pass ? { password: pass } : {}) })
   }
 
   return (
@@ -36,7 +52,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
           <input
             type="range"
             min={2}
-            max={6}
+            max={8}
             value={players}
             onChange={(e) => setPlayers(Number(e.target.value))}
           />
@@ -45,7 +61,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
         <div className="field-row">
           <div className="field-dark">
             <label>{t('room.create.rounds')}</label>
-            <select defaultValue="3">
+            <select value={rounds} onChange={(e) => setRounds(Number(e.target.value))}>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
@@ -55,7 +71,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
           </div>
           <div className="field-dark">
             <label>{t('room.create.time')}</label>
-            <select defaultValue="80">
+            <select value={roundSeconds} onChange={(e) => setRoundSeconds(Number(e.target.value))}>
               <option value="30">30s</option>
               <option value="60">60s</option>
               <option value="80">80s</option>
@@ -67,7 +83,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
         <div className="field-row">
           <div className="field-dark">
             <label>{t('room.create.chatlang')}</label>
-            <select defaultValue="pt">
+            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
               <option value="pt">Português</option>
               <option value="en">English</option>
               <option value="es">Español</option>
@@ -75,7 +91,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
           </div>
           <div className="field-dark">
             <label>{t('room.create.category')}</label>
-            <select defaultValue="general">
+            <select value={theme} onChange={(e) => setTheme(e.target.value)}>
               <option value="general">{t('room.cat.general')}</option>
               <option value="animals">{t('room.cat.animals')}</option>
               <option value="food">{t('room.cat.food')}</option>
@@ -96,7 +112,13 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
         {isPrivate && (
           <div className="field-dark">
             <label>{t('room.create.password')}</label>
-            <input type="password" placeholder="••••••" />
+            <input
+              type="password"
+              placeholder="••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              maxLength={32}
+            />
           </div>
         )}
 
