@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
+import { translateApiError } from '../utils/apiError'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -25,6 +26,8 @@ function Register() {
   const [photo, setPhoto] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
 
+  // After ALL hooks (rules of hooks): while the session is being verified the
+  // form is not shown; users already authenticated go to the profile.
   if (checkingSession) {
     return null
   }
@@ -64,7 +67,7 @@ function Register() {
     return errs
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     const clientErrors = validate(email, username, password, confirmPassword)
@@ -87,14 +90,17 @@ function Register() {
       const data = await res.json()
 
       if (!res.ok) {
-        const mappedErrors = data.errors ? { ...data.errors } : undefined
-        if (mappedErrors?.username === 'Username already taken') {
-          mappedErrors.username = t('errors.usernameTaken')
+        // All backend messages pass through the i18n map (apiError.ts), field
+        // by field — nothing appears in raw English.
+        if (data.errors) {
+          const mappedErrors: FieldErrors = {}
+          for (const [field, message] of Object.entries(data.errors)) {
+            mappedErrors[field as keyof FieldErrors] = translateApiError(t, message as string)
+          }
+          setErrors(mappedErrors)
+        } else {
+          setErrors({ general: translateApiError(t, data.error ?? undefined) })
         }
-        let generalError = data.error ?? t('errors.registrationFailed')
-        if (generalError === 'Username already taken') generalError = t('errors.usernameTaken')
-        
-        setErrors(mappedErrors ?? { general: generalError })
         return
       }
 

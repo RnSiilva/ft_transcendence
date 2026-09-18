@@ -15,6 +15,8 @@ async function getFriends(userId) {
       ],
     },
     include: {
+      // gamesPlayed/wins/achievements included so the friend's public profile
+      // can show their real statistics and achievements.
       sender: {
         select: {
           id: true,
@@ -22,6 +24,9 @@ async function getFriends(userId) {
           avatarUrl: true,
           rank: true,
           totalPoints: true,
+          gamesPlayed: true,
+          wins: true,
+          achievements: { select: { achievement: { select: { nameKey: true } } } },
         },
       },
       receiver: {
@@ -31,6 +36,9 @@ async function getFriends(userId) {
           avatarUrl: true,
           rank: true,
           totalPoints: true,
+          gamesPlayed: true,
+          wins: true,
+          achievements: { select: { achievement: { select: { nameKey: true } } } },
         },
       },
     },
@@ -51,6 +59,9 @@ async function getFriends(userId) {
       avatarUrl: friend.avatarUrl,
       rank: friend.rank,
       totalPoints: friend.totalPoints,
+      gamesPlayed: friend.gamesPlayed,
+      wins: friend.wins,
+      achievements: friend.achievements,
       isOnline: isUserOnline(friend.id),
       status: relationshipStatus,
       since: f.createdAt,
@@ -210,7 +221,8 @@ async function rejectFriendRequest(userId, requestId) {
     where: { id: Number(requestId) },
   });
 
-  return { message: 'Friend request rejected' };
+  // senderId/receiverId: so the controller can notify both sides via socket.
+  return { message: 'Friend request rejected', senderId: request.senderId, receiverId: request.receiverId };
 }
 
 /**
@@ -238,7 +250,8 @@ async function removeFriend(userId, friendId) {
     where: { id: friendship.id },
   });
 
-  return { message: 'Friend removed' };
+  // senderId/receiverId: so the controller can notify both sides via socket.
+  return { message: 'Friend removed', senderId: friendship.senderId, receiverId: friendship.receiverId };
 }
 
 module.exports = {

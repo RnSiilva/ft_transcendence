@@ -70,7 +70,7 @@ function registerRoomHandlers(io, socket)
 	const reclaimed = rooms.reclaimSeat(socket.id, socket.user);
 	if (reclaimed)
 	{
-		reclaimInGame(reclaimed.room, reclaimed.oldMemberId, socket.id);
+		reclaimInGame(io, reclaimed.room, reclaimed.oldMemberId, socket.id);
 		socket.join(reclaimed.room.code);
 		socket.emit('room:state', rooms.serialiseRoom(reclaimed.room));
 		announce(reclaimed.room);
@@ -97,8 +97,26 @@ function registerRoomHandlers(io, socket)
 	{
 		try
 		{
+			// The account reclaims its own seat (rooms.seizeSeat): if this user
+			// already has a seat in the room through ANOTHER connection (a phone
+			// zombie, an old tab), the new connection takes it over — points and
+			// turn preserved — and the old one is dropped. Without this, the seat's
+			// owner was locked out with 'ALREADY_IN_ROOM'.
+			const seized = rooms.seizeSeat(socket.id, payload.code, socket.user);
+			if (seized)
+			{
+				reclaimInGame(io, seized.room, seized.oldMemberId, socket.id);
+				const old = io.sockets.sockets.get(seized.oldMemberId);
+				old?.emit('room:replaced');
+				old?.leave(seized.room.code);
+				socket.join(seized.room.code);
+				ok(ack, seized.room);
+				announce(seized.room);
+				return;
+			}
+
 			const previous = rooms.getRoomOf(socket.id);
-			const room = rooms.joinRoom(socket.id, payload.code, socket.user);
+			const room = rooms.joinRoom(socket.id, payload.code, socket.user, payload.password);
 
 			// Otherwise strokes from the previous room keep arriving.
 			if (previous && previous.code !== room.code)

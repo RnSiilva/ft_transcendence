@@ -175,12 +175,33 @@ async function main()
 	check('a entrada e recusada', missing.ok, false);
 	check('com o motivo certo', missing.code, 'ROOM_NOT_FOUND');
 
-	step('5. A mesma conta nao ocupa dois lugares');
+	step('5. A mesma conta nao ocupa dois lugares: a ligacao nova retoma o lugar');
+	// Regra atualizada (2026-09-17, autorizada pelo Thiago): a ligacao nova
+	// FICA com o lugar (room:replaced dispensa a antiga) — resolve os
+	// "zombies" de telemovel que trancavam o dono fora da sala. Continua a
+	// haver um unico lugar por conta.
+	// room:replaced nao traz payload, por isso o waitFor generico (que
+	// resolve com o payload) nao serve — marca-se true/false a mao.
+	const replacedFlag = (socket) => new Promise((resolve) =>
+	{
+		const timer = setTimeout(() => resolve(false), 2000);
+		socket.once('room:replaced', () => { clearTimeout(timer); resolve(true); });
+	});
+
+	const replacedPromise = replacedFlag(bruno);
 	const secondTab = await connect(cookies.testbruno);
 	const duplicate = await ask(secondTab, 'room:join', { code });
-	check('a segunda aba e recusada', duplicate.ok, false);
-	check('com o motivo certo', duplicate.code, 'ALREADY_IN_ROOM');
+	check('a segunda ligacao entra', duplicate.ok, true);
+	check('sem lugar duplicado', names(duplicate.room), ['testana', 'testbruno', 'testcarla']);
+	check('a ligacao antiga e dispensada (room:replaced)', await replacedPromise, true);
+	// Devolve o lugar a ligacao original para os passos seguintes.
+	const seatBackPromise = replacedFlag(secondTab);
+	await ask(bruno, 'room:join', { code });
+	await seatBackPromise;
 	secondTab.close();
+	// Deixa assentar os room:state das trocas de lugar antes do passo 6,
+	// senao o waitFor da Ana apanha um broadcast atrasado do passo 5.
+	await new Promise((resolve) => setTimeout(resolve, 500));
 
 	step('6. Sair da sala atualiza quem fica pra todos');
 	const afterLeavingPromise = waitFor(ana, 'room:state', 2000);

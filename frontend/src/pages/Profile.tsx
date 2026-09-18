@@ -1,45 +1,18 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
 import { getSocket } from '../socket'
 import EditProfileModal from '../components/EditProfileModal'
+import AchievementsPanel from '../components/AchievementsPanel'
+import PlayerHoverCard from '../components/PlayerHoverCard'
 import { useLeaderboard, type RankPeriod } from '../hooks/useLeaderboard'
 import { useMatchHistory } from '../hooks/useMatchHistory'
+import { translateApiError } from '../utils/apiError'
 
+// Base API URL: it was referenced by several fetch calls without ever being defined, which crashed the profile page.
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
-const ACHIEVEMENTS = [
-  { id: 1, nameKey: 'ach.games.1.name', descKey: 'ach.games.1.desc', icon: '🎮', category: 'GAMES_PLAYED', targetValue: 1 },
-  { id: 2, nameKey: 'ach.games.2.name', descKey: 'ach.games.2.desc', icon: '🎲', category: 'GAMES_PLAYED', targetValue: 10 },
-  { id: 3, nameKey: 'ach.games.3.name', descKey: 'ach.games.3.desc', icon: '🕹️', category: 'GAMES_PLAYED', targetValue: 50 },
-  { id: 4, nameKey: 'ach.games.4.name', descKey: 'ach.games.4.desc', icon: '🎰', category: 'GAMES_PLAYED', targetValue: 100 },
-  { id: 5, nameKey: 'ach.wins.1.name', descKey: 'ach.wins.1.desc', icon: '🏆', category: 'WINS', targetValue: 1 },
-  { id: 6, nameKey: 'ach.wins.2.name', descKey: 'ach.wins.2.desc', icon: '🏅', category: 'WINS', targetValue: 5 },
-  { id: 7, nameKey: 'ach.wins.3.name', descKey: 'ach.wins.3.desc', icon: '🎖️', category: 'WINS', targetValue: 25 },
-  { id: 8, nameKey: 'ach.wins.4.name', descKey: 'ach.wins.4.desc', icon: '👑', category: 'WINS', targetValue: 50 },
-  { id: 9, nameKey: 'ach.points.1.name', descKey: 'ach.points.1.desc', icon: '💸', category: 'TOTAL_POINTS', targetValue: 500 },
-  { id: 10, nameKey: 'ach.points.2.name', descKey: 'ach.points.2.desc', icon: '💰', category: 'TOTAL_POINTS', targetValue: 2000 },
-  { id: 11, nameKey: 'ach.points.3.name', descKey: 'ach.points.3.desc', icon: '💎', category: 'TOTAL_POINTS', targetValue: 10000 },
-  { id: 12, nameKey: 'ach.points.4.name', descKey: 'ach.points.4.desc', icon: '🤑', category: 'TOTAL_POINTS', targetValue: 50000 },
-  { id: 13, nameKey: 'ach.rank.1.name', descKey: 'ach.rank.1.desc', icon: '⭐', category: 'RANK', targetValue: 20 },
-  { id: 14, nameKey: 'ach.rank.2.name', descKey: 'ach.rank.2.desc', icon: '🌟', category: 'RANK', targetValue: 10 },
-  { id: 15, nameKey: 'ach.rank.3.name', descKey: 'ach.rank.3.desc', icon: '✨', category: 'RANK', targetValue: 5 },
-  { id: 16, nameKey: 'ach.rank.4.name', descKey: 'ach.rank.4.desc', icon: '🔥', category: 'RANK', targetValue: 1 },
-  { id: 17, nameKey: 'ach.friends.1.name', descKey: 'ach.friends.1.desc', icon: '👋', category: 'FRIENDS', targetValue: 1 },
-  { id: 18, nameKey: 'ach.friends.2.name', descKey: 'ach.friends.2.desc', icon: '🤝', category: 'FRIENDS', targetValue: 3 },
-  { id: 19, nameKey: 'ach.friends.3.name', descKey: 'ach.friends.3.desc', icon: '🤗', category: 'FRIENDS', targetValue: 5 },
-  { id: 20, nameKey: 'ach.friends.4.name', descKey: 'ach.friends.4.desc', icon: '🎉', category: 'FRIENDS', targetValue: 10 },
-]
-
-function getProgress(u: any, category: string) {
-  if (category === 'GAMES_PLAYED') return u.gamesPlayed || 0
-  if (category === 'WINS') return u.wins || 0
-  if (category === 'TOTAL_POINTS') return u.totalPoints || 0
-  if (category === 'RANK') return u.rank || 0
-  if (category === 'FRIENDS') return u.friendsCount || 0
-  return 0
-}
 const RANK_PERIODS: RankPeriod[] = ['general', 'weekly', 'daily']
 
 type FriendUser = {
@@ -50,6 +23,9 @@ type FriendUser = {
   rank: number
   totalPoints: number
   isOnline: boolean
+  gamesPlayed?: number
+  wins?: number
+  achievements?: { achievement?: { nameKey?: string } }[]
   status: 'ACCEPTED' | 'SENT_PENDING' | 'RECEIVED_PENDING'
 }
 
@@ -60,47 +36,85 @@ function Profile() {
 
   const [search, setSearch] = useState('')
   const [sentTo, setSentTo] = useState('')
+  // The "Request sent to X" confirmation clears itself after a few seconds.
+  const sentTimerRef = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (sentTimerRef.current) window.clearTimeout(sentTimerRef.current)
+  }, [])
   const [friendError, setFriendError] = useState('')
+  // Two-step friend search: first the user is SHOWN (via
+  // GET /api/users/:username), then the request is sent.
+  const [foundUser, setFoundUser] = useState<{
+    username: string
+    avatarUrl: string | null
+    rank: number
+    totalPoints: number
+  } | null>(null)
+  const [notFound, setNotFound] = useState(false)
   const [friends, setFriends] = useState<FriendUser[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [rankTab, setRankTab] = useState<RankPeriod>('general')
-  const [achTab, setAchTab] = useState<'unlocked' | 'all'>('unlocked')
   const ranking = useLeaderboard(rankTab)
   const history = useMatchHistory()
 
-  async function loadFriends() {
+  // On opening the profile, revalidate the account: the server checks and unlocks
+  // new achievements (checkAchievements runs on /auth/me).
+  useEffect(() => {
+    refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Bell over the photo: how many friend requests are awaiting a reply.
+  const friendsPanelRef = useRef<HTMLHeadingElement | null>(null)
+  const pendingRequests = friends.filter((f) => f.status === 'RECEIVED_PENDING').length
+
+  // Loads the friends list. `alive` (optional) avoids updating state after the
+  // component unmounts, when called from the effect.
+  async function loadFriends(alive: () => boolean = () => true) {
     try {
       const res = await fetch(`${API}/friends`, { credentials: 'include' })
-      if (res.ok) {
-        const data = await res.json()
-        setFriends(data.friends || [])
-      }
+      if (!alive() || !res.ok) return
+      const data = await res.json()
+      if (alive()) setFriends(data.friends || [])
     } catch (err) {
       console.error('Failed to load friends:', err)
     }
   }
 
   useEffect(() => {
-    refresh()
-  }, [])
+    if (!user) return
+    // No synchronous setState in the effect body: loadFriends only updates the
+    // state after the fetch's await, and the `alive` flag guards the unmount.
+    let alive = true
+    const isAlive = () => alive
+    // Rule false positive: loadFriends only calls setState AFTER the fetch's
+    // await (not synchronously in the effect) and the alive flag guards the
+    // unmount. The rule does not follow the await through a shared named function.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadFriends(isAlive)
 
-  useEffect(() => {
-    if (user) {
-      loadFriends()
-      const socket = getSocket()
-      socket.emit('presence:join', { userId: user.id })
+    const socket = getSocket()
+    socket.emit('presence:join', { userId: user.id })
 
-      function onPresenceUpdate({ userId, isOnline }: { userId: number; isOnline: boolean }) {
-        setFriends((prev) =>
-          prev.map((f) => (f.id === userId ? { ...f, isOnline } : f))
-        )
-      }
+    function onPresenceUpdate({ userId, isOnline }: { userId: number; isOnline: boolean }) {
+      setFriends((prev) =>
+        prev.map((f) => (f.id === userId ? { ...f, isOnline } : f))
+      )
+    }
 
-      socket.on('presence:update', onPresenceUpdate)
-      return () => {
-        socket.off('presence:update', onPresenceUpdate)
-      }
+    // The server notifies when the OTHER side changes the friendship (new
+    // request, accepted, rejected, removed) — reloads the list without an F5.
+    function onFriendsChanged() {
+      void loadFriends(isAlive)
+    }
+
+    socket.on('presence:update', onPresenceUpdate)
+    socket.on('friends:changed', onFriendsChanged)
+    return () => {
+      alive = false
+      socket.off('presence:update', onPresenceUpdate)
+      socket.off('friends:changed', onFriendsChanged)
     }
   }, [user])
 
@@ -109,26 +123,56 @@ function Profile() {
     window.location.href = '/login'
   }
 
-  async function addFriend(e: React.FormEvent<HTMLFormElement>) {
+  // Step 1: search — shows the user BEFORE sending the request
+  // (GET /api/users/:username, the new public route).
+  async function searchUser(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setFriendError('')
     setSentTo('')
+    setFoundUser(null)
+    setNotFound(false)
     const target = search.trim()
     if (!target) return
 
+    try {
+      const res = await fetch(`${API}/users/${encodeURIComponent(target)}`, {
+        credentials: 'include',
+      })
+      if (res.status === 404) {
+        setNotFound(true)
+        return
+      }
+      if (!res.ok) {
+        setFriendError(t('errors.networkError'))
+        return
+      }
+      const data = await res.json()
+      setFoundUser(data.user)
+    } catch {
+      setFriendError(t('errors.networkError'))
+    }
+  }
+
+  // Step 2: send the request to the found user.
+  async function sendRequestTo(username: string) {
+    setFriendError('')
     try {
       const res = await fetch(`${API}/friends/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ username: target }),
+        body: JSON.stringify({ username }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setFriendError(data.error || t('errors.networkError'))
+        // Backend message (English) → i18n key → site language.
+        setFriendError(translateApiError(t, data.error))
         return
       }
-      setSentTo(target)
+      setSentTo(username)
+      if (sentTimerRef.current) window.clearTimeout(sentTimerRef.current)
+      sentTimerRef.current = window.setTimeout(() => setSentTo(''), 5000)
+      setFoundUser(null)
       setSearch('')
       loadFriends()
     } catch {
@@ -228,6 +272,18 @@ function Profile() {
           >
             ✎
           </button>
+          {pendingRequests > 0 && (
+            <button
+              type="button"
+              className="friend-notif"
+              title={t('profile.requests')}
+              onClick={() =>
+                friendsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            >
+              {pendingRequests}
+            </button>
+          )}
         </div>
         <div className="who">
           <div className="name">{displayName}</div>
@@ -250,69 +306,21 @@ function Profile() {
       <div className="panel">
         <h3>{t('profile.stats.heading')}</h3>
         <div className="stat-row">
-          <div className="stat"><b>#{displayRank}</b><span>{t('profile.stats.rank')}</span></div>
+          {/* rank 0 = has not played yet: — instead of #0 */}
+          <div className="stat"><b>{Number(displayRank) > 0 ? `#${displayRank}` : '—'}</b><span>{t('profile.stats.rank')}</span></div>
           <div className="stat"><b>{displayPoints}</b><span>{t('profile.stats.points')}</span></div>
           <div className="stat"><b>{displayGames}</b><span>{t('profile.stats.matches')}</span></div>
           <div className="stat"><b>{displayWins}</b><span>{t('profile.stats.wins')}</span></div>
         </div>
       </div>
 
-      <div className="panel">
-        <h3>{t('achievements.title')}</h3>
-        <div className="rank-tabs" style={{ marginBottom: 16 }}>
-          <button className={`rank-tab ${achTab === 'unlocked' ? 'active' : ''}`} onClick={() => setAchTab('unlocked')}>
-            {t('achievements.tab.unlocked')}
-          </button>
-          <button className={`rank-tab ${achTab === 'all' ? 'active' : ''}`} onClick={() => setAchTab('all')}>
-            {t('achievements.tab.all')}
-          </button>
-        </div>
-        
-        {achTab === 'unlocked' && user.achievements?.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--chalk-dim)', fontSize: 13, padding: '20px 0' }}>
-            {t('achievements.empty')}
-          </div>
-        )}
-
-        <div className="achievements-grid">
-          {ACHIEVEMENTS.map((ach) => {
-            const isUnlocked = user.achievements?.some((ua: any) => ua.achievement?.nameKey === ach.nameKey)
-            
-            if (achTab === 'unlocked' && !isUnlocked) return null;
-            
-            let progressDisplay
-            if (ach.category === 'RANK') {
-              const currentRank = (user.rank && user.rank > 0) ? user.rank : '---'
-              progressDisplay = `${t('achievements.current')}: #${currentRank} / ${t('achievements.target')}: #${ach.targetValue}`
-            } else {
-              const currentProgress = getProgress(user, ach.category)
-              const displayProgress = Math.min(currentProgress, ach.targetValue)
-              progressDisplay = `${displayProgress} / ${ach.targetValue}`
-            }
-            
-            return (
-              <div key={ach.id} className={`achievement-card ${!isUnlocked ? 'locked' : ''}`}>
-                <div className="achievement-icon">{ach.icon}</div>
-                <div className="achievement-name">{t(ach.nameKey)}</div>
-                <div className="achievement-tooltip">
-                  <strong>{t(ach.nameKey)}</strong><br />
-                  <span>{t(ach.descKey)}</span>
-                  {!isUnlocked && (
-                    <div className="achievement-progress">
-                      {progressDisplay}
-                    </div>
-                  )}
-                  {isUnlocked && (
-                    <div style={{ marginTop: 6 }}>
-                      <span style={{ color: 'var(--green)' }}>{t('achievements.unlocked_status')}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      {/* Achievements (badges) — unlock validated on the server */}
+      <AchievementsPanel
+        stats={{ ...(user ?? {}), friendsCount: friends.filter((f) => f.status === 'ACCEPTED').length }}
+        unlockedKeys={(user?.achievements ?? [])
+          .map((ua) => ua.achievement?.nameKey)
+          .filter((k): k is string => Boolean(k))}
+      />
 
       <div className="panel">
         <h3>{t('rank.heading')}</h3>
@@ -330,7 +338,23 @@ function Profile() {
         </div>
         <div className="rank-list">
           {ranking.map((row, i) => (
-            <div className={`rank-row pos${i + 1}`} key={row.userId}>
+            // Clicking opens the profile (self → /profile; others → public),
+            // as already happened in the friends list.
+            <div
+              className={`rank-row pos${i + 1} clickable`}
+              key={row.userId}
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                navigate(row.username === user?.username ? '/profile' : `/user/${row.username}`)
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  navigate(row.username === user?.username ? '/profile' : `/user/${row.username}`)
+                }
+              }}
+            >
               <span className="rank-medal">{i + 1}º</span>
               <div className="mini-avatar">{row.username.charAt(0).toUpperCase()}</div>
               <div className="rank-name">{row.username}</div>
@@ -345,6 +369,9 @@ function Profile() {
       <div className="panel">
         <h3>{t('history.heading')}</h3>
         {history.length === 0 && <p className="rooms-viewtext">{t('history.empty')}</p>}
+        {/* Up to ~8 rows visible; the rest is reached via the scrollbar
+            (otherwise the profile of someone who played a lot would be huge). */}
+        <div className={history.length > 8 ? 'scroll-list scrolls' : 'scroll-list'}>
         {history.map((game) => (
           <div className="room-row" key={game.finishedAt}>
             <div>
@@ -353,8 +380,8 @@ function Profile() {
                 {new Date(game.finishedAt).toLocaleDateString()} · {game.rounds} {t('room.create.rounds')}
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span className="status" style={{ marginRight: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div>
+              <span className="status">
                 <span className={game.won ? 'status-dot on' : 'status-dot off'}>
                   {game.won ? '●' : '○'}
                 </span>
@@ -366,6 +393,7 @@ function Profile() {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       <div className="panel">
@@ -381,11 +409,13 @@ function Profile() {
       </div>
 
       <div className="panel">
-        <h3>{t('profile.friends.heading')}</h3>
+        <h3 ref={friendsPanelRef}>{t('profile.friends.heading')}</h3>
         {friends.length === 0 ? (
           <p style={{ opacity: 0.7 }}>{t('profile.friends.none')}</p>
         ) : (
-          friends.map((friend) => (
+          // Up to ~8 friends visible; the rest via the scrollbar.
+          <div className={friends.length > 8 ? 'scroll-list scrolls' : 'scroll-list'}>
+          {friends.map((friend) => (
             <div className="friend-row" key={friend.id}>
               <div className="who">
                 <div className="mini-avatar">
@@ -399,7 +429,16 @@ function Profile() {
                     friend.username.charAt(0).toUpperCase()
                   )}
                 </div>
-                <span>{friend.username}</span>
+                {/* clicking the name navigates to the public profile (as
+                    before); hovering shows the card with the rank, no buttons */}
+                <PlayerHoverCard
+                  username={friend.username}
+                  showActions={false}
+                  to={`/user/${friend.username}`}
+                  stats={{ rank: friend.rank, points: friend.totalPoints, wins: friend.wins, matches: friend.gamesPlayed }}
+                >
+                  {friend.username}
+                </PlayerHoverCard>
                 {friend.status === 'SENT_PENDING' && (
                   <span style={{ fontSize: 12, opacity: 0.7, marginLeft: 6 }}>
                     ({t('profile.friends.pending_sent')})
@@ -413,7 +452,7 @@ function Profile() {
               </div>
 
               {friend.status === 'RECEIVED_PENDING' ? (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     type="button"
                     className="btn btn-primary btn-sm"
@@ -430,7 +469,7 @@ function Profile() {
                   </button>
                 </div>
               ) : friend.status === 'SENT_PENDING' ? (
-                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <div>
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
@@ -440,7 +479,7 @@ function Profile() {
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <div>
                   <span className="status">
                     <span className={friend.isOnline ? 'status-dot on' : 'status-dot off'}>
                       {friend.isOnline ? '●' : '○'}
@@ -459,10 +498,11 @@ function Profile() {
                 </div>
               )}
             </div>
-          ))
+          ))}
+          </div>
         )}
 
-        <form className="inline-add" onSubmit={addFriend} style={{ marginTop: 16 }}>
+        <form className="inline-add" onSubmit={searchUser} style={{ marginTop: 16 }}>
           <input
             type="text"
             placeholder={t('profile.addfriends.placeholder')}
@@ -470,9 +510,40 @@ function Profile() {
             onChange={(e) => setSearch(e.target.value)}
           />
           <button type="submit" className="btn btn-primary btn-sm">
-            {t('profile.addfriends.add')}
+            {t('profile.addfriends.searchbtn')}
           </button>
         </form>
+
+        {/* The found user appears BEFORE the request is sent. */}
+        {foundUser && (
+          <div className="friend-row found-user">
+            <div className="who">
+              <div className="mini-avatar">
+                {foundUser.avatarUrl ? (
+                  <img
+                    src={foundUser.avatarUrl}
+                    alt=""
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  foundUser.username.charAt(0).toUpperCase()
+                )}
+              </div>
+              <span>{foundUser.username}</span>
+              <span className="found-user-meta">
+                {foundUser.rank > 0 ? `#${foundUser.rank}` : '—'} · {foundUser.totalPoints} {t('rank.points')}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => sendRequestTo(foundUser.username)}
+            >
+              {t('profile.addfriends.add')}
+            </button>
+          </div>
+        )}
+        {notFound && <p style={{ marginTop: 8, color: 'var(--red, #ef4444)' }}>{t('profile.addfriends.notfound')}</p>}
         {sentTo && <p style={{ marginTop: 8, color: 'var(--green, #22c55e)' }}>{t('profile.addfriends.sent')} {sentTo}</p>}
         {friendError && <p style={{ marginTop: 8, color: 'var(--red, #ef4444)' }}>{friendError}</p>}
       </div>
@@ -489,7 +560,7 @@ function Profile() {
         </button>
       </div>
 
-      {/* caixa de aviso: exclusão definitiva de todos os dados */}
+      {/* warning box: permanent deletion of all data */}
       {confirmingDelete && (
         <div className="modal-overlay show">
           <div className="modal-panel">

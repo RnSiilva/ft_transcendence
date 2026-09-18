@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
+    "dev": "nodemon --ignore scripts src/index.js",
     "start": "node src/index.js",
     "test:rooms": "node scripts/rooms-test.js",
     "test:scoring": "node scripts/scoring-test.js",
     "test:words": "node scripts/words-test.js",
     "test:round": "node scripts/round-test.js",
     "test:report": "node scripts/report-test.js",
+    "test:lobby": "node scripts/lobby-test.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

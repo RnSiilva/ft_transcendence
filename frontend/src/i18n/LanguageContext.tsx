@@ -30,8 +30,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('lang', newLang)
   }
 
-  // O modelo aprovado usa html[data-lang] no CSS (ex.: texto dos "sparks"),
-  // por isso o atributo tem de acompanhar o idioma escolhido.
+  // The CSS relies on html[data-lang] (e.g. the "sparks" text), so the
+  // attribute must follow the selected language.
   useEffect(() => {
     document.documentElement.lang = lang
     document.documentElement.setAttribute('data-lang', lang)

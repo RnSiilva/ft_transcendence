@@ -9,6 +9,7 @@ backend/dist/
 
 # Variáveis de ambiente (nunca versionar segredos)
 .env
+.env.example
 
 # Prisma (arquivos gerados automaticamente, não devem ir pro Git)
 backend/prisma/generated/
@@ -16,6 +17,13 @@ backend/prisma/generated/
 # Vite (cache interno)
 frontend/.vite/
 *.local
+# Referência de tipos gerada pelo Vite (não precisa de ser versionada)
+frontend/src/vite-env.d.ts
+# Guia interno de defesa — não faz parte da entrega
+DEFESAENTREGA.txt
+# Histórico de estudo pessoal — não faz parte da entrega
+ESTUDO.md
+
 
 # TypeScript (cache de build incremental)
 *.tsbuildinfo

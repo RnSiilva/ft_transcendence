@@ -107,13 +107,16 @@ function logout(req, res) {
   return res.status(200).json({ message: 'Logged out' });
 }
 
-// GET /auth/me (protected by requireAuth middleware)
-// Reads req.user.id from JWT and returns current user's profile and game statistics (used on page refresh)
+// GET /auth/me (optionalAuth middleware: req.user is the session user or null)
+// Returns the current user's profile and game statistics (used on page refresh),
+// or 200 {user:null} when there is no session — logged-out is a state, not an error.
 async function me(req, res) {
   try {
+    if (!req.user) return res.status(200).json({ user: null });
     await checkAchievements(req.user.id);
     const user = await getUserById(req.user.id);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    // A valid cookie for an account that no longer exists (e.g. deleted).
+    if (!user) return res.status(200).json({ user: null });
     return res.status(200).json({ user });
   } catch (err) {
     console.error('[me]', err);

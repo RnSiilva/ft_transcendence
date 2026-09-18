@@ -11,7 +11,7 @@ const CODE_LENGTH = 6;
 // No O/0/I/1: codes get read out loud and typed by hand.
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-const MAX_MEMBERS = 8;
+const MAX_MEMBERS = 6;
 // A reload drops the socket. Holding the seat for a moment keeps a refresh,
 // or a brief network hiccup, from costing someone their turn with the pencil.
 const RECONNECT_GRACE_MS = 15000;
@@ -138,10 +138,15 @@ function createRoom(memberId, user, settings)
 	{
 		code: generateCode(),
 		members: new Map(),
-		creatorId: memberId, // NEW — fixed, never changes after creation
+		creatorId: memberId, // Fixed, never changes after creation.
 		// drawerId: null,
 		strokes: [],
 		settings: cleanSettings(settings),
+		// Private room: password set by the creator (kept outside `settings`
+		// so it is never serialised to clients). null = open room.
+		password: typeof settings?.password === 'string' && settings.password.trim()
+			? settings.password.trim().slice(0, 32)
+			: null,
 		createdAt: new Date(),
 	};
 
@@ -152,7 +157,7 @@ function createRoom(memberId, user, settings)
 }
 
 /** Throws if the room is missing, full, or the user is already inside it. */
-function joinRoom(memberId, rawCode, user)
+function joinRoom(memberId, rawCode, user, password)
 {
 	const code = normaliseCode(rawCode);
 	const identity = identityOf(user);
@@ -165,6 +170,12 @@ function joinRoom(memberId, rawCode, user)
 
 	if (!alreadyHere)
 	{
+		// Private room: only someone who knows the creator's password gets
+		// in. Those already inside (alreadyHere) and those reclaiming their
+		// own seat (seizeSeat, checked earlier in room.socket) skip it.
+		if (room.password && String(password ?? '') !== room.password)
+			throw fail('Wrong password', 'WRONG_PASSWORD');
+
 		if (room.members.size >= MAX_MEMBERS)
 			throw fail('Room is full', 'ROOM_FULL');
 
@@ -262,7 +273,7 @@ function reclaimSeat(newMemberId, user, now = Date.now())
 		if (!seat)
 			continue;
 
-		const oldMemberId = seat.id;   // new — save before overwriting
+		const oldMemberId = seat.id;   // save before overwriting
 
 		room.members = new Map(
 			[...room.members.entries()].map(([id, member]) =>
@@ -279,6 +290,47 @@ function reclaimSeat(newMemberId, user, now = Date.now())
 	}
 
 	return null;
+}
+
+/**
+ * The account reclaims its OWN seat: the same user joining the room through a
+ * new connection (reopened the game on their phone, another tab) keeps the
+ * seat that was already theirs — points and turn preserved — and the old
+ * connection is dropped by the caller. Without this, a zombie connection (dead
+ * without notice) locked the owner out of the room ('ALREADY_IN_ROOM') until
+ * the timeout. There is still ONE seat per account: never two pencils.
+ */
+function seizeSeat(newMemberId, rawCode, user)
+{
+	const code = normaliseCode(rawCode);
+	const room = rooms.get(code);
+	if (!room || !user)
+		return null;
+
+	const seat = [...room.members.values()].find(
+		(member) => member.userId === user.id && member.id !== newMemberId,
+	);
+	if (!seat)
+		return null;
+
+	const oldMemberId = seat.id;
+
+	// The new connection may be in another room: leave it first, as in joinRoom.
+	if (memberRoom.get(newMemberId) && memberRoom.get(newMemberId) !== code)
+		leaveRoom(newMemberId);
+
+	room.members = new Map(
+		[...room.members.entries()].map(([id, member]) =>
+			id === oldMemberId
+				? [newMemberId, { ...member, id: newMemberId, disconnectedAt: null }]
+				: [id, member],
+		),
+	);
+
+	memberRoom.delete(oldMemberId);
+	memberRoom.set(newMemberId, code);
+
+	return { room, oldMemberId };
 }
 
 /** Milliseconds before an absent member loses their seat, or null if present. */
@@ -360,7 +412,7 @@ function serialiseRoom(room, now = Date.now())
 {
 	return {
 		code: room.code,
-		creatorId: room.creatorId,   // NEW — the front needs to know who the owner is.
+		creatorId: room.creatorId,   // The front end needs to know who the owner is.
 		settings: room.settings,
 		members: [...room.members.values()].map((member) => ({
 			id: member.id,
@@ -386,6 +438,7 @@ module.exports = {
 	nextDrawerId,
 	markAbsent,
 	reclaimSeat,
+	seizeSeat,
 	dropAbsent,
 	absenceLeft,
 	roomsWithAbsentees,

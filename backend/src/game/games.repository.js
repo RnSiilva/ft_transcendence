@@ -2,8 +2,8 @@
  * games.repository.js
  * Saves finished games and reads the leaderboards.
  *
- * Nothing is written until the game ends: the team decided that leaving early
- * forfeits everything, so a score only becomes real once there is a final one.
+ * Nothing is written until the game ends: leaving early forfeits everything,
+ * so a score only becomes real once the game has a final result.
  */
 
 const { PrismaClient } = require('@prisma/client');
@@ -56,6 +56,20 @@ async function saveGame({ roomCode, settings, scores })
 					wins: { increment: won ? 1 : 0 },
 				},
 			});
+		}
+
+		// Recomputes the stored rank of EVERYONE who has played (ranked by
+		// total points, ties broken by wins). The column started at 0 and was
+		// never updated — the profile and the card showed "#0" forever.
+		const ranked = await tx.user.findMany({
+			where: { gamesPlayed: { gt: 0 } },
+			orderBy: [{ totalPoints: 'desc' }, { wins: 'desc' }],
+			select: { id: true, rank: true },
+		});
+		for (let i = 0; i < ranked.length; i += 1)
+		{
+			if (ranked[i].rank !== i + 1)
+				await tx.user.update({ where: { id: ranked[i].id }, data: { rank: i + 1 } });
 		}
 
 		return game;

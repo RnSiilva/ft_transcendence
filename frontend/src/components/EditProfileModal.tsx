@@ -1,16 +1,17 @@
 import { useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
+import { translateApiError } from '../utils/apiError'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
-// Tamanho (em px CSS) da pré-visualização redonda da foto.
+// Size (in CSS px) of the round photo preview.
 const PREVIEW = 110
 
 /**
- * Recorta a foto num quadrado, centrado onde o utilizador a arrastou, e é
- * ESSE recorte que fica guardado como avatar — assim a posição escolhida
- * vale em qualquer página e em qualquer dispositivo, sem campo extra na
- * base de dados. pos.x/pos.y são percentagens (50/50 = centro).
+ * Crops the photo into a square, centered where the user dragged it, and it
+ * is THAT crop that gets saved as the avatar — so the chosen position holds
+ * on any page and any device, with no extra field in the database.
+ * pos.x/pos.y are percentages (50/50 = center).
  */
 function cropPhoto(src: string, pos: { x: number; y: number }): Promise<string> {
   return new Promise((resolve) => {
@@ -29,7 +30,7 @@ function cropPhoto(src: string, pos: { x: number; y: number }): Promise<string> 
         ctx.drawImage(img, -(sw - SIZE) * (pos.x / 100), -(sh - SIZE) * (pos.y / 100), sw, sh)
         resolve(canvas.toDataURL('image/jpeg', 0.86))
       } catch {
-        // Foto vinda de outro domínio não pode ser recortada: fica como está.
+        // A photo from another domain cannot be cropped: it stays as is.
         resolve(src)
       }
     }
@@ -38,8 +39,8 @@ function cropPhoto(src: string, pos: { x: number; y: number }): Promise<string> 
   })
 }
 
-// O componente é montado de novo a cada abertura (ver Profile.tsx), por isso
-// os campos começam sempre com os valores atuais do perfil.
+// The component is remounted on every open (see Profile.tsx), so the fields
+// always start with the profile's current values.
 type Props = {
   currentNickname: string
   currentEmail: string
@@ -65,7 +66,7 @@ function EditProfileModal({
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // Posição da foto dentro do círculo (arrastada com o rato/dedo).
+  // Photo position within the circle (dragged with the mouse/finger).
   const [pos, setPos] = useState({ x: 50, y: 50 })
   const [moved, setMoved] = useState(false)
   const dragRef = useRef<{ startX: number; startY: number; posX: number; posY: number } | null>(null)
@@ -114,8 +115,8 @@ function EditProfileModal({
     setError('')
     setSaving(true)
 
-    // A foto só é recortada se for nova ou se a posição foi ajustada; caso
-    // contrário o avatar guardado fica exatamente como estava.
+    // The photo is only cropped if it is new or the position was adjusted;
+    // otherwise the saved avatar stays exactly as it was.
     const avatarUrl =
       photo && (moved || photo !== currentPhoto) ? await cropPhoto(photo, pos) : photo
 
@@ -142,11 +143,9 @@ function EditProfileModal({
       const data = await res.json()
 
       if (!res.ok) {
-        let errMessage = data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error || t('errors.networkError')
-        if (errMessage === 'Username already taken') {
-          errMessage = t('errors.usernameTaken')
-        }
-        setError(errMessage)
+        // Backend message (English) → i18n key → site language.
+        setError(translateApiError(t,
+          data.errors?.username || data.errors?.currentPassword || data.errors?.newPassword || data.error))
         setSaving(false)
         return
       }
@@ -194,6 +193,21 @@ function EditProfileModal({
             {t('profile.editphoto')}
           </label>
           {photo && <span className="edit-avatar-hint">{t('editprofile.drag')}</span>}
+          {/* Remove the uploaded file: reverts to the default avatar
+              (the initial). Saves avatarUrl null on PUT /auth/profile. */}
+          {photo && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm remove-photo-btn"
+              onClick={() => {
+                setPhoto(null)
+                setPos({ x: 50, y: 50 })
+                setMoved(false)
+              }}
+            >
+              🗑 {t('editprofile.removephoto')}
+            </button>
+          )}
           <input
             type="file"
             id="edit-profile-photo"

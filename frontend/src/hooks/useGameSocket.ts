@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
+import { useLanguage } from '../i18n/LanguageContext'
 
 /**
  * Connects the game screen to the room engine on the server.
@@ -93,6 +94,15 @@ function paintSegment(canvas: HTMLCanvasElement, stroke: Stroke)
 
 export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | null>)
 {
+	const { t } = useLanguage()
+	// The socket effect runs only once; the ref always gives it the t for the
+	// current language without having to rewire the listeners on every language change.
+	const tRef = useRef(t)
+	useEffect(() =>
+	{
+		tRef.current = t
+	}, [t])
+
 	const socketRef = useRef<Socket | null>(null)
 	const repaintRef = useRef<() => void>(() => {})
 	const [room, setRoom] = useState<RoomState | null>(null)
@@ -104,6 +114,18 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [reportVote, setReportVote] = useState<ReportVote | null>(null)
 	const [flagged, setFlagged] = useState(false)
 	const [expelled, setExpelled] = useState(false)
+	// The room closed mid-game (only one player left): no one gets the points.
+	const [aborted, setAborted] = useState(false)
+	// Different from `aborted`: here the ROOM continues for the others — only THIS
+	// player left/was removed (e.g. the inactivity grace period expired).
+	// The message must not say "no one gains points": the others do.
+	const [dropped, setDropped] = useState(false)
+	// The 3 words offered to the drawer (only they receive them from the server).
+	const [choices, setChoices] = useState<{ options: string[]; seconds: number } | null>(null)
+	// Last correct guess announced by the room — feeds the banner/confetti.
+	const [lastCorrect, setLastCorrect] = useState<
+		{ name: string; points: number; position: number; at: number } | null
+	>(null)
 	// report:closed only carries the targetId, and the name is read in a listener.
 	const voteRef = useRef<ReportVote | null>(null)
 
@@ -116,7 +138,29 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		const request = (event: string, payload: object): Promise<Ack> =>
 			new Promise((resolve) => socket.emit(event, payload, resolve))
 
+		// Were we ever inside the room on this page? On a failed RECONNECT
+		// (the room died while the phone was idle) the game ended — never
+		// silently create a new room, or the player ends up alone in a ghost
+		// game without realising it.
+		let everEntered = false
+		// Entry/re-entry in progress: the probe below must not draw
+		// conclusions in the middle of a room:join that has no reply yet.
+		let joining = false
+
 		const enterRoom = async () =>
+		{
+			joining = true
+			try
+			{
+				await doEnterRoom()
+			}
+			finally
+			{
+				joining = false
+			}
+		}
+
+		const doEnterRoom = async () =>
 		{
 			// The server takes the player's name from the session cookie, so
 			// there is nothing to send: it would only be a name to spoof.
@@ -135,7 +179,16 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			}
 
 			if (!answer.ok)
+			{
+				if (everEntered)
+				{
+					// Failed reconnect: the seat is no longer ours (the room may well
+					// continue for the others) — "you were removed", not "aborted".
+					setDropped(true)
+					return
+				}
 				answer = await request('room:create', {})
+			}
 
 			if (!answer.ok || !answer.room)
 			{
@@ -143,6 +196,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 				return
 			}
 
+			everEntered = true
 			setError(null)
 
 			const url = new URL(window.location.href)
@@ -182,17 +236,63 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		socket.on('round:state', setRound)
 
 		// Only the drawer is ever sent this, so keeping it in state is safe.
-		socket.on('round:word', setSecretWord)
+		socket.on('round:word', (word: string) =>
+		{
+			setSecretWord(word)
+			// The word arrived: the choice (if it was open) closed on the server.
+			setChoices(null)
+		})
+
+		socket.on('round:choices', (payload: { options: string[]; seconds: number }) =>
+		{
+			setChoices(payload)
+		})
+
+		socket.on('game:aborted', () =>
+		{
+			setChoices(null)
+			setAborted(true)
+		})
+
+		// The account entered the same room via another connection (another tab or
+		// the phone reclaiming the seat): this connection was discarded. Reuses the
+		// ALREADY_IN_ROOM screen ("the room is open somewhere else").
+		socket.on('room:replaced', () =>
+		{
+			setError('ALREADY_IN_ROOM')
+		})
+
+		// Self-healing (same as the lobby's): asks the server every 5 s whether we
+		// are still in a room. A missed 'game:aborted'/close while the phone was
+		// idle would leave the game open as a "ghost" for minutes.
+		const probe = window.setInterval(() =>
+		{
+			if (!socket.connected || joining || !everEntered)
+				return
+			socket.timeout(4000).emit('lobby:sync', {}, (err: unknown, answer?: { ok?: boolean }) =>
+			{
+				if (err || joining)
+					return
+				if (answer && answer.ok === false)
+				{
+					// We are no longer in the room, but it may continue without us:
+					// "you were removed", not "the room closed for everyone".
+					setChoices(null)
+					setDropped(true)
+				}
+			})
+		}, 5000)
 
 		socket.on('round:over', ({ word }: { word: string }) =>
 		{
 			setSecretWord(null)
-			setMessages((all) => [...all, { name: '', text: `A palavra era: ${word}`, system: true }])
+			setMessages((all) => [...all, { name: '', text: `${tRef.current('game.chat.wordwas')} ${word}`, system: true }])
 		})
 
-		socket.on('round:correct', ({ name, points }: { name: string; points: number }) =>
+		socket.on('round:correct', ({ name, points, position }: { name: string; points: number; position: number }) =>
 		{
-			setMessages((all) => [...all, { name: '', text: `${name} acertou! +${points}`, system: true }])
+			setMessages((all) => [...all, { name: '', text: `${name} ${tRef.current('game.chat.correctverb')} +${points}`, system: true }])
+			setLastCorrect({ name, points, position, at: Date.now() })
 		})
 
 		socket.on('chat:message', (message: ChatMessage) =>
@@ -230,7 +330,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			setFlagged(false)
 
 			if (out && name)
-				setMessages((all) => [...all, { name: '', text: `${name} foi expulso da partida`, system: true }])
+				setMessages((all) => [...all, { name: '', text: `${name} ${tRef.current('game.chat.expelledmsg')}`, system: true }])
 		})
 
 		socket.on('report:expelled', () =>
@@ -243,6 +343,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 
 		return () =>
 		{
+			window.clearInterval(probe)
 			socket.disconnect()
 			socketRef.current = null
 		}
@@ -265,7 +366,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		code: room?.code ?? null,
 		members: room?.members ?? [],
 		isDrawer,
-		error, // ALREADY_IN_ROOM: a sala ja esta aberta noutro separador
+		error, // ALREADY_IN_ROOM: the room is already open in another tab
 		round,
 		messages,
 		// What goes in the word slot: the real thing if you are the one drawing.
@@ -280,6 +381,30 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		expelled,
 		startReport: (targetId: string) => ask('report:start', { targetId }),
 		voteExpel: () => ask('report:vote', {}),
+		/** The 3 words to choose from (only the drawer has them) and the answer. */
+		choices,
+		sendChoice: (word: string) =>
+		{
+			socketRef.current?.emit('round:choose', { word })
+			setChoices(null)
+		},
+		/** The room's last correct guess, for the banner/confetti of whoever got it. */
+		lastCorrect,
+		/** You were left alone mid-game: the room closed and the points were lost. */
+		aborted,
+		/** Only YOU left/were removed; the room continues for the others. */
+		dropped,
+		/** DELIBERATE exit: waits for the server's CONFIRMATION before allowing
+		    navigation. Without waiting, navigating would disconnect the socket and
+		    could kill the notice mid-way — and the next page's socket (profile)
+		    would silently reclaim the "abandoned" seat: the player would return to
+		    the room as a live ghost and the one-closes-everything rule would never
+		    fire. The 1.5 s cap ensures the button never gets stuck if the network fails. */
+		leaveRoom: () =>
+			Promise.race([
+				ask('room:leave', {}),
+				new Promise((resolve) => { window.setTimeout(resolve, 1500) }),
+			]),
 		/** Call after anything that wipes the canvas, such as a resize. */
 		repaint: () => repaintRef.current(),
 	}

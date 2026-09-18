@@ -14,9 +14,9 @@ const RANKS = [
 
 function HeroIllustration() {
   const { t } = useLanguage()
-  const word = t('promo.word') // 4 letras, traduzida (NAVE / SHIP / NAVE)
+  const word = t('promo.word') // 4 letters, translated (NAVE / SHIP / NAVE)
 
-  // Cronómetro demo: 80 → 77 e volta a 80, em loop.
+  // Demo timer: 80 → 77 and back to 80, in a loop.
   const [seconds, setSeconds] = useState(80)
   useEffect(() => {
     const id = setInterval(() => {
@@ -30,9 +30,9 @@ function HeroIllustration() {
       className="promo-illustration"
       viewBox="0 0 800 450"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="Ilustração do jogo: um jogador desenha, os outros adivinham e há um ranking final"
+      aria-label={t('promo.aria')}
     >
-      {/* pílulas de estado: palavra a revelar-se letra a letra + cronómetro */}
+      {/* status pills: word revealing itself letter by letter + timer */}
       <g fontFamily="'JetBrains Mono',monospace" fontSize="17" fontWeight="700" textAnchor="middle">
         <rect x="290" y="24" width="150" height="34" rx="17" fill="#1B1D24" stroke="rgba(245,243,238,0.18)" />
         {word.split('').slice(0, 4).map((letter, i) => (
@@ -45,12 +45,12 @@ function HeroIllustration() {
         <text x="658" y="47" fill="#FF4B3E">{seconds}s</text>
       </g>
 
-      {/* quadro de desenho */}
+      {/* drawing board */}
       <g transform="translate(290 245) rotate(-3)">
         <rect x="-180" y="-135" width="360" height="256" rx="18" fill="rgba(0,0,0,0.35)" transform="translate(8 10)" />
         <rect x="-180" y="-135" width="360" height="256" rx="18" fill="#FAF7F0" />
 
-        {/* foguetão em garatuja — desenha-se em loop */}
+        {/* doodled rocket — draws itself in a loop */}
         <g transform="translate(-14 -8) rotate(14)" fill="none" strokeLinecap="round" strokeLinejoin="round">
           <path className="promo-doodle" pathLength={1} d="M0 -92 C 26 -62 32 -14 20 36 L -20 36 C -32 -14 -26 -62 0 -92 Z" stroke="#FF4B3E" strokeWidth="6.5" />
           <circle className="promo-doodle" pathLength={1} cx="0" cy="-30" r="13" stroke="#3EC1D3" strokeWidth="6" style={{ animationDelay: '.35s' }} />
@@ -60,7 +60,7 @@ function HeroIllustration() {
           <path className="promo-doodle" pathLength={1} d="M-4 42 C -5 55 5 55 4 42" stroke="#FF4B3E" strokeWidth="5" style={{ animationDelay: '1.15s' }} />
         </g>
 
-        {/* estrelinhas no papel */}
+        {/* little stars on the paper */}
         <g strokeWidth="4.5" strokeLinecap="round" fill="none">
           <path className="promo-doodle" pathLength={1} d="M108 -84 v18 M99 -75 h18" stroke="#3EC1D3" style={{ animationDelay: '1.4s' }} />
           <path className="promo-doodle" pathLength={1} d="M-124 62 v16 M-132 70 h16" stroke="#FF4B3E" style={{ animationDelay: '1.6s' }} />
@@ -68,7 +68,7 @@ function HeroIllustration() {
         </g>
       </g>
 
-      {/* lápis a desenhar (amarelo) */}
+      {/* pencil drawing (yellow) */}
       <g transform="translate(452 352) rotate(-38)">
         <rect x="-9" y="-70" width="18" height="58" rx="4" fill="#FFC93C" />
         <rect x="-9" y="-78" width="18" height="10" rx="4" fill="#FF4B3E" />
@@ -76,7 +76,7 @@ function HeroIllustration() {
         <path d="M-3.5 0 L0 8 L3.5 0 Z" fill="#15161B" />
       </g>
 
-      {/* balões de palpite dos 4 jogadores (P ?, R ✓, C …, T !) */}
+      {/* guess bubbles of the 4 players (P ?, R ✓, C …, T !) */}
       <g className="promo-bubble">
         <circle cx="70" cy="188" r="17" fill="#1B1D24" stroke="#3EC1D3" strokeWidth="2" />
         <text x="70" y="194" textAnchor="middle" fontFamily="'Baloo 2',sans-serif" fontSize="15" fontWeight="700" fill="#F5F3EE">P</text>
@@ -113,7 +113,7 @@ function HeroIllustration() {
         <text x="247" y="380" textAnchor="middle" fontFamily="'Baloo 2',sans-serif" fontSize="23" fontWeight="800" fill="#15161B">!</text>
       </g>
 
-      {/* troféu com estrela giratória (eco do fim de jogo) */}
+      {/* trophy with a spinning star (echo of the end of game) */}
       <g>
         <g className="promo-star">
           <rect x="617" y="106" width="70" height="70" fill="#FF4B3E" />
@@ -124,7 +124,7 @@ function HeroIllustration() {
         </g>
       </g>
 
-      {/* ranking a aparecer lugar a lugar */}
+      {/* ranking appearing place by place */}
       <g fontFamily="'Plus Jakarta Sans',sans-serif">
         {RANKS.map((rank, i) => {
           const y = 232 + i * 52
@@ -141,7 +141,7 @@ function HeroIllustration() {
         })}
       </g>
 
-      {/* estrelinhas nas 4 cores (fora do quadro) */}
+      {/* little stars in the 4 colors (outside the board) */}
       <g strokeWidth="4" strokeLinecap="round" fill="none">
         <path d="M44 70 v20 M34 80 h20" stroke="#FF4B3E" />
         <path d="M770 76 v16 M762 84 h16" stroke="#FFC93C" />
