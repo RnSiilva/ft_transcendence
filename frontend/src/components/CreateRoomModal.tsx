@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 
-// Definições que o SERVIDOR aceita (game/rooms.js valida com cleanSettings;
-// password é lida à parte e nunca é devolvida aos clientes).
+// Settings the SERVER accepts (game/rooms.js validates with cleanSettings;
+// the password is read separately and never returned to clients).
 export type RoomSettings = {
   rounds: number
   roundSeconds: number
@@ -28,8 +28,8 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
   const [password, setPassword] = useState('')
 
   function handleCreate() {
-    // As definições vão para o servidor no room:create (Rooms.tsx emite).
-    // Sala privada: a senha segue junto e o rooms.js exige-a no room:join.
+    // The settings go to the server on room:create (Rooms.tsx emits it).
+    // Private room: the password goes along and rooms.js requires it on room:join.
     onClose()
     const pass = isPrivate ? password.trim() : ''
     onCreate({ rounds, roundSeconds, theme, language, ...(pass ? { password: pass } : {}) })
@@ -42,7 +42,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
 
         <div className="field-dark">
           <label>{t('room.create.name')}</label>
-          <input type="text" placeholder="Sala do utilizador_demo" />
+          <input type="text" placeholder={t('room.create.nameph')} />
         </div>
 
         <div className="field-dark">

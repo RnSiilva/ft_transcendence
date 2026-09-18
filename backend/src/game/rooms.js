@@ -138,12 +138,12 @@ function createRoom(memberId, user, settings)
 	{
 		code: generateCode(),
 		members: new Map(),
-		creatorId: memberId, // NEW — fixed, never changes after creation
+		creatorId: memberId, // Fixed, never changes after creation.
 		// drawerId: null,
 		strokes: [],
 		settings: cleanSettings(settings),
-		// Sala privada: senha definida pelo criador (fora de `settings` para
-		// nunca ser serializada para os clientes). null = sala aberta.
+		// Private room: password set by the creator (kept outside `settings`
+		// so it is never serialised to clients). null = open room.
 		password: typeof settings?.password === 'string' && settings.password.trim()
 			? settings.password.trim().slice(0, 32)
 			: null,
@@ -170,9 +170,9 @@ function joinRoom(memberId, rawCode, user, password)
 
 	if (!alreadyHere)
 	{
-		// Sala privada: só entra quem souber a senha do criador. Quem já
-		// está dentro (alreadyHere) e quem retoma o próprio lugar
-		// (seizeSeat, verificado antes no room.socket) não a repetem.
+		// Private room: only someone who knows the creator's password gets
+		// in. Those already inside (alreadyHere) and those reclaiming their
+		// own seat (seizeSeat, checked earlier in room.socket) skip it.
 		if (room.password && String(password ?? '') !== room.password)
 			throw fail('Wrong password', 'WRONG_PASSWORD');
 
@@ -273,7 +273,7 @@ function reclaimSeat(newMemberId, user, now = Date.now())
 		if (!seat)
 			continue;
 
-		const oldMemberId = seat.id;   // new — save before overwriting
+		const oldMemberId = seat.id;   // save before overwriting
 
 		room.members = new Map(
 			[...room.members.entries()].map(([id, member]) =>
@@ -293,12 +293,12 @@ function reclaimSeat(newMemberId, user, now = Date.now())
 }
 
 /**
- * A conta retoma o PRÓPRIO lugar: o mesmo utilizador a entrar na sala por
- * uma ligação nova (reabriu o jogo no telemóvel, outro separador) fica com o
- * lugar que já era dele — pontos e vez preservados — e a ligação antiga é
- * dispensada pelo chamador. Sem isto, uma ligação zombie (morta sem aviso)
- * bloqueava o dono fora da sala ('ALREADY_IN_ROOM') até ao timeout.
- * Continua a existir UM lugar por conta: nunca há dois lápis.
+ * The account reclaims its OWN seat: the same user joining the room through a
+ * new connection (reopened the game on their phone, another tab) keeps the
+ * seat that was already theirs — points and turn preserved — and the old
+ * connection is dropped by the caller. Without this, a zombie connection (dead
+ * without notice) locked the owner out of the room ('ALREADY_IN_ROOM') until
+ * the timeout. There is still ONE seat per account: never two pencils.
  */
 function seizeSeat(newMemberId, rawCode, user)
 {
@@ -315,7 +315,7 @@ function seizeSeat(newMemberId, rawCode, user)
 
 	const oldMemberId = seat.id;
 
-	// A ligação nova pode estar noutra sala: sai primeiro, como no joinRoom.
+	// The new connection may be in another room: leave it first, as in joinRoom.
 	if (memberRoom.get(newMemberId) && memberRoom.get(newMemberId) !== code)
 		leaveRoom(newMemberId);
 
@@ -412,7 +412,7 @@ function serialiseRoom(room, now = Date.now())
 {
 	return {
 		code: room.code,
-		creatorId: room.creatorId,   // NEW — the front needs to know who the owner is.
+		creatorId: room.creatorId,   // The front end needs to know who the owner is.
 		settings: room.settings,
 		members: [...room.members.values()].map((member) => ({
 			id: member.id,

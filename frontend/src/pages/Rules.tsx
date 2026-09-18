@@ -7,7 +7,7 @@ function Rules() {
 
   return (
     <div className="simple-wrap">
-      {/* título com a mesma animação/reflexo do Sobre nós */}
+      {/* title with the same animation/reflection as the About us page */}
       <h1 className="sketch-title page-title">
         <span className="sr-only">{t('rules.title')}</span>
         <SketchText text={t('rules.title')} />
@@ -23,7 +23,7 @@ function Rules() {
           <li key={i}>{t(`rules.${i + 1}`)}</li>
         ))}
       </ol>
-      {/* o computador desenhado fecha a página, como na Home e no About */}
+      {/* the sketched computer closes the page, as on the Home and About pages */}
       <PencilDivider />
     </div>
   )

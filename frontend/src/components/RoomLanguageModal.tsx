@@ -1,9 +1,9 @@
 import { useLanguage } from '../i18n/LanguageContext'
 import type { Lang } from '../i18n/translations'
 
-// Aviso mostrado ao entrar numa sala cujo idioma é diferente do idioma do
-// utilizador: informa em que idioma serão as palavras e pede confirmação.
-// Segue o padrão visual dos modais do design (overlay + painel).
+// Notice shown when entering a room whose language differs from the user's
+// language: it states which language the words will be in and asks for
+// confirmation. Follows the visual pattern of the design's modals (overlay + panel).
 
 type Props = {
   roomLang: Lang

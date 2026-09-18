@@ -11,8 +11,8 @@ const COLORS = ['#15161B', '#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 type ChatMessage = { name: string; text: string; system?: boolean }
 type Acerto = { word: string; place: number; points: number; turnKey: string }
 
-// Chuva de confetes do acerto: ~80 pedacinhos nas cores do projeto, cada um
-// com posição, atraso, tamanho e rotação aleatórios (só CSS, sem libraria).
+// Correct-guess confetti: ~80 little pieces in the project colours, each with
+// a random position, delay, size and rotation (pure CSS, no library).
 const CONFETTI_COLORS = ['#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77', '#F5F3EE']
 
 function Confetti() {
@@ -48,7 +48,7 @@ function Confetti() {
   )
 }
 
-/** Troféu do acerto: dourado 1.º, prateado 2.º, bronze do 3.º em diante. */
+/** Correct-guess trophy: gold for 1st, silver for 2nd, bronze from 3rd on. */
 function Trophy({ place }: { place: number }) {
   const colors = ['#FFD24A', '#C7CCD6', '#D08A4E']
   const fill = colors[Math.min(place - 1, 2)]
@@ -62,8 +62,8 @@ function Trophy({ place }: { place: number }) {
 function Game() {
   const { t } = useLanguage()
   const navigate = useNavigate()
-  // Identidade real da sessão: o nome/pontos vêm da conta autenticada; o
-  // 'utilizador_demo' fica só como recurso quando não há sessão (dev local).
+  // Real session identity: the name/points come from the authenticated account;
+  // 'utilizador_demo' is only a fallback when there is no session (local dev).
   const { user } = useAuth()
   const selfName = user?.username ?? 'utilizador_demo'
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -74,9 +74,9 @@ function Game() {
   const [chatText, setChatText] = useState('')
   const [endgameClosed, setEndgameClosed] = useState(false)
 
-  // Se chegámos aqui sem ?room= mas há uma sala recente, repõe-a no URL
-  // ANTES do socket ligar: o servidor segura o lugar 15 s (reclaimSeat) e o
-  // draw:history repõe o desenho — sair sem querer deixa de perder tudo.
+  // If we arrived without ?room= but there is a recent room, restore it in the
+  // URL BEFORE the socket connects: the server holds the seat for 15 s (reclaimSeat)
+  // and draw:history restores the drawing, so an accidental exit loses nothing.
   useState(() => {
     const url = new URL(window.location.href)
     if (!url.searchParams.get('room')) {
@@ -103,17 +103,17 @@ function Game() {
     if (game.code) sessionStorage.setItem('sg-room', game.code)
   }, [game.code])
 
-  // ---- vez de desenhar: decidida pelo servidor, sem botões de teste ----
+  // ---- drawing turn: decided by the server, no test buttons ----
   const isMe = game.isDrawer
   const isMeRef = useRef(isMe)
   useEffect(() => {
     isMeRef.current = isMe
   })
 
-  // Contagem visual dos 10 s para escolher a palavra (quem manda é o
-  // servidor: se ela chegar a zero, ele escolhe a primeira por ti).
-  // O par {src,left} liga a contagem a ESTA oferta: enquanto o relógio não
-  // bate, mostra os segundos anunciados — sem setState síncrono no effect.
+  // Visual countdown of the 10 s to choose the word (the server is in charge:
+  // if it reaches zero, it picks the first word for you).
+  // The {src,left} pair ties the countdown to THIS offer: until the clock
+  // ticks, it shows the announced seconds — no synchronous setState in the effect.
   const [choiceTick, setChoiceTick] = useState<{ src: unknown; left: number } | null>(null)
   useEffect(() => {
     const offer = game.choices
@@ -128,14 +128,14 @@ function Game() {
     ? (choiceTick && choiceTick.src === game.choices ? choiceTick.left : game.choices.seconds)
     : 0
 
-  // ---- acerto real: 'round:correct' do servidor + o que eu escrevi ----
-  // O servidor nunca envia a palavra no acerto (senão entregava-a aos
-  // outros); a que aparece no MEU banner é a que eu próprio escrevi.
+  // ---- real correct guess: server's 'round:correct' + what I typed ----
+  // The server never sends the word on a correct guess (that would hand it to
+  // the others); the one shown in MY banner is the one I typed myself.
   const [notices, setNotices] = useState<ChatMessage[]>([])
   const [acerto, setAcerto] = useState<Acerto | null>(null)
   const [confettiAt, setConfettiAt] = useState<number | null>(null)
   const lastGuessRef = useRef('')
-  // Identifica o turno atual; o banner só vive dentro do turno em que nasceu.
+  // Identifies the current turn; the banner only lives within the turn it was born in.
   const turnKey = game.round ? `${game.round.round}-${game.round.turn}` : ''
   const seenCorrectRef = useRef(0)
   useEffect(() => {
@@ -158,30 +158,30 @@ function Game() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.lastCorrect, selfName])
 
-  // Derivado: o banner some sozinho quando o turno seguinte começa.
+  // Derived: the banner disappears on its own when the next turn starts.
   const acertoVisible = acerto && acerto.turnKey === turnKey ? acerto : null
 
-  // ---- modais de saída ----
+  // ---- exit modals ----
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [pendingNav, setPendingNav] = useState<string | null>(null)
 
-  // ---- quadro em ecrã inteiro (telemóvel, na vez de desenhar) ----
+  // ---- fullscreen board (mobile, while it is your turn to draw) ----
   const [fullscreen, setFullscreen] = useState(false)
 
-  // ---- placar recolhido no telemóvel (só o próprio; toque mostra todos) --
+  // ---- scoreboard collapsed on mobile (self only; tap shows everyone) --
   const [scoreOpen, setScoreOpen] = useState(false)
 
-  // ---- denunciar um jogador ----
-  // A votação vive no servidor: conta 1 voto por jogador, precisa de MAIS de
-  // metade e expulsa como se a pessoa tivesse saído, perdendo os pontos.
+  // ---- report a player ----
+  // The vote lives on the server: it counts 1 vote per player, needs MORE than
+  // half, and expels the player as if they had left, losing their points.
   const [reportOpen, setReportOpen] = useState(false)
 
-  // O tempo é do servidor: todos os jogadores da sala veem o mesmo número, e
-  // ninguém ganha segundos por ter a página mais lenta.
+  // The time comes from the server: every player in the room sees the same
+  // number, and no one gains seconds for having a slower page.
   const seconds = game.round?.secondsLeft ?? 0
 
-  // Derivado em vez de guardado: o fim de jogo aparece porque o servidor diz
-  // que acabou, e desaparece porque o jogador o fechou.
+  // Derived rather than stored: the end-game screen appears because the server
+  // says it is over, and disappears because the player closed it.
   const finished = game.round?.phase === 'finished'
   const endgameOpen = finished && !endgameClosed
 
@@ -192,16 +192,16 @@ function Game() {
 
     function fitCanvas() {
       if (!canvas || !ctx) return
-      // Tamanho igual ao atual: nada a fazer. Nos telemóveis o browser
-      // dispara 'resize' constantemente (barra de endereço, teclado) e cada
-      // refit apaga o quadro e repinta o histórico inteiro — era isso que
-      // deixava o desenho em ecrã inteiro lentíssimo.
+      // Same size as now: nothing to do. On mobile the browser fires 'resize'
+      // constantly (address bar, keyboard) and each refit wipes the board and
+      // repaints the whole history — that was what made fullscreen drawing
+      // extremely slow.
       const size = canvas.getBoundingClientRect()
       if (canvas.width === Math.round(size.width * 2) && canvas.height === Math.round(size.height * 2)) {
         return
       }
-      // Mudar width/height APAGA o canvas: antes disso o desenho atual é
-      // copiado para um canvas temporário e volta a ser pintado à escala.
+      // Changing width/height WIPES the canvas: before that, the current drawing
+      // is copied to a temporary canvas and painted back at scale.
       const prev = document.createElement('canvas')
       prev.width = canvas.width
       prev.height = canvas.height
@@ -238,9 +238,9 @@ function Game() {
       const p = pos(e)
       const from = lastPointRef.current
       ctx!.strokeStyle = colorRef.current
-      // UM segmento por evento. Antes, lineTo acumulava o traço inteiro num
-      // caminho só e cada stroke() redesenhava TUDO desde o início — O(n²):
-      // era isto que travava o desenho no telemóvel (pior em ecrã inteiro).
+      // ONE segment per event. Before, lineTo accumulated the whole stroke into
+      // a single path and each stroke() redrew EVERYTHING from the start — O(n²):
+      // this was what stalled drawing on mobile (worse in fullscreen).
       ctx!.beginPath()
       ctx!.moveTo((from ?? p).x, (from ?? p).y)
       ctx!.lineTo(p.x, p.y)
@@ -271,8 +271,8 @@ function Game() {
     canvas.addEventListener('touchstart', start)
     canvas.addEventListener('touchmove', move, { passive: false })
     canvas.addEventListener('touchend', end)
-    // Debounce do refit: rajadas de 'resize' (típicas no telemóvel) fazem UM
-    // ajuste no fim, em vez de apagar+repintar o quadro dezenas de vezes.
+    // Refit debounce: bursts of 'resize' (typical on mobile) do ONE adjustment
+    // at the end, instead of wiping+repainting the board dozens of times.
     let fitTimer: number | null = null
     function scheduleFit() {
       if (fitTimer !== null) window.clearTimeout(fitTimer)
@@ -294,14 +294,14 @@ function Game() {
     }
   }, [])
 
-  // Mudar entre desenhar/adivinhar ou entrar/sair do ecrã inteiro muda o
-  // tamanho do quadro: reajusta o canvas (o fitCanvas preserva o desenho).
+  // Switching between drawing/guessing or entering/leaving fullscreen changes
+  // the board size: refit the canvas (fitCanvas preserves the drawing).
   useEffect(() => {
     window.dispatchEvent(new Event('resize'))
   }, [isMe, fullscreen])
 
-  // Sair da página = sair da sala: aviso do browser ao fechar/recarregar e
-  // modal nosso ao clicar em qualquer link interno.
+  // Leaving the page = leaving the room: a browser warning on close/reload and
+  // our own modal when clicking any internal link.
   useEffect(() => {
     const before = (e: BeforeUnloadEvent) => {
       e.preventDefault()
@@ -342,21 +342,21 @@ function Game() {
     game.sendClear()
   }
 
-  // Um único campo serve para conversar e para adivinhar: o SERVIDOR compara
-  // a mensagem com a palavra secreta e decide o que ela foi ('round:correct'
-  // com nome/pontos/posição). Quem desenha não escreve: o input está
-  // desativado e o round.js ignora palpites do desenhador.
+  // A single field serves both chatting and guessing: the SERVER compares the
+  // message with the secret word and decides what it was ('round:correct' with
+  // name/points/position). The drawer does not type: the input is disabled and
+  // round.js ignores guesses from the drawer.
   function sendChat() {
     if (isMe) return
     const text = chatText.trim()
     if (!text) return
-    // Guardada para o banner: se isto for o acerto, é esta a palavra.
+    // Stored for the banner: if this turns out to be the correct guess, this is the word.
     lastGuessRef.current = text
     game.sendChat(text)
     setChatText('')
   }
 
-  // Placar 100% do servidor: quem está na sala e os pontos da partida.
+  // Scoreboard fully from the server: who is in the room and the match points.
   const scoreRows = game.members.map((member) => ({
     id: member.id,
     name: member.name,
@@ -365,11 +365,11 @@ function Game() {
     pts: game.round?.scores.find((s) => s.id === member.id)?.points ?? 0,
   }))
 
-  // Os meus pontos nesta partida, para a topbar.
+  // My points in this match, for the topbar.
   const myPoints = game.round?.scores.find((s) => s.name === selfName)?.points ?? 0
 
-  // Se o servidor recusar, a razão vai para o chat: o silêncio era o que
-  // fazia isto parecer partido.
+  // If the server refuses, the reason goes to the chat: the silence was what
+  // made this look broken.
   async function startReport(targetId: string) {
     setReportOpen(false)
 
@@ -423,7 +423,7 @@ function Game() {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={clearCanvas}>
                   {t('game.clear')}
                 </button>
-                {/* Telemóvel: quadro em ecrã inteiro na vez de desenhar. */}
+                {/* Mobile: fullscreen board while it is your turn to draw. */}
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm fullscreen-btn"
@@ -434,9 +434,9 @@ function Game() {
                 </button>
               </>
             ) : acertoVisible ? (
-              // Acerto: palavra, troféu (ouro/prata/bronze pela ordem) e
-              // pontos. A palavra é a que EU escrevi — o servidor nunca a
-              // envia no 'round:correct', para os outros não a lerem.
+              // Correct guess: word, trophy (gold/silver/bronze by order) and
+              // points. The word is the one I typed — the server never sends it
+              // in 'round:correct', so the others cannot read it.
               <div className="acerto-banner" key={acertoVisible.place}>
                 <Trophy place={acertoVisible.place} />
                 <span className="word">{acertoVisible.word}</span>
@@ -447,7 +447,7 @@ function Game() {
               <span className="turn-notice guess">🎯 {t('game.guess.notice')}</span>
             )}
           </div>
-          {/* O cursor-lápis só na vez de desenhar; a adivinhar é seta normal. */}
+          {/* Pencil cursor only while drawing; a normal arrow while guessing. */}
           <canvas id="draw-canvas" ref={canvasRef} className={isMe ? 'drawing' : ''} />
         </div>
 
@@ -480,9 +480,9 @@ function Game() {
             </div>
         </div>
 
-        {/* Placar rodapé sempre visível. No telemóvel mostra só o próprio
-            jogador; um toque abre todos (e fica assim até novo toque).
-            AQUI O CODIGO DO SERVIDOR (marcar o "próprio" pelo id da sessão) */}
+        {/* Footer scoreboard, always visible. On mobile it shows only the
+            player themselves; a tap opens everyone (and stays so until the next
+            tap). */}
         <div className={scoreOpen ? 'panel score-panel open' : 'panel score-panel'}>
           <h3 onClick={() => setScoreOpen((o) => !o)}>
             {t('game.score.heading')}
@@ -500,7 +500,7 @@ function Game() {
               >
                 <div className="mini-avatar">{member.name.charAt(0).toUpperCase()}</div>
                 <div className="nm">
-                  {/* Pousar/tocar no nome abre o cartão: stats + amigo + report */}
+                  {/* Hovering/tapping the name opens the card: stats + friend + report */}
                   <PlayerHoverCard
                     username={member.name}
                     isSelf={member.name === selfName}
@@ -531,7 +531,7 @@ function Game() {
         </div>
       </div>
 
-      {/* Sair da partida vive no FIM da página (aparece ao rolar). */}
+      {/* Leaving the match lives at the END of the page (appears on scroll). */}
       <div className="leave-row">
         <button
           type="button"
@@ -542,8 +542,8 @@ function Game() {
         </button>
       </div>
 
-      {/* É a tua vez: 3 palavras REAIS do servidor, 10 s para escolher
-          (contados no servidor; ao chegar a zero vai a primeira). */}
+      {/* Your turn: 3 REAL words from the server, 10 s to choose (counted on
+          the server; when it reaches zero the first one is used). */}
       {game.choices && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -566,7 +566,7 @@ function Game() {
         </div>
       )}
 
-      {/* Sair da partida: aviso de que os pontos se perdem. */}
+      {/* Leaving the match: warns that the points are lost. */}
       {confirmLeave && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -580,9 +580,9 @@ function Game() {
                 type="button"
                 className="btn btn-danger"
                 onClick={async () => {
-                  // Sair confirmado: ESPERA o ack do room:leave antes de
-                  // navegar — navegar já desligava o socket e o aviso
-                  // podia perder-se (fantasma vivo readotado pelo perfil).
+                  // Exit confirmed: WAIT for the room:leave ack before
+                  // navigating — navigating would disconnect the socket and the
+                  // notice could be lost (a live ghost re-adopted by the profile).
                   await game.leaveRoom()
                   sessionStorage.removeItem('sg-room')
                   navigate('/profile')
@@ -595,7 +595,7 @@ function Game() {
         </div>
       )}
 
-      {/* Clicou num link para fora do jogo: confirmar antes de sair da sala. */}
+      {/* Clicked a link out of the game: confirm before leaving the room. */}
       {pendingNav && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -609,7 +609,7 @@ function Game() {
                 type="button"
                 className="btn btn-danger"
                 onClick={async () => {
-                  // Mesma correção do botão Sair: esperar o ack primeiro.
+                  // Same fix as the Leave button: wait for the ack first.
                   await game.leaveRoom()
                   sessionStorage.removeItem('sg-room')
                   navigate(pendingNav)
@@ -622,7 +622,7 @@ function Game() {
         </div>
       )}
 
-      {/* Denunciar: escolher qual jogador (nunca o próprio). */}
+      {/* Report: choose which player (never yourself). */}
       {reportOpen && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -652,7 +652,7 @@ function Game() {
         </div>
       )}
 
-      {/* Carregar duas vezes não muda nada: o servidor conta 1 voto por pessoa. */}
+      {/* Clicking twice changes nothing: the server counts 1 vote per person. */}
       {game.flagged && (
         <div className="report-toast">
           <p className="report-warned">🚩 {t('game.report.warned')}</p>
@@ -675,7 +675,7 @@ function Game() {
         </div>
       )}
 
-      {/* Ficaste sozinho a meio da partida: a sala fechou, sem pontos. */}
+      {/* You were left alone mid-match: the room closed, no points. */}
       {game.aborted && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -697,8 +697,8 @@ function Game() {
         </div>
       )}
 
-      {/* SÓ tu saíste/foste removido por inatividade — a sala segue para os
-          outros; a mensagem não diz que ninguém ganha pontos. */}
+      {/* ONLY you left/were removed for inactivity — the room continues for the
+          others; the message does not say that no one gains points. */}
       {game.dropped && !game.aborted && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -733,19 +733,19 @@ function Game() {
         </div>
       )}
 
-      {/* Confetes do acerto (o key recria a chuva a cada acerto). */}
+      {/* Correct-guess confetti (the key recreates the shower on each guess). */}
       {confettiAt && <Confetti key={confettiAt} />}
 
       {endgameOpen && (
         <EndGameOverlay
           onClose={async () => {
-            // Fim de jogo: sair para /rooms tem de acontecer SEMPRE. A ordem
-            // importa — remover o sg-room e navegar NUNCA podem ficar reféns
-            // do await do room:leave: se esse await for interrompido (rede
-            // lenta, ou um recarregamento do Vite a remontar o componente a
-            // meio), o navigate no finally corre à mesma e o jogador não
-            // fica preso no tabuleiro. Os pontos já foram gravados no fim da
-            // última ronda, por isso sair aqui não perde nada.
+            // End of game: leaving to /rooms must ALWAYS happen. Order matters —
+            // removing sg-room and navigating must NEVER be held hostage by the
+            // room:leave await: if that await is interrupted (slow network, or a
+            // Vite reload remounting the component mid-way), the navigate in the
+            // finally runs anyway and the player is not stuck on the board. The
+            // points were already saved at the end of the last round, so leaving
+            // here loses nothing.
             sessionStorage.removeItem('sg-room')
             setEndgameClosed(true)
             try {

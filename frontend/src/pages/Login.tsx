@@ -13,12 +13,12 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Enquanto a sessão é verificada não se mostra o formulário (evita o
-  // "flash" do login a quem já está autenticado).
+  // While the session is being verified the form is not shown (avoids the
+  // login "flash" for users already authenticated).
   if (checkingSession) {
     return null
   }
-  // Quem já tem sessão não volta a ver o login: vai direto para o perfil.
+  // Users with an active session do not see the login again: straight to the profile.
   if (user) {
     return <Navigate to="/profile" replace />
   }

@@ -95,8 +95,8 @@ function paintSegment(canvas: HTMLCanvasElement, stroke: Stroke)
 export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | null>)
 {
 	const { t } = useLanguage()
-	// O efeito do socket corre uma só vez; o ref dá-lhe sempre o t do idioma
-	// atual sem obrigar a religar os listeners a cada mudança de língua.
+	// The socket effect runs only once; the ref always gives it the t for the
+	// current language without having to rewire the listeners on every language change.
 	const tRef = useRef(t)
 	useEffect(() =>
 	{
@@ -114,15 +114,15 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [reportVote, setReportVote] = useState<ReportVote | null>(null)
 	const [flagged, setFlagged] = useState(false)
 	const [expelled, setExpelled] = useState(false)
-	// A sala fechou a meio (ficou só um jogador): ninguém ganha os pontos.
+	// The room closed mid-game (only one player left): no one gets the points.
 	const [aborted, setAborted] = useState(false)
-	// Diferente de `aborted`: aqui a SALA continua para os outros — só ESTE
-	// jogador saiu/foi removido (ex.: expirou a tolerância por inatividade).
-	// A mensagem não pode dizer "ninguém ganha pontos": os outros ganham.
+	// Different from `aborted`: here the ROOM continues for the others — only THIS
+	// player left/was removed (e.g. the inactivity grace period expired).
+	// The message must not say "no one gains points": the others do.
 	const [dropped, setDropped] = useState(false)
-	// As 3 palavras oferecidas ao desenhador (só ele as recebe do servidor).
+	// The 3 words offered to the drawer (only they receive them from the server).
 	const [choices, setChoices] = useState<{ options: string[]; seconds: number } | null>(null)
-	// Último acerto anunciado pela sala — alimenta o banner/confetes.
+	// Last correct guess announced by the room — feeds the banner/confetti.
 	const [lastCorrect, setLastCorrect] = useState<
 		{ name: string; points: number; position: number; at: number } | null
 	>(null)
@@ -138,13 +138,13 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		const request = (event: string, payload: object): Promise<Ack> =>
 			new Promise((resolve) => socket.emit(event, payload, resolve))
 
-		// Já estivemos dentro da sala nesta página? Numa RECONEXÃO falhada
-		// (a sala morreu com o telemóvel em espera) o jogo terminou — nunca
-		// criar uma sala nova em silêncio, senão o jogador fica sozinho num
-		// jogo fantasma sem dar por isso.
+		// Were we ever inside the room on this page? On a failed RECONNECT
+		// (the room died while the phone was idle) the game ended — never
+		// silently create a new room, or the player ends up alone in a ghost
+		// game without realising it.
 		let everEntered = false
-		// Entrada/reentrada a decorrer: a sonda abaixo não deve tirar
-		// conclusões a meio de um room:join ainda sem resposta.
+		// Entry/re-entry in progress: the probe below must not draw
+		// conclusions in the middle of a room:join that has no reply yet.
 		let joining = false
 
 		const enterRoom = async () =>
@@ -182,8 +182,8 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			{
 				if (everEntered)
 				{
-					// Reconexão falhada: o lugar já não é nosso (a sala pode bem
-					// continuar para os outros) — "foste removido", não "abortada".
+					// Failed reconnect: the seat is no longer ours (the room may well
+					// continue for the others) — "you were removed", not "aborted".
 					setDropped(true)
 					return
 				}
@@ -239,7 +239,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		socket.on('round:word', (word: string) =>
 		{
 			setSecretWord(word)
-			// A palavra chegou: a escolha (se estava aberta) fechou no servidor.
+			// The word arrived: the choice (if it was open) closed on the server.
 			setChoices(null)
 		})
 
@@ -254,17 +254,17 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			setAborted(true)
 		})
 
-		// A conta entrou na mesma sala por outra ligação (outro separador ou o
-		// telemóvel a retomar o lugar): esta ligação foi dispensada. Reusa o
-		// ecrã do ALREADY_IN_ROOM ("a sala está aberta noutro lado").
+		// The account entered the same room via another connection (another tab or
+		// the phone reclaiming the seat): this connection was discarded. Reuses the
+		// ALREADY_IN_ROOM screen ("the room is open somewhere else").
 		socket.on('room:replaced', () =>
 		{
 			setError('ALREADY_IN_ROOM')
 		})
 
-		// Autorreparação (igual à do lobby): pergunta ao servidor de 5 em 5 s
-		// se ainda estamos numa sala. Um 'game:aborted'/fecho perdido com o
-		// telemóvel em espera deixava o jogo aberto "fantasma" durante minutos.
+		// Self-healing (same as the lobby's): asks the server every 5 s whether we
+		// are still in a room. A missed 'game:aborted'/close while the phone was
+		// idle would leave the game open as a "ghost" for minutes.
 		const probe = window.setInterval(() =>
 		{
 			if (!socket.connected || joining || !everEntered)
@@ -275,8 +275,8 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 					return
 				if (answer && answer.ok === false)
 				{
-					// Já não estamos na sala, mas ela pode continuar sem nós:
-					// "foste removido", não "a sala fechou para todos".
+					// We are no longer in the room, but it may continue without us:
+					// "you were removed", not "the room closed for everyone".
 					setChoices(null)
 					setDropped(true)
 				}
@@ -366,7 +366,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		code: room?.code ?? null,
 		members: room?.members ?? [],
 		isDrawer,
-		error, // ALREADY_IN_ROOM: a sala ja esta aberta noutro separador
+		error, // ALREADY_IN_ROOM: the room is already open in another tab
 		round,
 		messages,
 		// What goes in the word slot: the real thing if you are the one drawing.
@@ -381,25 +381,25 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		expelled,
 		startReport: (targetId: string) => ask('report:start', { targetId }),
 		voteExpel: () => ask('report:vote', {}),
-		/** As 3 palavras à escolha (só o desenhador as tem) e a resposta. */
+		/** The 3 words to choose from (only the drawer has them) and the answer. */
 		choices,
 		sendChoice: (word: string) =>
 		{
 			socketRef.current?.emit('round:choose', { word })
 			setChoices(null)
 		},
-		/** Último acerto da sala, para o banner/confetes de quem acertou. */
+		/** The room's last correct guess, for the banner/confetti of whoever got it. */
 		lastCorrect,
-		/** Ficaste sozinho a meio: a sala fechou e os pontos perderam-se. */
+		/** You were left alone mid-game: the room closed and the points were lost. */
 		aborted,
-		/** Só TU saíste/foste removido; a sala segue para os outros. */
+		/** Only YOU left/were removed; the room continues for the others. */
 		dropped,
-		/** Saída DELIBERADA: espera a CONFIRMAÇÃO do servidor antes de deixar
-		    navegar. Sem esperar, a navegação desligava o socket e podia matar
-		    o aviso a meio — e o socket da página seguinte (perfil) recuperava
-		    o lugar "abandonado" em silêncio: o jogador voltava à sala como
-		    fantasma vivo e a regra do 1-fecha-tudo nunca disparava. O teto de
-		    1,5 s garante que o botão nunca fica preso se a rede falhar. */
+		/** DELIBERATE exit: waits for the server's CONFIRMATION before allowing
+		    navigation. Without waiting, navigating would disconnect the socket and
+		    could kill the notice mid-way — and the next page's socket (profile)
+		    would silently reclaim the "abandoned" seat: the player would return to
+		    the room as a live ghost and the one-closes-everything rule would never
+		    fire. The 1.5 s cap ensures the button never gets stuck if the network fails. */
 		leaveRoom: () =>
 			Promise.race([
 				ask('room:leave', {}),

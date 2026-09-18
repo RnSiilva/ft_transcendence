@@ -1,5 +1,5 @@
-// Dicionário PT/EN/ES copiado do modelo aprovado (DESIGN_FRONTEND/gartic_V1.html).
-// Mais tarde pode ser migrado para react-i18next sem alterar as chaves.
+// PT/EN/ES dictionary of UI strings.
+// Can be migrated to react-i18next later without changing the keys.
 
 export type Lang = 'pt' | 'en' | 'es'
 
@@ -15,6 +15,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'about.card3.title': 'O desafio', 'about.card3.text': 'Salas com amigos, 80 segundos por desenho, palpites em três idiomas e um ranking para provar quem acerta mais depressa.',
     'team.title': 'Equipa',
     'promo.word': 'NAVE',
+    'promo.aria': 'Ilustração do jogo: um jogador desenha, os outros adivinham e há um ranking final',
     'lang.pt': 'Português', 'lang.en': 'Inglês', 'lang.es': 'Espanhol',
     'roomlang.title': 'Idioma da sala',
     'roomlang.text1': 'Esta sala será em',
@@ -46,7 +47,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'history.heading': 'Últimas partidas', 'history.empty': 'Ainda não jogaste nenhuma partida.',
     'history.win': 'Vitória', 'history.loss': 'Derrota',
     'editprofile.drag': 'Arrasta a foto para a posicionares como quiseres', 'editprofile.removephoto': 'Remover foto',
-    'room.create.title': 'Criar sala', 'room.create.name': 'Nome da sala', 'room.create.players': 'Jogadores',
+    'room.create.title': 'Criar sala', 'room.create.name': 'Nome da sala', 'room.create.nameph': 'Sala do utilizador_demo', 'room.create.players': 'Jogadores',
     'room.create.rounds': 'Rondas', 'room.create.time': 'Tempo por ronda', 'room.create.chatlang': 'Idioma do chat',
     'room.create.category': 'Categoria de palavras', 'room.cat.general': 'Geral', 'room.cat.animals': 'Animais',
     'room.cat.food': 'Comida', 'room.cat.movies': 'Filmes e séries', 'room.cat.objects': 'Objetos',
@@ -144,6 +145,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'about.card3.title': 'The challenge', 'about.card3.text': 'Rooms with friends, 80 seconds per drawing, guesses in three languages and a ranking to prove who guesses fastest.',
     'team.title': 'Team',
     'promo.word': 'SHIP',
+    'promo.aria': 'Game illustration: one player draws, the others guess, and there is a final ranking',
     'lang.pt': 'Portuguese', 'lang.en': 'English', 'lang.es': 'Spanish',
     'roomlang.title': 'Room language',
     'roomlang.text1': 'This room will be in',
@@ -175,7 +177,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'history.heading': 'Recent games', 'history.empty': 'You have not played any games yet.',
     'history.win': 'Win', 'history.loss': 'Loss',
     'editprofile.drag': 'Drag the photo to position it however you like', 'editprofile.removephoto': 'Remove photo',
-    'room.create.title': 'Create room', 'room.create.name': 'Room name', 'room.create.players': 'Players',
+    'room.create.title': 'Create room', 'room.create.name': 'Room name', 'room.create.nameph': "user_demo's room", 'room.create.players': 'Players',
     'room.create.rounds': 'Rounds', 'room.create.time': 'Time per round', 'room.create.chatlang': 'Chat language',
     'room.create.category': 'Word category', 'room.cat.general': 'General', 'room.cat.animals': 'Animals',
     'room.cat.food': 'Food', 'room.cat.movies': 'Movies & TV', 'room.cat.objects': 'Objects',
@@ -273,6 +275,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'about.card3.title': 'El reto', 'about.card3.text': 'Salas con amigos, 80 segundos por dibujo, intentos en tres idiomas y un ranking para demostrar quién acierta más rápido.',
     'team.title': 'Equipo',
     'promo.word': 'NAVE',
+    'promo.aria': 'Ilustración del juego: un jugador dibuja, los demás adivinan y hay una clasificación final',
     'lang.pt': 'Portugués', 'lang.en': 'Inglés', 'lang.es': 'Español',
     'roomlang.title': 'Idioma de la sala',
     'roomlang.text1': 'Esta sala será en',
@@ -304,7 +307,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     'history.heading': 'Últimas partidas', 'history.empty': 'Todavía no has jugado ninguna partida.',
     'history.win': 'Victoria', 'history.loss': 'Derrota',
     'editprofile.drag': 'Arrastra la foto para colocarla como quieras', 'editprofile.removephoto': 'Quitar foto',
-    'room.create.title': 'Crear sala', 'room.create.name': 'Nombre de la sala', 'room.create.players': 'Jugadores',
+    'room.create.title': 'Crear sala', 'room.create.name': 'Nombre de la sala', 'room.create.nameph': 'Sala del usuario_demo', 'room.create.players': 'Jugadores',
     'room.create.rounds': 'Rondas', 'room.create.time': 'Tiempo por ronda', 'room.create.chatlang': 'Idioma del chat',
     'room.create.category': 'Categoría de palabras', 'room.cat.general': 'General', 'room.cat.animals': 'Animales',
     'room.cat.food': 'Comida', 'room.cat.movies': 'Películas y series', 'room.cat.objects': 'Objetos',

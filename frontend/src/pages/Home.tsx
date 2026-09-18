@@ -8,7 +8,7 @@ import PencilDivider from '../components/PencilDivider'
 function Home() {
   const { t } = useLanguage()
   const navigate = useNavigate()
-  // Logado, o Jogar salta o login e vai direto para as salas (lobby).
+  // When logged in, Play skips the login and goes straight to the rooms (lobby).
   const { user } = useAuth()
 
   return (
@@ -43,7 +43,7 @@ function Home() {
         </button>
       </div>
 
-      {/* computador desenhado — assinatura de fecho da Home */}
+      {/* sketched computer — closing signature of the Home page */}
       <div className="home-end" aria-hidden="true">
         <PencilDivider />
       </div>

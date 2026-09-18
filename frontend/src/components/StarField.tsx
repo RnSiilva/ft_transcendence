@@ -1,4 +1,4 @@
-// Fundo estrelado com 5 camadas parallax (igual ao modelo aprovado).
+// Starfield background with 5 parallax layers.
 function StarField() {
   return (
     <>

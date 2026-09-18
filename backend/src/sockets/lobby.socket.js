@@ -1,43 +1,41 @@
 /**
- * lobby.socket.js  (módulo do frontend/Thiago — não altera os da equipa)
+ * lobby.socket.js
  *
- * O que este código faz: a sala de espera antes da partida.
- *  - 'rooms:list' — devolve as salas públicas em espera e é reemitido a
- *    todos sempre que uma sala nasce, muda ou fecha (a página /rooms
- *    atualiza-se sozinha, sem botão de refresh);
- *  - guarda quem CRIOU cada sala (ouvindo 'room:create' num listener
- *    próprio) e só a esse aceita expulsar ('lobby:kick'), encerrar
- *    ('lobby:close') e iniciar ('lobby:start' → 'room:start' a todos);
- *  - relógio no servidor: uma sala em espera vive no máximo 5 minutos
- *    ('lobby:tick' com os segundos a cada segundo; no fim 'lobby:expired'
- *    e a sala é esvaziada);
- *  - com 3+ jogadores avisa o criador ('lobby:ready'); se ele adiar
- *    ('lobby:wait'), volta a avisar de 60 em 60 segundos.
+ * What this code does: the waiting room before a match starts.
+ *  - 'rooms:list' — returns the public rooms that are waiting and is re-emitted
+ *    to everyone whenever a room is created, changes or closes (the /rooms
+ *    page refreshes itself, with no refresh button);
+ *  - remembers who CREATED each room (listening for 'room:create' in its own
+ *    listener) and lets only that person kick ('lobby:kick'), close
+ *    ('lobby:close') and start ('lobby:start' → 'room:start' to everyone);
+ *  - server-side clock: a waiting room lives for at most 5 minutes
+ *    ('lobby:tick' with the seconds every second; at the end 'lobby:expired'
+ *    and the room is emptied);
+ *  - with 3+ players it prompts the creator ('lobby:ready'); if they postpone
+ *    ('lobby:wait'), it prompts again every 60 seconds.
  *
- * Usa apenas a API pública de game/rooms.js e o forgetMember exportado por
- * round.socket.js. NOTA para a equipa: o arranque automático provisório do
- * round.socket.js (MIN_PLAYERS = 2, marcado lá como temporário à espera
- * deste lobby) deve passar a esperar pelo 'lobby:start'.
+ * Uses only the public API of game/rooms.js and the forgetMember exported by
+ * round.socket.js.
  */
 
 const rooms = require('../game/rooms');
 const { forgetMember } = require('./round.socket');
 
 const LOBBY_LIFETIME_MS = 5 * 60 * 1000;
-// Decisão final da equipa (2026-09-16): são precisos 3 para INICIAR; a meio
-// da partida pode continuar-se com 2 (round.socket só aborta abaixo de 2,
-// e aí a sala fecha de imediato sem pontos para ninguém).
+// 3 players are needed to START; a match can carry on with 2 once it is
+// under way (round.socket only aborts below 2, and then the room closes
+// immediately with no points for anyone).
 const READY_MIN_PLAYERS = 3;
 const READY_REPEAT_MS = 60 * 1000;
 
 /**
  * roomCode -> { creatorUserId, roomName, waiting, started, promptAt }
- * waiting: true só para salas abertas pela página de salas ('lobby:open') —
- * essas ficam em sala de espera (room.lobbyWaiting trava o motor de rondas)
- * até ao 'lobby:start'. Salas criadas diretamente pelo /game continuam a
- * arrancar sozinhas com 2 jogadores, como antes.
- * promptAt: null = avisa assim que houver 3; timestamp = avisa a essa hora;
- * Infinity = modal está aberto no ecrã do criador, não repetir.
+ * waiting: true only for rooms opened from the rooms page ('lobby:open') —
+ * those sit in a waiting room (room.lobbyWaiting blocks the round engine)
+ * until 'lobby:start'. Rooms created directly from /game keep starting on
+ * their own with 2 players, as before.
+ * promptAt: null = prompt as soon as there are 3; timestamp = prompt at that
+ * time; Infinity = the modal is open on the creator's screen, do not repeat.
  */
 const lobbies = new Map();
 
@@ -55,7 +53,7 @@ function isCreator(socket, lobby)
 	return Boolean(lobby && socket.user && socket.user.id === lobby.creatorUserId);
 }
 
-/** O socket atual do criador (muda a cada reload; procura-se pelo userId). */
+/** The creator's current socket (changes on each reload; found by userId). */
 function creatorSocketId(room, lobby)
 {
 	for (const member of room.members.values())
@@ -66,7 +64,7 @@ function creatorSocketId(room, lobby)
 	return null;
 }
 
-/** Só salas ainda em espera entram na lista pública. */
+/** Only rooms still waiting appear in the public list. */
 function publicRooms()
 {
 	return rooms.activeRooms()
@@ -84,7 +82,7 @@ function publicRooms()
 				players: room.members.size,
 				max: rooms.MAX_MEMBERS,
 				lang: room.settings.language,
-				// Cadeado na lista; a senha em si nunca sai do servidor.
+				// A padlock in the list; the password itself never leaves the server.
 				locked: Boolean(room.password),
 			};
 		});
@@ -95,7 +93,7 @@ function broadcastList(io)
 	io.emit('rooms:list', publicRooms());
 }
 
-/** Tira toda a gente da sala, avisando primeiro com o evento dado. */
+/** Removes everyone from the room, first notifying them with the given event. */
 function emptyRoom(io, room, event)
 {
 	io.to(room.code).emit(event);
@@ -111,10 +109,10 @@ function emptyRoom(io, room, event)
 }
 
 /**
- * Fase da sala de espera, calculada SEMPRE no servidor (pedido do Renan):
- * 'waiting_players'  — ainda não há jogadores suficientes para iniciar;
- * 'waiting_creator'  — já dá para iniciar; espera-se a decisão do criador.
- * É emitida a TODOS os membros ('lobby:phase') sempre que muda.
+ * Waiting-room phase, always computed on the server:
+ * 'waiting_players'  — there are not enough players to start yet;
+ * 'waiting_creator'  — it can start now; waiting on the creator's decision.
+ * It is emitted to ALL members ('lobby:phase') whenever it changes.
  */
 function computePhase(room)
 {
@@ -134,14 +132,14 @@ function announcePhase(io, room, lobby)
 }
 
 /**
- * Uma passagem do relógio das salas (o tempo vive AQUI, nunca no browser):
- * conta os 5 minutos, manda o tick, anuncia a fase, expira salas e repete
- * o aviso de "já dá para começar" ao criador. Extraída do setInterval para
- * os testes a poderem chamar com um `now` à escolha (scripts/lobby-test.js).
+ * One pass of the rooms clock (time lives HERE, never in the browser):
+ * counts the 5 minutes, sends the tick, announces the phase, expires rooms
+ * and repeats the "you can start now" prompt to the creator. Extracted from
+ * the setInterval so tests can call it with a `now` of their choice.
  */
 function sweepOnce(io, now = Date.now())
 {
-	// Salas que morreram por outras vias (toda a gente saiu).
+	// Rooms that died by other means (everyone left).
 	for (const code of [...lobbies.keys()])
 	{
 		if (!rooms.getRoom(code))
@@ -161,7 +159,7 @@ function sweepOnce(io, now = Date.now())
 			0,
 			Math.ceil((room.createdAt.getTime() + LOBBY_LIFETIME_MS - now) / 1000),
 		);
-		// creatorUserId incluído: o frontend marca a tag "Criador" na lista.
+		// creatorUserId included: the front end tags the "Creator" in the list.
 		io.to(room.code).emit('lobby:tick', {
 			secondsLeft,
 			creatorUserId: lobby.creatorUserId,
@@ -176,11 +174,11 @@ function sweepOnce(io, now = Date.now())
 			continue;
 		}
 
-		// Sala em espera SEM criador não faz sentido: ninguém pode iniciar,
-		// os outros ficariam pendurados até aos 5 minutos. Acontece quando o
-		// criador sai/cai por outra via que não o 'lobby:close'. Nota: um
-		// criador só ausente (reload/ecrã bloqueado) ainda conta como membro
-		// durante o período de tolerância — a sala sobrevive a um refresh.
+		// A waiting room WITHOUT a creator makes no sense: nobody can start,
+		// and the others would hang on until the 5 minutes are up. It happens
+		// when the creator leaves/drops by some path other than 'lobby:close'.
+		// Note: a merely absent creator (reload/locked screen) still counts as
+		// a member during the grace period — the room survives a refresh.
 		if (!creatorSocketId(room, lobby))
 		{
 			emptyRoom(io, room, 'lobby:closed');
@@ -190,7 +188,7 @@ function sweepOnce(io, now = Date.now())
 
 		if (room.members.size < READY_MIN_PLAYERS)
 		{
-			// Abaixo do mínimo outra vez: o próximo a entrar volta a avisar.
+			// Below the minimum again: the next player to join prompts once more.
 			lobby.promptAt = null;
 			continue;
 		}
@@ -214,8 +212,8 @@ function startLobbySweeper(io, everyMs = 1000)
 
 function registerLobbyHandlers(io, socket)
 {
-	// Corre DEPOIS do handler da equipa (registado antes no index.js), por
-	// isso a sala já existe quando este listener é chamado.
+	// Runs AFTER the room:create handler registered earlier in index.js, so
+	// the room already exists when this listener is called.
 	socket.on('room:create', () =>
 	{
 		const room = rooms.getRoomOf(socket.id);
@@ -232,8 +230,8 @@ function registerLobbyHandlers(io, socket)
 		broadcastList(io);
 	});
 
-	// A página de salas abre a sala em modo de espera: entra na lista
-	// pública e o motor de rondas fica travado até ao lobby:start.
+	// The rooms page opens the room in waiting mode: it enters the public
+	// list and the round engine stays blocked until lobby:start.
 	socket.on('lobby:open', () =>
 	{
 		const { room, lobby } = lobbyOf(socket.id);
@@ -246,8 +244,8 @@ function registerLobbyHandlers(io, socket)
 		announcePhase(io, room, lobby);
 	});
 
-	// Entradas e saídas mudam a lotação da lista E a fase da sala; quem
-	// acabou de entrar recebe já a fase atual sem esperar pelo relógio.
+	// Joins and leaves change both the list count AND the room phase; whoever
+	// just joined gets the current phase right away without waiting for the clock.
 	socket.on('room:join', () =>
 	{
 		broadcastList(io);
@@ -267,11 +265,11 @@ function registerLobbyHandlers(io, socket)
 			ack(publicRooms());
 	});
 
-	// Fotografia do estado atual da sala de espera, a pedido. Serve para:
-	// (1) o modal do lobby mostrar a lista JÁ ao montar — o broadcast do
-	// room:state da entrada chega antes de os listeners existirem e perdia-se;
-	// (2) um telemóvel que acordou do modo de espera descobrir se ainda está
-	// na sala (o socket morreu e o servidor pode tê-lo removido entretanto).
+	// A snapshot of the current waiting-room state, on request. It serves to:
+	// (1) let the lobby modal show the list AS SOON AS it mounts — the join's
+	// room:state broadcast arrives before the listeners exist and was lost;
+	// (2) let a phone that woke from standby find out whether it is still in
+	// the room (the socket died and the server may have removed it meanwhile).
 	socket.on('lobby:sync', (_payload, ack) =>
 	{
 		if (typeof ack !== 'function')
@@ -340,7 +338,7 @@ function registerLobbyHandlers(io, socket)
 
 		lobby.started = true;
 		lobby.waiting = false;
-		// Liberta o motor de rondas: no próximo tick a partida começa.
+		// Releases the round engine: the match begins on the next tick.
 		room.lobbyWaiting = false;
 		io.to(room.code).emit('room:start');
 		broadcastList(io);
@@ -369,9 +367,9 @@ function registerLobbyHandlers(io, socket)
 module.exports = {
 	registerLobbyHandlers,
 	startLobbySweeper,
-	// Exportados para o scripts/lobby-test.js: correr uma passagem do
-	// relógio com um `now` à escolha (testar a expiração dos 5 minutos sem
-	// esperar 5 minutos) e inspecionar o estado das salas em espera.
+	// Exported for tests: run one pass of the clock with a `now` of your
+	// choice (testing the 5-minute expiry without waiting 5 minutes) and
+	// inspect the state of the waiting rooms.
 	sweepOnce,
 	_lobbies: lobbies,
 };

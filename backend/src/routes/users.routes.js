@@ -1,13 +1,13 @@
 /**
- * users.routes.js  (módulo do frontend/Thiago)
- * Perfil PÚBLICO de qualquer utilizador: GET /api/users/:username
+ * users.routes.js
+ * PUBLIC profile of any user: GET /api/users/:username
  *
- * Devolve APENAS campos visíveis — username, avatar, rank, pontos,
- * partidas, vitórias e conquistas. Nunca email, password, idioma ou ids
- * internos de sessão. Requer sessão (não expomos dados a anónimos).
+ * Returns ONLY visible fields — username, avatar, rank, points,
+ * games, wins and achievements. Never email, password, language or internal
+ * session ids. Requires a session (we do not expose data to anonymous users).
  *
- * Alimenta: a pesquisa do "Adicionar amigos", o perfil público de
- * não-amigos e o cartão de hover no jogo com stats reais.
+ * Feeds: the "Add friends" search, the public profile of non-friends and the
+ * in-game hover card with real stats.
  */
 
 const express = require('express');

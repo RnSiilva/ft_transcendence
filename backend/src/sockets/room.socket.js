@@ -97,11 +97,11 @@ function registerRoomHandlers(io, socket)
 	{
 		try
 		{
-			// A conta retoma o próprio lugar (rooms.seizeSeat): se este
-			// utilizador já tem lugar na sala por OUTRA ligação (zombie de
-			// telemóvel, separador antigo), a ligação nova fica com ele —
-			// pontos e vez preservados — e a antiga é dispensada. Sem isto,
-			// o dono do lugar ficava trancado fora com 'ALREADY_IN_ROOM'.
+			// The account reclaims its own seat (rooms.seizeSeat): if this user
+			// already has a seat in the room through ANOTHER connection (a phone
+			// zombie, an old tab), the new connection takes it over — points and
+			// turn preserved — and the old one is dropped. Without this, the seat's
+			// owner was locked out with 'ALREADY_IN_ROOM'.
 			const seized = rooms.seizeSeat(socket.id, payload.code, socket.user);
 			if (seized)
 			{

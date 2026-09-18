@@ -10,11 +10,12 @@ import { getSocket } from '../socket'
 import type { Lang } from '../i18n/translations'
 
 /**
- * Página própria das salas (o perfil só tem o botão para cá). A lista
- * atualiza-se sozinha, sem botão de refresh — TUDO vem do servidor, sem
- * dados simulados: 'rooms:list' com callback ao abrir + broadcast do mesmo
- * evento sempre que uma sala nasce, muda ou fecha; entrar/criar usam
- * 'room:join' e 'room:create' (backend/src/sockets/lobby.socket.js).
+ * Dedicated rooms page (the profile only holds the button to reach it). The
+ * list updates on its own, with no refresh button — EVERYTHING comes from the
+ * server, with no simulated data: 'rooms:list' with a callback on open, plus a
+ * broadcast of the same event whenever a room is created, changes or closes;
+ * joining/creating use 'room:join' and 'room:create'
+ * (backend/src/sockets/lobby.socket.js).
  */
 
 type RoomInfo = { code: string; name: string; players: number; max: number; lang: Lang; locked?: boolean }
@@ -32,16 +33,16 @@ function Rooms() {
   const [lobby, setLobby] = useState<LobbyState | null>(null)
   const [pendingRoom, setPendingRoom] = useState<RoomInfo | null>(null)
   const [joinError, setJoinError] = useState(false)
-  // Sala privada: pedir a senha antes do room:join (o servidor valida).
+  // Private room: ask for the password before room:join (the server validates).
   const [passRoom, setPassRoom] = useState<RoomInfo | null>(null)
   const [passValue, setPassValue] = useState('')
   const [passError, setPassError] = useState(false)
 
-  // Lista em tempo real: pedido inicial + broadcast do servidor. Só os
-  // broadcasts não chegam: um telemóvel que adormece o separador perde-os e
-  // fica com a lista congelada (salas mortas com "Entrar" a falhar). Por
-  // isso a lista também se pede de novo ('rooms:list' com ack — consulta
-  // pura, sem efeitos) de 4 em 4 s, na reconexão e ao voltar ao ecrã.
+  // Real-time list: initial request + server broadcast. Broadcasts alone are
+  // not enough: a phone that puts the tab to sleep misses them and is left with
+  // a frozen list (dead rooms whose "Join" fails). So the list is also
+  // re-requested ('rooms:list' with ack — a pure query, no side effects) every
+  // 4 s, on reconnect, and when returning to the screen.
   useEffect(() => {
     const socket = getSocket()
 
@@ -82,13 +83,13 @@ function Rooms() {
           setPassError(false)
           setLobby({ name: room.name, code: answer.room.code, isAdmin: false, max: room.max })
         } else if (answer?.code === 'WRONG_PASSWORD') {
-          // Senha errada (ou em falta): mostra/mantém o pedido de senha.
+          // Wrong (or missing) password: show/keep the password prompt.
           setPassRoom(room)
           setPassError(Boolean(password))
         } else {
           setJoinError(true)
-          // A entrada falhou porque a lista estava velha? Pede-a já de novo
-          // para a sala morta desaparecer em vez de convidar a novo clique.
+          // Did the join fail because the list was stale? Re-request it now so
+          // the dead room disappears instead of inviting another click.
           getSocket().emit('rooms:list', {}, (list: RoomInfo[]) => {
             if (Array.isArray(list)) setRooms(list)
           })
@@ -98,12 +99,12 @@ function Rooms() {
   }
 
   function enterRoom(room: RoomInfo) {
-    // Sala noutro idioma: confirmar primeiro (as palavras serão nesse idioma).
+    // Room in another language: confirm first (the words will be in that language).
     if (room.lang !== lang) {
       setPendingRoom(room)
       return
     }
-    // Sala privada: pedir a senha antes de tentar entrar.
+    // Private room: ask for the password before attempting to join.
     if (room.locked) {
       setPassValue('')
       setPassError(false)
@@ -120,8 +121,8 @@ function Rooms() {
       { settings },
       (answer: { ok: boolean; room?: { code: string } }) => {
         if (answer?.ok && answer.room) {
-          // lobby:open põe a sala na lista pública e trava o motor de
-          // rondas até o criador carregar em Iniciar.
+          // lobby:open adds the room to the public list and holds the round
+          // engine until the creator clicks Start.
           getSocket().emit('lobby:open')
           setLobby({ name: `Sala de ${selfName}`, code: answer.room.code, isAdmin: true, max: 6 })
         } else {
@@ -133,8 +134,8 @@ function Rooms() {
 
   function startMatch() {
     if (!lobby) return
-    // O jogo abre a própria ligação e recupera o lugar pela conta
-    // (reclaimSeat); a ligação partilhada sai para não ocupar 2 lugares.
+    // The game opens its own connection and reclaims the seat by account
+    // (reclaimSeat); the shared connection leaves so it does not take 2 seats.
     const code = lobby.code
     getSocket().disconnect()
     navigate(`/game?room=${code}`)
@@ -210,7 +211,7 @@ function Rooms() {
           onConfirm={() => {
             const room = pendingRoom
             setPendingRoom(null)
-            // Sala privada: depois de aceitar o idioma, ainda falta a senha.
+            // Private room: after accepting the language, the password is still needed.
             if (room.locked) {
               setPassValue('')
               setPassError(false)
@@ -222,7 +223,7 @@ function Rooms() {
         />
       )}
 
-      {/* Sala privada: senha antes de entrar (validada no servidor). */}
+      {/* Private room: password before joining (validated on the server). */}
       {passRoom && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">

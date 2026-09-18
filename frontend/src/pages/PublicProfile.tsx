@@ -8,15 +8,15 @@ import { useLeaderboard, type LeaderboardEntry } from '../hooks/useLeaderboard'
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
 /**
- * Perfil PÚBLICO de outro utilizador (/user/:username): só visualização.
- * Mostra apenas o que pode ser visto — avatar, username, estado online,
- * estatísticas, posição nos rankings geral/semanal/diário e as conquistas.
- * NUNCA mostra email nem dá ações de escrita.
+ * PUBLIC profile of another user (/user/:username): view only.
+ * Shows only what may be seen — avatar, username, online status, statistics,
+ * position in the general/weekly/daily rankings and the achievements.
+ * It NEVER shows the email nor offers any write actions.
  *
- * Dados REAIS para qualquer utilizador via GET /api/users/:username (rota
- * pública nossa: stats + conquistas); a API de amigos acrescenta o estado
- * online e a tag "já são amigos"; a posição nos rankings vem dos
- * leaderboards reais (— = fora do top).
+ * REAL data for any user via GET /api/users/:username (our public route:
+ * stats + achievements); the friends API adds the online status and the
+ * "already friends" tag; the ranking position comes from the real
+ * leaderboards (— = outside the top).
  */
 
 type FriendInfo = {
@@ -31,7 +31,7 @@ type FriendInfo = {
   status?: string
 }
 
-/** Posição do utilizador num leaderboard, ou null se estiver fora do top. */
+/** The user's position in a leaderboard, or null if outside the top. */
 function positionOf(entries: LeaderboardEntry[], username: string) {
   return entries.find((e) => e.username === username)?.rank ?? null
 }
@@ -45,9 +45,9 @@ function PublicProfile() {
   const weekly = useLeaderboard('weekly')
   const daily = useLeaderboard('daily')
 
-  // O React Router não repõe o scroll ao mudar de página: sem isto, abrir
-  // um perfil a partir do ranking (que está a meio) começava a meio. Sobe
-  // ao topo sempre que se abre outro utilizador.
+  // React Router does not reset the scroll when changing pages: without this,
+  // opening a profile from the ranking (which is scrolled down) would start
+  // scrolled down. Scroll to the top whenever another user is opened.
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [username])
@@ -55,7 +55,7 @@ function PublicProfile() {
   useEffect(() => {
     let alive = true
 
-    // 1) Dados públicos reais de QUALQUER utilizador (stats + conquistas).
+    // 1) Real public data for ANY user (stats + achievements).
     fetch(`${API}/users/${encodeURIComponent(username)}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -63,10 +63,10 @@ function PublicProfile() {
         setInfo((prev) => ({ ...(prev ?? {}), ...data.user }))
       })
       .catch(() => {
-        /* sem dados reais: a página mostra os valores de exemplo */
+        /* no real data: the page shows the example values */
       })
 
-    // 2) A amizade acrescenta o estado online e a tag "já são amigos".
+    // 2) Friendship adds the online status and the "already friends" tag.
     fetch(`${API}/friends`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -132,7 +132,7 @@ function PublicProfile() {
       <div className="panel">
         <h3>{t('profile.stats.heading')}</h3>
         <div className="stat-row">
-          {/* rank 0 = ainda não jogou: mostra — em vez de um #0 sem sentido */}
+          {/* rank 0 = has not played yet: show — instead of a meaningless #0 */}
           <div className="stat"><b>{(info?.rank ?? demo.rank) > 0 ? `#${info?.rank ?? demo.rank}` : '—'}</b><span>{t('profile.stats.rank')}</span></div>
           <div className="stat"><b>{info?.totalPoints ?? demo.points}</b><span>{t('profile.stats.points')}</span></div>
           <div className="stat"><b>{info?.gamesPlayed ?? demo.matches}</b><span>{t('profile.stats.matches')}</span></div>
@@ -140,7 +140,7 @@ function PublicProfile() {
         </div>
       </div>
 
-      {/* Posição real nos três rankings; — significa fora do top. */}
+      {/* Real position in the three rankings; — means outside the top. */}
       <div className="panel">
         <h3>{t('rank.heading')}</h3>
         <div className="stat-row">
@@ -153,8 +153,8 @@ function PublicProfile() {
         </div>
       </div>
 
-      {/* Conquistas reais (grelha completa por defeito) — para qualquer
-          utilizador, via a rota pública. */}
+      {/* Real achievements (full grid by default) — for any user, via the
+          public route. */}
       {info?.achievements && (
         <AchievementsPanel
           stats={{

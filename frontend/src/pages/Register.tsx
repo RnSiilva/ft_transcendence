@@ -26,8 +26,8 @@ function Register() {
   const [photo, setPhoto] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
 
-  // Depois de TODOS os hooks (regras dos hooks): sessão a verificar não
-  // mostra o formulário; quem já está autenticado vai para o perfil.
+  // After ALL hooks (rules of hooks): while the session is being verified the
+  // form is not shown; users already authenticated go to the profile.
   if (checkingSession) {
     return null
   }
@@ -90,8 +90,8 @@ function Register() {
       const data = await res.json()
 
       if (!res.ok) {
-        // Todas as mensagens do backend passam pelo mapa i18n (apiError.ts),
-        // campo a campo — nada aparece em inglês cru.
+        // All backend messages pass through the i18n map (apiError.ts), field
+        // by field — nothing appears in raw English.
         if (data.errors) {
           const mappedErrors: FieldErrors = {}
           for (const [field, message] of Object.entries(data.errors)) {

@@ -61,10 +61,10 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
-  // Verificação da sessão ao montar. Feita INLINE (e não via refresh()) para
-  // não haver setState síncrono no corpo do efeito: `loading` já começa true,
-  // e os setState acontecem só depois do await do fetch. A flag `alive` evita
-  // atualizar estado depois de o componente desmontar.
+  // Session check on mount. Done INLINE (not via refresh()) to avoid a
+  // synchronous setState in the effect body: `loading` already starts true, and
+  // the setState calls happen only after the fetch await. The `alive` flag
+  // avoids updating state after the component unmounts.
   useEffect(() => {
     let alive = true;
     (async () => {

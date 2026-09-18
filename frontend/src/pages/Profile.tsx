@@ -10,7 +10,7 @@ import { useLeaderboard, type RankPeriod } from '../hooks/useLeaderboard'
 import { useMatchHistory } from '../hooks/useMatchHistory'
 import { translateApiError } from '../utils/apiError'
 
-// Correção: a main usava API em 5 fetch sem nunca a definir (crash no perfil).
+// Base API URL: it was referenced by several fetch calls without ever being defined, which crashed the profile page.
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
 const RANK_PERIODS: RankPeriod[] = ['general', 'weekly', 'daily']
@@ -36,14 +36,14 @@ function Profile() {
 
   const [search, setSearch] = useState('')
   const [sentTo, setSentTo] = useState('')
-  // A confirmação "Pedido enviado a X" apaga-se sozinha passados uns segundos.
+  // The "Request sent to X" confirmation clears itself after a few seconds.
   const sentTimerRef = useRef<number | null>(null)
   useEffect(() => () => {
     if (sentTimerRef.current) window.clearTimeout(sentTimerRef.current)
   }, [])
   const [friendError, setFriendError] = useState('')
-  // Pesquisa de amigos em 2 passos: primeiro VÊ-SE o utilizador (via
-  // GET /api/users/:username), depois envia-se o pedido.
+  // Two-step friend search: first the user is SHOWN (via
+  // GET /api/users/:username), then the request is sent.
   const [foundUser, setFoundUser] = useState<{
     username: string
     avatarUrl: string | null
@@ -58,19 +58,19 @@ function Profile() {
   const ranking = useLeaderboard(rankTab)
   const history = useMatchHistory()
 
-  // Ao abrir o perfil, revalida a conta: o servidor verifica e desbloqueia
-  // conquistas novas (checkAchievements corre no /auth/me).
+  // On opening the profile, revalidate the account: the server checks and unlocks
+  // new achievements (checkAchievements runs on /auth/me).
   useEffect(() => {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Sino sobre a foto: quantos pedidos de amizade estão à espera de resposta.
+  // Bell over the photo: how many friend requests are awaiting a reply.
   const friendsPanelRef = useRef<HTMLHeadingElement | null>(null)
   const pendingRequests = friends.filter((f) => f.status === 'RECEIVED_PENDING').length
 
-  // Carrega a lista de amigos. `alive` (opcional) evita atualizar estado
-  // depois de o componente desmontar, quando chamada a partir do efeito.
+  // Loads the friends list. `alive` (optional) avoids updating state after the
+  // component unmounts, when called from the effect.
   async function loadFriends(alive: () => boolean = () => true) {
     try {
       const res = await fetch(`${API}/friends`, { credentials: 'include' })
@@ -84,13 +84,13 @@ function Profile() {
 
   useEffect(() => {
     if (!user) return
-    // Sem setState síncrono no corpo do efeito: o loadFriends só atualiza o
-    // estado depois do await do fetch, e a flag `alive` protege o desmonte.
+    // No synchronous setState in the effect body: loadFriends only updates the
+    // state after the fetch's await, and the `alive` flag guards the unmount.
     let alive = true
     const isAlive = () => alive
-    // Falso-positivo da regra: loadFriends só faz setState DEPOIS do await do
-    // fetch (não é síncrono no efeito) e a flag alive protege o desmonte. A
-    // regra não segue o await através de uma função nomeada partilhada.
+    // Rule false positive: loadFriends only calls setState AFTER the fetch's
+    // await (not synchronously in the effect) and the alive flag guards the
+    // unmount. The rule does not follow the await through a shared named function.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadFriends(isAlive)
 
@@ -103,8 +103,8 @@ function Profile() {
       )
     }
 
-    // O servidor avisa quando o OUTRO lado mexe na amizade (pedido novo,
-    // aceite, recusado, removido) — recarrega a lista sem F5.
+    // The server notifies when the OTHER side changes the friendship (new
+    // request, accepted, rejected, removed) — reloads the list without an F5.
     function onFriendsChanged() {
       void loadFriends(isAlive)
     }
@@ -123,8 +123,8 @@ function Profile() {
     window.location.href = '/login'
   }
 
-  // Passo 1: pesquisar — mostra o utilizador ANTES de enviar o pedido
-  // (GET /api/users/:username, a rota pública nova).
+  // Step 1: search — shows the user BEFORE sending the request
+  // (GET /api/users/:username, the new public route).
   async function searchUser(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setFriendError('')
@@ -153,7 +153,7 @@ function Profile() {
     }
   }
 
-  // Passo 2: enviar o pedido ao utilizador encontrado.
+  // Step 2: send the request to the found user.
   async function sendRequestTo(username: string) {
     setFriendError('')
     try {
@@ -165,7 +165,7 @@ function Profile() {
       })
       const data = await res.json()
       if (!res.ok) {
-        // Mensagem do backend (inglês) → chave i18n → idioma do site.
+        // Backend message (English) → i18n key → site language.
         setFriendError(translateApiError(t, data.error))
         return
       }
@@ -306,7 +306,7 @@ function Profile() {
       <div className="panel">
         <h3>{t('profile.stats.heading')}</h3>
         <div className="stat-row">
-          {/* rank 0 = ainda não jogou: — em vez de #0 */}
+          {/* rank 0 = has not played yet: — instead of #0 */}
           <div className="stat"><b>{Number(displayRank) > 0 ? `#${displayRank}` : '—'}</b><span>{t('profile.stats.rank')}</span></div>
           <div className="stat"><b>{displayPoints}</b><span>{t('profile.stats.points')}</span></div>
           <div className="stat"><b>{displayGames}</b><span>{t('profile.stats.matches')}</span></div>
@@ -314,7 +314,7 @@ function Profile() {
         </div>
       </div>
 
-      {/* Conquistas (badges) — desbloqueio validado no servidor */}
+      {/* Achievements (badges) — unlock validated on the server */}
       <AchievementsPanel
         stats={{ ...(user ?? {}), friendsCount: friends.filter((f) => f.status === 'ACCEPTED').length }}
         unlockedKeys={(user?.achievements ?? [])
@@ -338,8 +338,8 @@ function Profile() {
         </div>
         <div className="rank-list">
           {ranking.map((row, i) => (
-            // Clicar abre o perfil (o próprio → /profile; outros → público),
-            // como já acontecia na lista de amigos.
+            // Clicking opens the profile (self → /profile; others → public),
+            // as already happened in the friends list.
             <div
               className={`rank-row pos${i + 1} clickable`}
               key={row.userId}
@@ -369,8 +369,8 @@ function Profile() {
       <div className="panel">
         <h3>{t('history.heading')}</h3>
         {history.length === 0 && <p className="rooms-viewtext">{t('history.empty')}</p>}
-        {/* Até ~8 linhas visíveis; o resto acede-se pela barra de rolagem
-            (senão o perfil de quem jogou muito ficava gigante). */}
+        {/* Up to ~8 rows visible; the rest is reached via the scrollbar
+            (otherwise the profile of someone who played a lot would be huge). */}
         <div className={history.length > 8 ? 'scroll-list scrolls' : 'scroll-list'}>
         {history.map((game) => (
           <div className="room-row" key={game.finishedAt}>
@@ -413,7 +413,7 @@ function Profile() {
         {friends.length === 0 ? (
           <p style={{ opacity: 0.7 }}>{t('profile.friends.none')}</p>
         ) : (
-          // Até ~8 amigos visíveis; o resto pela barra de rolagem.
+          // Up to ~8 friends visible; the rest via the scrollbar.
           <div className={friends.length > 8 ? 'scroll-list scrolls' : 'scroll-list'}>
           {friends.map((friend) => (
             <div className="friend-row" key={friend.id}>
@@ -429,8 +429,8 @@ function Profile() {
                     friend.username.charAt(0).toUpperCase()
                   )}
                 </div>
-                {/* clicar no nome navega para o perfil público (como
-                    antes); o hover mostra o cartão com o rank, sem botões */}
+                {/* clicking the name navigates to the public profile (as
+                    before); hovering shows the card with the rank, no buttons */}
                 <PlayerHoverCard
                   username={friend.username}
                   showActions={false}
@@ -514,7 +514,7 @@ function Profile() {
           </button>
         </form>
 
-        {/* O utilizador encontrado aparece ANTES de se enviar o pedido. */}
+        {/* The found user appears BEFORE the request is sent. */}
         {foundUser && (
           <div className="friend-row found-user">
             <div className="who">
@@ -560,7 +560,7 @@ function Profile() {
         </button>
       </div>
 
-      {/* caixa de aviso: exclusão definitiva de todos os dados */}
+      {/* warning box: permanent deletion of all data */}
       {confirmingDelete && (
         <div className="modal-overlay show">
           <div className="modal-panel">

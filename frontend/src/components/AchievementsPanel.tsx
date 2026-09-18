@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 
 /**
- * Painel de Conquistas (badges do Carlos), partilhado entre o perfil
- * próprio e o perfil público de um amigo. A definição vive no cliente;
- * o DESBLOQUEIO é o que vem da base de dados (UserAchievement), por isso
- * o painel recebe as chaves desbloqueadas e as stats de quem está a ver-se.
+ * Achievements panel, shared between the user's own profile and a friend's
+ * public profile. The definition lives on the client; the UNLOCK is what
+ * comes from the database (UserAchievement), so the panel receives the
+ * unlocked keys and the stats of whoever is being viewed.
  */
 
 const ACHIEVEMENTS = [
@@ -50,9 +50,9 @@ function getProgress(u: ProgressSource, category: string) {
 
 type Props = {
   stats: ProgressSource
-  /** nameKeys das conquistas desbloqueadas (da BD, via UserAchievement). */
+  /** nameKeys of the unlocked achievements (from the DB, via UserAchievement). */
   unlockedKeys: string[]
-  /** No perfil público mostra logo a grelha toda. */
+  /** On the public profile, shows the whole grid right away. */
   defaultTab?: 'unlocked' | 'all'
 }
 

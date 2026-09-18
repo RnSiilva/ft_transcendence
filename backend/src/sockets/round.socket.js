@@ -61,9 +61,9 @@ async function beginRound(io, room, game)
 		? rooms.nextDrawerId(room, game.drawerId)
 		: room.creatorId;
 
-	// room.creatorId pode apontar para um socket antigo (o criador trocou de
-	// ligação ao navegar do lobby para o /game). Um desenhador que não é
-	// membro atual deixaria o turno sem dono: recua para o primeiro membro.
+	// room.creatorId may point to an old socket (the creator switched
+	// connection when moving from the lobby to /game). A drawer that is not a
+	// current member would leave the turn ownerless: fall back to the first member.
 	if (!room.members.has(drawerId))
 		drawerId = [...room.members.keys()][0];
 
@@ -127,11 +127,11 @@ async function tickRoom(io, room)
 		return;
 	}
 
-	// Fim de jogo: continua a anunciar o estado final a quem ainda cá está.
-	// O anúncio único do fim podia perder-se (telemóvel suspenso no último
-	// segundo) e esse jogador ficava preso "a meio do jogo" para sempre —
-	// a sala ainda existia, por isso nem a sonda o salvava. Reanunciar é
-	// idempotente: o frontend deriva o ecrã do troféu do phase 'finished'.
+	// End of game: keep announcing the final state to whoever is still here.
+	// A single end-of-game announcement could be lost (phone suspended on the
+	// last second) and that player would stay stuck "mid-game" forever — the
+	// room still existed, so not even the sweeper rescued them. Re-announcing is
+	// idempotent: the front end derives the trophy screen from phase 'finished'.
 	if (game.phase === round.PHASE.finished)
 	{
 		announce(io, room, game);
@@ -262,9 +262,9 @@ function registerRoundHandlers(io, socket)
 			return;
 		}
 
-		// Quem JÁ acertou não pode soprar a resposta: se voltar a escrever a
-		// palavra (ou qualquer pista), a mensagem só chega ao desenhador e a
-		// quem também já acertou — nunca a quem ainda está a adivinhar.
+		// Someone who has ALREADY guessed cannot give the answer away: if they
+		// type the word (or any hint) again, the message reaches only the drawer
+		// and those who also guessed — never anyone still trying to guess.
 		if (game && game.phase === round.PHASE.drawing
 			&& game.correct.some((entry) => entry.memberId === socket.id))
 		{
@@ -333,8 +333,8 @@ function reclaimInGame(io, room, oldMemberId, newMemberId)
 	if (game.drawerId === oldMemberId)
 	{
 		game.drawerId = newMemberId;
-		// Reenviar a palavra: um desenhador que reconectou a meio da vez
-		// ficava a ver só a máscara e sem saber o que desenhar.
+		// Resend the word: a drawer who reconnected mid-turn was left seeing
+		// only the mask, with no idea what to draw.
 		if (game.phase === round.PHASE.drawing && game.word)
 			io.to(newMemberId).emit('round:word', game.word);
 	}
@@ -342,11 +342,11 @@ function reclaimInGame(io, room, oldMemberId, newMemberId)
 	if (game.choosing && game.choosing.drawerId === oldMemberId)
 	{
 		game.choosing.drawerId = newMemberId;
-		// Reenviar as 3 opções com o tempo restante: no arranque via lobby o
-		// primeiro 'round:choices' vai para o socket antigo (a página de
-		// salas), que não o mostra — o socket novo do /game recupera o lugar
-		// AQUI e sem este reenvio nunca via o modal de escolha (bug visto
-		// primeiro no telemóvel, mas afetava o 1.º turno em todo o lado).
+		// Resend the 3 options with the time left: when starting via the lobby
+		// the first 'round:choices' goes to the old socket (the rooms page),
+		// which does not show it — the new /game socket reclaims the seat HERE,
+		// and without this resend it would never see the choice modal (a bug
+		// first seen on mobile, but it affected the 1st turn everywhere).
 		io.to(newMemberId).emit('round:choices', {
 			options: game.choosing.options,
 			seconds: Math.max(1, Math.ceil((game.choosing.deadline - Date.now()) / 1000)),

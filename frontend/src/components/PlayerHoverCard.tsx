@@ -6,23 +6,23 @@ import { demoStats } from '../utils/demoStats'
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
 /**
- * Cartãozinho que abre ao pousar o rato (ou tocar) no username de um
- * jogador — no placar do jogo e na sala de espera:
- *  - stats do jogador (rank, pontos, vitórias, partidas);
- *  - "Adicionar amigo" REAL (POST /api/friends/request), escondido se já
- *    forem amigos (GET /api/friends) ou se o jogador fores tu;
- *  - "Reportar jogador" quando faz sentido (dentro do jogo), ligado à
- *    votação real do servidor.
+ * Small card that opens when hovering (or tapping) a player's username —
+ * on the game scoreboard and in the waiting room:
+ *  - player stats (rank, points, wins, matches);
+ *  - REAL "Add friend" (POST /api/friends/request), hidden if you are
+ *    already friends (GET /api/friends) or if the player is you;
+ *  - "Report player" when it makes sense (inside the game), wired to the
+ *    real server vote.
  *
- * Stats REAIS: ao abrir, o cartão vai buscá-las a GET /api/users/:username
- * (rota pública nossa); os valores de exemplo só aparecem sem sessão.
+ * REAL stats: on open, the card fetches them from GET /api/users/:username
+ * (our public route); the sample values only appear without a session.
  */
 
 type FriendState = 'unknown' | 'none' | 'friend' | 'sent'
 
-/* Ecrã tátil (telemóvel): um toque dispara mouseenter E click ao mesmo
-   tempo — o cartão abria e fechava no mesmo toque. Com hover verdadeiro
-   o rato manda; sem hover, só o clique abre/fecha. */
+/* Touch screen (mobile): a tap fires mouseenter AND click at the same
+   time — the card used to open and close on the same tap. With real hover
+   the mouse controls it; without hover, only the click opens/closes it. */
 const canHover =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     ? window.matchMedia('(hover: hover)').matches
@@ -32,12 +32,12 @@ type Props = {
   username: string
   isSelf?: boolean
   onReport?: () => void
-  /** Stats reais quando as temos (ex.: lista de amigos); o resto fica demo. */
+  /** Real stats when we have them (e.g. friends list); the rest stays demo. */
   stats?: { rank?: number; points?: number; wins?: number; matches?: number }
-  /** false = só informação, sem Adicionar amigo/Reportar (perfil, pedidos). */
+  /** false = info only, no Add friend/Report (profile, requests). */
   showActions?: boolean
-  /** Com `to`, CLICAR no nome navega (como um link normal) e o cartão fica
-      só para o hover — comportamento da lista de amigos do perfil. */
+  /** With `to`, CLICKING the name navigates (like a normal link) and the card
+      is hover-only — the behavior of the profile's friends list. */
   to?: string
   children: React.ReactNode
 }
@@ -47,13 +47,13 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
   const [open, setOpen] = useState(false)
   const [friendState, setFriendState] = useState<FriendState>('unknown')
   const [failed, setFailed] = useState(false)
-  // Stats reais do servidor, obtidas na primeira abertura do cartão.
+  // Real stats from the server, fetched on the card's first open.
   const [fetched, setFetched] = useState<
     { rank: number; points: number; wins: number; matches: number } | null
   >(null)
   const rootRef = useRef<HTMLSpanElement | null>(null)
-  // Fecho com pequeno atraso: dá tempo de o rato passar do nome para o
-  // cartão (e para os botões) sem ele desaparecer. Reentrar cancela o fecho.
+  // Close with a small delay: gives the mouse time to move from the name to
+  // the card (and the buttons) without it disappearing. Re-entering cancels it.
   const closeTimer = useRef<number | null>(null)
   useEffect(() => () => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current)
@@ -67,7 +67,7 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
     closeTimer.current = window.setTimeout(() => setOpen(false), 160)
   }
 
-  // No tátil não há mouseleave de confiança: tocar fora do cartão fecha-o.
+  // On touch there is no reliable mouseleave: tapping outside the card closes it.
   useEffect(() => {
     if (!open) return
     function onDocClick(e: MouseEvent) {
@@ -94,14 +94,14 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
         })
       })
       .catch(() => {
-        /* sem sessão/rede: ficam os valores por defeito */
+        /* no session/network: the default values remain */
       })
     return () => {
       alive = false
     }
   }, [open, fetched, username])
 
-  // Só ao abrir pela primeira vez: verificar se já são amigos.
+  // Only on the first open: check whether they are already friends.
   useEffect(() => {
     if (!open || isSelf || !showActions || friendState !== 'unknown') return
     let alive = true
@@ -140,7 +140,7 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
     }
   }
 
-  // Prioridade: servidor (fetched) > props reais > valores de exemplo.
+  // Priority: server (fetched) > real props > sample values.
   const demo = demoStats(username)
   const stats = {
     rank: fetched?.rank ?? realStats?.rank ?? demo.rank,
@@ -174,7 +174,7 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
         <span className="phc-card">
           <span className="phc-head">
             <span className="mini-avatar">{username.charAt(0).toUpperCase()}</span>
-            {/* clicar no nome abre o perfil público (só leitura) */}
+            {/* clicking the name opens the public profile (read-only) */}
             <b><Link to={`/user/${username}`} className="phc-link">{username}</Link></b>
           </span>
           <span className="phc-stats">

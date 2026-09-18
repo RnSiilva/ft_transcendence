@@ -15,8 +15,8 @@ async function getFriends(userId) {
       ],
     },
     include: {
-      // gamesPlayed/wins/achievements incluídos para o perfil público do
-      // amigo mostrar estatísticas e conquistas REAIS (pedido do Thiago).
+      // gamesPlayed/wins/achievements included so the friend's public profile
+      // can show their real statistics and achievements.
       sender: {
         select: {
           id: true,
@@ -221,7 +221,7 @@ async function rejectFriendRequest(userId, requestId) {
     where: { id: Number(requestId) },
   });
 
-  // senderId/receiverId: para o controller avisar os dois lados por socket.
+  // senderId/receiverId: so the controller can notify both sides via socket.
   return { message: 'Friend request rejected', senderId: request.senderId, receiverId: request.receiverId };
 }
 
@@ -250,7 +250,7 @@ async function removeFriend(userId, friendId) {
     where: { id: friendship.id },
   });
 
-  // senderId/receiverId: para o controller avisar os dois lados por socket.
+  // senderId/receiverId: so the controller can notify both sides via socket.
   return { message: 'Friend removed', senderId: friendship.senderId, receiverId: friendship.receiverId };
 }
 

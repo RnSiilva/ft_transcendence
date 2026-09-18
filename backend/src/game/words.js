@@ -171,8 +171,8 @@ function normalise(text)
 
 /**
  * A guess counts only when it is the whole message: "gato" is right,
- * "deve ser um gato" is not. That was the team's decision, and it keeps
- * guessing separate from chatting in a single input.
+ * "it must be a gato" is not. It keeps guessing separate from chatting in a
+ * single input.
  */
 function matchesWord(guess, word)
 {

@@ -7,7 +7,7 @@ function Privacy() {
 
   return (
     <div className="simple-wrap">
-      {/* título com a mesma animação/reflexo do Sobre nós */}
+      {/* title with the same animation/reflection as the About us page */}
       <h1 className="sketch-title page-title">
         <span className="sr-only">{t('privacy.title')}</span>
         <SketchText text={t('privacy.title')} />
@@ -25,7 +25,7 @@ function Privacy() {
           <p>{t(`privacy.s${i + 1}.text`)}</p>
         </div>
       ))}
-      {/* o computador desenhado fecha a página, como na Home e no About */}
+      {/* the sketched computer closes the page, as on the Home and About pages */}
       <PencilDivider />
     </div>
   )

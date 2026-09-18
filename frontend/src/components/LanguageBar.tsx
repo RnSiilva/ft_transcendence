@@ -2,9 +2,9 @@ import { useLanguage } from '../i18n/LanguageContext'
 import type { Lang } from '../i18n/translations'
 import { useAuth } from '../hooks/useAuth'
 
-/* Bandeiras em SVG e não em emoji: o Windows (Chrome/Edge) não desenha
-   emojis de bandeiras — mostrava só "PT"/"GB"/"ES" em letras soltas.
-   Desenhadas à mão, ficam iguais em todos os sistemas. */
+/* SVG flags instead of emoji: Windows (Chrome/Edge) does not render flag
+   emojis — it only showed "PT"/"GB"/"ES" as loose letters. Drawn by hand,
+   they look the same on every system. */
 const flagStyle = { verticalAlign: '-2px', marginRight: 6, borderRadius: 2 } as const
 
 const FLAGS: Record<Lang, React.ReactNode> = {

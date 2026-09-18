@@ -1,6 +1,6 @@
-// Texto no traço do logotipo SketchGuess: letras em contorno, uma cor do
-// projeto por letra, com a animação de desenho contínuo (usado no título da
-// página About us, com reflexo).
+// Text in the SketchGuess logo stroke style: outlined letters, one project
+// color per letter, with the continuous drawing animation (used in the About
+// us page title, with a reflection).
 
 const LETTER_COLORS = ['#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 
