@@ -91,6 +91,7 @@ function cleanSettings(raw)
 
 	const roundSeconds = Number(wanted.roundSeconds);
 	const rounds = Number(wanted.rounds);
+	const maxPlayers = Number(wanted.maxPlayers) || MAX_MEMBERS;
 
 	return {
 		rounds: ROUND_COUNTS.includes(rounds) ? rounds : DEFAULT_SETTINGS.rounds,
@@ -101,6 +102,7 @@ function cleanSettings(raw)
 		language: LANGUAGES.includes(wanted.language)
 			? wanted.language
 			: DEFAULT_SETTINGS.language,
+		maxPlayers: Math.max(3, Math.min(maxPlayers, MAX_MEMBERS)),
 	};
 }
 
@@ -176,7 +178,7 @@ function joinRoom(memberId, rawCode, user, password)
 		if (room.password && String(password ?? '') !== room.password)
 			throw fail('Wrong password', 'WRONG_PASSWORD');
 
-		if (room.members.size >= MAX_MEMBERS)
+		if (room.members.size >= (room.settings.maxPlayers || MAX_MEMBERS))
 			throw fail('Room is full', 'ROOM_FULL');
 
 		// One seat per account. Two tabs would otherwise take two turns with

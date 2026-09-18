@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import React, { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
@@ -67,7 +67,7 @@ function Register() {
     return errs
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
 
     const clientErrors = validate(email, username, password, confirmPassword)

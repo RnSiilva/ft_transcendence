@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
@@ -125,7 +125,7 @@ function Profile() {
 
   // Step 1: search — shows the user BEFORE sending the request
   // (GET /api/users/:username, the new public route).
-  async function searchUser(e: FormEvent<HTMLFormElement>) {
+  async function searchUser(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     setFriendError('')
     setSentTo('')
@@ -356,7 +356,17 @@ function Profile() {
               }}
             >
               <span className="rank-medal">{i + 1}º</span>
-              <div className="mini-avatar">{row.username.charAt(0).toUpperCase()}</div>
+              <div className="mini-avatar">
+                {row.avatarUrl ? (
+                  <img
+                    src={row.avatarUrl}
+                    alt=""
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  row.username.charAt(0).toUpperCase()
+                )}
+              </div>
               <div className="rank-name">{row.username}</div>
               <div className="rank-pts">
                 {row.points} <span>{t('rank.points')}</span>
@@ -378,6 +388,11 @@ function Profile() {
               <div className="room-name">{t(`room.cat.${(game.theme || '').toLowerCase()}`)}</div>
               <div className="room-meta">
                 {new Date(game.finishedAt).toLocaleDateString()} · {game.rounds} {t('room.create.rounds')}
+                {game.opponents && game.opponents.length > 0 && (
+                  <div style={{ marginTop: 4, fontStyle: 'italic', opacity: 0.8 }}>
+                    vs: {game.opponents.map(o => o.username).join(', ')}
+                  </div>
+                )}
               </div>
             </div>
             <div>

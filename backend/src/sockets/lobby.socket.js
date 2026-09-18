@@ -80,7 +80,7 @@ function publicRooms()
 				code: room.code,
 				name: lobby.roomName,
 				players: room.members.size,
-				max: rooms.MAX_MEMBERS,
+				max: room.settings.maxPlayers || rooms.MAX_MEMBERS,
 				lang: room.settings.language,
 				// A padlock in the list; the password itself never leaves the server.
 				locked: Boolean(room.password),

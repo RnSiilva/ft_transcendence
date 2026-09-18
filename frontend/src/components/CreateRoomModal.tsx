@@ -9,6 +9,7 @@ export type RoomSettings = {
   theme: string
   language: string
   password?: string
+  maxPlayers?: number
 }
 
 type Props = {
@@ -32,7 +33,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
     // Private room: the password goes along and rooms.js requires it on room:join.
     onClose()
     const pass = isPrivate ? password.trim() : ''
-    onCreate({ rounds, roundSeconds, theme, language, ...(pass ? { password: pass } : {}) })
+    onCreate({ rounds, roundSeconds, theme, language, maxPlayers: players, ...(pass ? { password: pass } : {}) })
   }
 
   return (

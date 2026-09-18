@@ -55,11 +55,11 @@
   - 🟢 A basic chat system (send/receive messages between users).
   - 🟢 A profile system (view user information).
   - 🟢 A friends system (add/remove friends, see friends list).
-- 🟢 **Major (2pt):** A public API to interact with the database with a secured API key, rate limiting, documentation, and at least 5 endpoints:
-  - 🟢 GET /api/{something}
-  - 🟢 POST /api/{something}
-  - 🟢 PUT /api/{something}
-  - 🟢 DELETE /api/{something}
+- 🔴 **Major (2pt):** A public API to interact with the database with a secured API key, rate limiting, documentation, and at least 5 endpoints:
+  - 🔴 GET /api/{something}
+  - 🔴 POST /api/{something}
+  - 🔴 PUT /api/{something}
+  - 🔴 DELETE /api/{something}
 - 🟢 **Minor (1pt):** Use an ORM for the database.
 - 🔴 **Minor (1pt):** A complete notification system for all creation, update, and deletion actions.
 - 🟢 **Minor (1pt):** Real-time collaborative features (shared workspaces, live editing, collaborative drawing, etc.).
@@ -101,7 +101,7 @@
   - 🟢 Users have a profile page displaying their information.
 - 🟢 **Minor (1pt):** Game statistics and match history (requires a game module).
   - 🟢 Track user game statistics (wins, losses, ranking, level, etc.).
-  - 🟡 Display match history (1v1 games, dates, results, opponents). --> maybe we need to upgrade this part?
+  - 🟢 Display match history (1v1 games, dates, results, opponents).
   - 🟢 Show achievements and progression.
   - 🟢 Leaderboard integration.
 - 🔴 **Minor (1pt):** Implement remote authentication with OAuth 2.0 (Google, GitHub, 42, etc.).
