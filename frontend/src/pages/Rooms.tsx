@@ -123,7 +123,7 @@ function Rooms() {
           // lobby:open põe a sala na lista pública e trava o motor de
           // rondas até o criador carregar em Iniciar.
           getSocket().emit('lobby:open')
-          setLobby({ name: `Sala de ${selfName}`, code: answer.room.code, isAdmin: true, max: 8 })
+          setLobby({ name: `Sala de ${selfName}`, code: answer.room.code, isAdmin: true, max: 6 })
         } else {
           setJoinError(true)
         }

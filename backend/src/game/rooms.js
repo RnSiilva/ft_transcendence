@@ -11,7 +11,7 @@ const CODE_LENGTH = 6;
 // No O/0/I/1: codes get read out loud and typed by hand.
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-const MAX_MEMBERS = 8;
+const MAX_MEMBERS = 6;
 // A reload drops the socket. Holding the seat for a moment keeps a refresh,
 // or a brief network hiccup, from costing someone their turn with the pencil.
 const RECONNECT_GRACE_MS = 15000;

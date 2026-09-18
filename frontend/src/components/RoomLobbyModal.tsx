@@ -59,7 +59,7 @@ function notifyAdmin(title: string, body: string) {
   }
 }
 
-function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 8, onClose, onStart }: Props) {
+function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 6, onClose, onStart }: Props) {
   const { t } = useLanguage()
   const { user } = useAuth()
   const selfName = user?.username ?? ''

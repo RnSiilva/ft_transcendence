@@ -52,6 +52,20 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
     { rank: number; points: number; wins: number; matches: number } | null
   >(null)
   const rootRef = useRef<HTMLSpanElement | null>(null)
+  // Fecho com pequeno atraso: dá tempo de o rato passar do nome para o
+  // cartão (e para os botões) sem ele desaparecer. Reentrar cancela o fecho.
+  const closeTimer = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+  }, [])
+  const openCard = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+    setOpen(true)
+  }
+  const closeCard = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+    closeTimer.current = window.setTimeout(() => setOpen(false), 160)
+  }
 
   // No tátil não há mouseleave de confiança: tocar fora do cartão fecha-o.
   useEffect(() => {
@@ -139,8 +153,8 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
     <span
       ref={rootRef}
       className="phc"
-      onMouseEnter={canHover ? () => setOpen(true) : undefined}
-      onMouseLeave={canHover ? () => setOpen(false) : undefined}
+      onMouseEnter={canHover ? openCard : undefined}
+      onMouseLeave={canHover ? closeCard : undefined}
     >
       {to ? (
         <Link to={to} className="phc-name friend-link">

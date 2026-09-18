@@ -122,7 +122,6 @@ Docker/nginx inicial].
 | Renan | [FILL] | [FILL: e.g. Tech Lead · Game engine] | Rooms/rounds/scoring engine, drawing transport, report engine, word database, leaderboards & game persistence. |
 | Carlos | [FILL] | [FILL: e.g. Backend · Auth] | Authentication (sessions, JWT cookie), 42 OAuth, friends & presence, achievements/gamification. |
 | Pedro | [FILL] | [FILL] | [FILL] |
-lobby engine, word database, leaderboards & game persistence. |
 
 ## Project Management
 
@@ -134,8 +133,9 @@ lobby engine, word database, leaderboards & game persistence. |
 
 ## Technical Stack
 
-- **Frontend:** React 19 + TypeScript, Vite, socket.io-client. Custom CSS
-  design system (no UI framework) to match the hand-drawn identity.
+- **Frontend:** React 19 + TypeScript, Vite, socket.io-client. A custom CSS
+  design system (CSS variables / design tokens, responsive layout with media
+  queries, light & dark themes) built to match the hand-drawn identity.
 - **Backend:** Node.js 20, Express 5, Socket.IO 4 — one HTTP API for
   auth/friends/games plus socket namespaces for rooms, drawing, rounds,
   lobby and reports.
@@ -260,7 +260,6 @@ Word  (theme, textPt/textEn/textEs unique, difficulty) — seeded with 123 words
 
 - The frontend container currently ships the Vite dev server; a production
   build (`vite build` + static serving) is prepared as a follow-up.
-- Spectator mode was considered and postponed (design notes in the code).
 
 ## License / Credits
 

@@ -116,6 +116,10 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [expelled, setExpelled] = useState(false)
 	// A sala fechou a meio (ficou só um jogador): ninguém ganha os pontos.
 	const [aborted, setAborted] = useState(false)
+	// Diferente de `aborted`: aqui a SALA continua para os outros — só ESTE
+	// jogador saiu/foi removido (ex.: expirou a tolerância por inatividade).
+	// A mensagem não pode dizer "ninguém ganha pontos": os outros ganham.
+	const [dropped, setDropped] = useState(false)
 	// As 3 palavras oferecidas ao desenhador (só ele as recebe do servidor).
 	const [choices, setChoices] = useState<{ options: string[]; seconds: number } | null>(null)
 	// Último acerto anunciado pela sala — alimenta o banner/confetes.
@@ -178,7 +182,9 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 			{
 				if (everEntered)
 				{
-					setAborted(true)
+					// Reconexão falhada: o lugar já não é nosso (a sala pode bem
+					// continuar para os outros) — "foste removido", não "abortada".
+					setDropped(true)
 					return
 				}
 				answer = await request('room:create', {})
@@ -269,8 +275,10 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 					return
 				if (answer && answer.ok === false)
 				{
+					// Já não estamos na sala, mas ela pode continuar sem nós:
+					// "foste removido", não "a sala fechou para todos".
 					setChoices(null)
-					setAborted(true)
+					setDropped(true)
 				}
 			})
 		}, 5000)
@@ -384,6 +392,8 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		lastCorrect,
 		/** Ficaste sozinho a meio: a sala fechou e os pontos perderam-se. */
 		aborted,
+		/** Só TU saíste/foste removido; a sala segue para os outros. */
+		dropped,
 		/** Saída DELIBERADA: espera a CONFIRMAÇÃO do servidor antes de deixar
 		    navegar. Sem esperar, a navegação desligava o socket e podia matar
 		    o aviso a meio — e o socket da página seguinte (perfil) recuperava

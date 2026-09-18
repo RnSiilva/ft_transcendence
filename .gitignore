@@ -18,6 +18,8 @@ frontend/.vite/
 *.local
 # Referência de tipos gerada pelo Vite (não precisa de ser versionada)
 frontend/src/vite-env.d.ts
+# Guia interno de defesa — não faz parte da entrega
+DEFESAENTREGA.txt
 
 # TypeScript (cache de build incremental)
 *.tsbuildinfo

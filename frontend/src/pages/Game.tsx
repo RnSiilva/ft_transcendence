@@ -697,6 +697,29 @@ function Game() {
         </div>
       )}
 
+      {/* SÓ tu saíste/foste removido por inatividade — a sala segue para os
+          outros; a mensagem não diz que ninguém ganha pontos. */}
+      {game.dropped && !game.aborted && (
+        <div className="modal-overlay show">
+          <div className="modal-panel lobby-small">
+            <h2>{t('game.removed.title')}</h2>
+            <p className="roomlang-text">{t('game.removed.text')}</p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  sessionStorage.removeItem('sg-room')
+                  navigate('/rooms')
+                }}
+              >
+                {t('endgame.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {game.expelled && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">

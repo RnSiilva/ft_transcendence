@@ -51,8 +51,8 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
           </label>
           <input
             type="range"
-            min={2}
-            max={8}
+            min={3}
+            max={6}
             value={players}
             onChange={(e) => setPlayers(Number(e.target.value))}
           />
