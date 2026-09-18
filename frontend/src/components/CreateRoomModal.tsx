@@ -10,6 +10,7 @@ export type RoomSettings = {
   language: string
   password?: string
   maxPlayers?: number
+  name?: string
 }
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
 
 function CreateRoomModal({ open, onClose, onCreate }: Props) {
   const { t, lang } = useLanguage()
+  const [name, setName] = useState('')
   const [players, setPlayers] = useState(6)
   const [rounds, setRounds] = useState(3)
   const [roundSeconds, setRoundSeconds] = useState(80)
@@ -29,11 +31,12 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
   const [password, setPassword] = useState('')
 
   function handleCreate() {
+    if (isPrivate && !password.trim()) return
     // The settings go to the server on room:create (Rooms.tsx emits it).
     // Private room: the password goes along and rooms.js requires it on room:join.
     onClose()
     const pass = isPrivate ? password.trim() : ''
-    onCreate({ rounds, roundSeconds, theme, language, maxPlayers: players, ...(pass ? { password: pass } : {}) })
+    onCreate({ name: name.trim(), rounds, roundSeconds, theme, language, maxPlayers: players, ...(pass ? { password: pass } : {}) })
   }
 
   return (
@@ -43,7 +46,7 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
 
         <div className="field-dark">
           <label>{t('room.create.name')}</label>
-          <input type="text" placeholder={t('room.create.nameph')} />
+          <input type="text" placeholder={t('room.create.nameph')} value={name} onChange={(e) => setName(e.target.value)} maxLength={30} />
         </div>
 
         <div className="field-dark">
@@ -127,7 +130,12 @@ function CreateRoomModal({ open, onClose, onCreate }: Props) {
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             {t('room.create.cancel')}
           </button>
-          <button type="button" className="btn btn-primary" onClick={handleCreate}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleCreate}
+            disabled={isPrivate && !password.trim()}
+          >
             {t('room.create.confirm')}
           </button>
         </div>

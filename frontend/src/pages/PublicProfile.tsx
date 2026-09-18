@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
-import { demoStats } from '../utils/demoStats'
+
 import AchievementsPanel from '../components/AchievementsPanel'
 import { useLeaderboard, type LeaderboardEntry } from '../hooks/useLeaderboard'
 
@@ -63,7 +63,7 @@ function PublicProfile() {
         setInfo((prev) => ({ ...(prev ?? {}), ...data.user }))
       })
       .catch(() => {
-        /* no real data: the page shows the example values */
+        /* no real data */
       })
 
     // 2) Friendship adds the online status and the "already friends" tag.
@@ -83,7 +83,7 @@ function PublicProfile() {
     }
   }, [username])
 
-  const demo = demoStats(username)
+
   const isFriend = info?.status === 'ACCEPTED'
   const positions: { label: string; pos: number | null }[] = [
     { label: t('rank.general'), pos: positionOf(general, username) },
@@ -133,10 +133,10 @@ function PublicProfile() {
         <h3>{t('profile.stats.heading')}</h3>
         <div className="stat-row">
           {/* rank 0 = has not played yet: show — instead of a meaningless #0 */}
-          <div className="stat"><b>{(info?.rank ?? demo.rank) > 0 ? `#${info?.rank ?? demo.rank}` : '—'}</b><span>{t('profile.stats.rank')}</span></div>
-          <div className="stat"><b>{info?.totalPoints ?? demo.points}</b><span>{t('profile.stats.points')}</span></div>
-          <div className="stat"><b>{info?.gamesPlayed ?? demo.matches}</b><span>{t('profile.stats.matches')}</span></div>
-          <div className="stat"><b>{info?.wins ?? demo.wins}</b><span>{t('profile.stats.wins')}</span></div>
+          <div className="stat"><b>{(info?.rank ?? 0) > 0 ? `#${info?.rank ?? 0}` : '—'}</b><span>{t('profile.stats.rank')}</span></div>
+          <div className="stat"><b>{info?.totalPoints ?? 0}</b><span>{t('profile.stats.points')}</span></div>
+          <div className="stat"><b>{info?.gamesPlayed ?? 0}</b><span>{t('profile.stats.matches')}</span></div>
+          <div className="stat"><b>{info?.wins ?? 0}</b><span>{t('profile.stats.wins')}</span></div>
         </div>
       </div>
 

@@ -10,6 +10,7 @@ const rooms = require('../game/rooms');
 const round = require('../game/round');
 const { pickWord } = require('../game/words.repository');
 const { saveGame } = require('../game/games.repository');
+const { matchesWord } = require('../game/words');
 
 // A game still starts on its own once there are two people — but only in
 // rooms without a waiting lobby. Rooms opened through the lobby page carry
@@ -85,6 +86,12 @@ async function startChosenTurn(io, room, game, word)
 	const { drawerId } = game.choosing;
 	delete game.choosing;
 
+	if (!room.members.has(drawerId))
+	{
+		await beginRound(io, room, game);
+		return;
+	}
+
 	// A fresh board for each turn: otherwise the next person draws on top of
 	// the last picture, and whoever reloads sees both at once.
 	rooms.clearStrokes(room);
@@ -122,6 +129,13 @@ async function tickRoom(io, room)
 	// once their 10 s run out and the first option is picked for them).
 	if (game.choosing)
 	{
+		if (!room.members.has(game.choosing.drawerId))
+		{
+			delete game.choosing;
+			await beginRound(io, room, game);
+			return;
+		}
+
 		if (Date.now() >= game.choosing.deadline)
 			await startChosenTurn(io, room, game, game.choosing.options[0]);
 		return;
@@ -173,8 +187,13 @@ async function tickRoom(io, room)
 
 	if (game.phase === round.PHASE.drawing)
 	{
-		if (round.isRoundOver(game, guesserCount))
+		const drawerLeft = !room.members.has(game.drawerId);
+		if (round.isRoundOver(game, guesserCount) || drawerLeft)
 		{
+			// If the drawer left, force their clock to zero so they don't get points
+			if (drawerLeft)
+				game.startedAt = Date.now() - game.roundSeconds * 1000;
+
 			const result = round.endTurn(game, guesserCount);
 			game.resultUntil = Date.now() + RESULT_PAUSE_MS;
 			io.to(room.code).emit('round:over', result);
@@ -248,7 +267,8 @@ function registerRoundHandlers(io, socket)
 		// browser, but this is the lock that stops a spelled-out word.
 		if (game && game.phase === round.PHASE.drawing && game.drawerId === socket.id)
 			return;
-		const guess = game ? round.registerGuess(game, socket.id, text) : { correct: false };
+		const guesserCount = Math.max(1, room.members.size - 1);
+		const guess = game ? round.registerGuess(game, socket.id, text, guesserCount) : { correct: false };
 
 		if (guess.correct)
 		{
@@ -265,9 +285,13 @@ function registerRoundHandlers(io, socket)
 		// Someone who has ALREADY guessed cannot give the answer away: if they
 		// type the word (or any hint) again, the message reaches only the drawer
 		// and those who also guessed — never anyone still trying to guess.
+		// We explicitly drop the message if it's the exact word, so it doesn't clutter.
 		if (game && game.phase === round.PHASE.drawing
 			&& game.correct.some((entry) => entry.memberId === socket.id))
 		{
+			if (matchesWord(text, game.word))
+				return; // Block sending the word if they already know it
+
 			const message = { name: socket.user.username, text };
 			for (const member of room.members.values())
 			{
@@ -303,6 +327,8 @@ function registerRoundHandlers(io, socket)
 			return;
 		if (socket.id !== game.choosing.drawerId)
 			return;
+		if (Date.now() >= game.choosing.deadline)
+			return;
 		if (!game.choosing.options.includes(payload.word))
 			return;
 
@@ -330,6 +356,20 @@ function reclaimInGame(io, room, oldMemberId, newMemberId)
 	const game = gameOf(room);
 	if (!game)
 		return;
+
+	if (game.totals.has(oldMemberId))
+	{
+		const points = game.totals.get(oldMemberId);
+		game.totals.delete(oldMemberId);
+		game.totals.set(newMemberId, points);
+	}
+
+	for (const entry of game.correct)
+	{
+		if (entry.memberId === oldMemberId)
+			entry.memberId = newMemberId;
+	}
+
 	if (game.drawerId === oldMemberId)
 	{
 		game.drawerId = newMemberId;
@@ -352,6 +392,8 @@ function reclaimInGame(io, room, oldMemberId, newMemberId)
 			seconds: Math.max(1, Math.ceil((game.choosing.deadline - Date.now()) / 1000)),
 		});
 	}
+
+	io.to(newMemberId).emit('round:state', round.snapshot(game, [...room.members.values()]));
 }
 
 module.exports = { registerRoundHandlers, startGameLoop, forgetMember, gameOf, reclaimInGame };

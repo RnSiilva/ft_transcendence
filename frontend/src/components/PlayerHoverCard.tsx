@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
-import { demoStats } from '../utils/demoStats'
+
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -32,17 +32,18 @@ type Props = {
   username: string
   isSelf?: boolean
   onReport?: () => void
-  /** Real stats when we have them (e.g. friends list); the rest stays demo. */
+  /** Real stats when we have them (e.g. friends list); otherwise defaults to 0. */
   stats?: { rank?: number; points?: number; wins?: number; matches?: number }
   /** false = info only, no Add friend/Report (profile, requests). */
   showActions?: boolean
   /** With `to`, CLICKING the name navigates (like a normal link) and the card
       is hover-only — the behavior of the profile's friends list. */
   to?: string
+  avatarUrl?: string | null
   children: React.ReactNode
 }
 
-function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats, showActions = true, to, children }: Props) {
+function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats, showActions = true, to, avatarUrl, children }: Props) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [friendState, setFriendState] = useState<FriendState>('unknown')
@@ -140,13 +141,12 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
     }
   }
 
-  // Priority: server (fetched) > real props > sample values.
-  const demo = demoStats(username)
+  // Priority: server (fetched) > real props > 0.
   const stats = {
-    rank: fetched?.rank ?? realStats?.rank ?? demo.rank,
-    points: fetched?.points ?? realStats?.points ?? demo.points,
-    wins: fetched?.wins ?? realStats?.wins ?? demo.wins,
-    matches: fetched?.matches ?? realStats?.matches ?? demo.matches,
+    rank: fetched?.rank ?? realStats?.rank ?? 0,
+    points: fetched?.points ?? realStats?.points ?? 0,
+    wins: fetched?.wins ?? realStats?.wins ?? 0,
+    matches: fetched?.matches ?? realStats?.matches ?? 0,
   }
 
   return (
@@ -173,7 +173,17 @@ function PlayerHoverCard({ username, isSelf = false, onReport, stats: realStats,
       {open && (
         <span className="phc-card">
           <span className="phc-head">
-            <span className="mini-avatar">{username.charAt(0).toUpperCase()}</span>
+            <span className="mini-avatar">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              ) : (
+                username.charAt(0).toUpperCase()
+              )}
+            </span>
             {/* clicking the name opens the public profile (read-only) */}
             <b><Link to={`/user/${username}`} className="phc-link">{username}</Link></b>
           </span>

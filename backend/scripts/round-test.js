@@ -67,26 +67,26 @@ check('0 no fim', secondsLeft(jogo, at(60)), 0);
 check('nao passa de 0', secondsLeft(jogo, at(90)), 0);
 
 step('3. Quem desenha nao pode adivinhar');
-check('a Ana e recusada', registerGuess(jogo, 'ana', 'gato', at(5)).reason, 'IS_DRAWER');
+check('a Ana e recusada', registerGuess(jogo, 'ana', 'gato', 2, at(5)).reason, 'IS_DRAWER');
 
 step('4. Palpites certos e errados');
-const errado = registerGuess(jogo, 'bruno', 'cao', at(5));
+const errado = registerGuess(jogo, 'bruno', 'cao', 2, at(5));
 check('palavra errada nao conta', errado.correct, false);
 check('e o motivo e esse', errado.reason, 'WRONG');
 
-const frase = registerGuess(jogo, 'bruno', 'deve ser um gato', at(5));
+const frase = registerGuess(jogo, 'bruno', 'deve ser um gato', 2, at(5));
 check('frase com a palavra dentro nao conta', frase.correct, false);
 
-const certo = registerGuess(jogo, 'bruno', 'GATO', at(10));
+const certo = registerGuess(jogo, 'bruno', 'GATO', 2, at(10));
 check('acerta sem acentos e em maiusculas', certo.correct, true);
 check('e o primeiro', certo.position, 1);
 // Aos 10s de 60: restam 50, fraccao 0,833 -> rapidez 85 + bonus de 1o lugar 25.
 check('ganha por rapidez mais bonus', certo.points, 110);
 
-const repetido = registerGuess(jogo, 'bruno', 'gato', at(12));
+const repetido = registerGuess(jogo, 'bruno', 'gato', 2, at(12));
 check('nao pontua duas vezes', repetido.reason, 'ALREADY_GUESSED');
 
-const segunda = registerGuess(jogo, 'carla', 'gato', at(30));
+const segunda = registerGuess(jogo, 'carla', 'gato', 2, at(30));
 check('a Carla acerta em segundo', segunda.position, 2);
 check('mais tarde vale menos', segunda.points < certo.points, true);
 
@@ -94,7 +94,7 @@ step('5. Enquanto a ronda decorre, a palavra e um segredo');
 const durante = snapshot(jogo, members, at(30));
 check('a palavra nao viaja', durante.word, null);
 check('so a mascara', durante.maskedWord, '_ _ _ _');
-check('o placar vem ordenado', durante.scores.map((s) => s.name), ['Bruno', 'Carla', 'Ana']);
+check('o placar vem ordenado', durante.scores.map((s) => s.name), ['Bruno', 'Ana', 'Carla']);
 check('quem ja acertou esta marcado', durante.scores.find((s) => s.name === 'Bruno').guessed, true);
 
 step('6. A ronda acaba pelo tempo ou por todos acertarem');
@@ -159,7 +159,7 @@ check('fica em pausa', pausado.phase, PHASE.paused);
 check('guarda o tempo que faltava', secondsLeft(pausado, at(20)), 40);
 check('e o tempo nao anda', secondsLeft(pausado, at(300)), 40);
 check('a ronda nao fecha em pausa', isRoundOver(pausado, 0, at(300)), false);
-check('nem se adivinha', registerGuess(pausado, 'bruno', 'gato', at(300)).reason, 'NOT_DRAWING');
+check('nem se adivinha', registerGuess(pausado, 'bruno', 'gato', 2, at(300)).reason, 'NOT_DRAWING');
 
 resumeGame(pausado, at(300));
 check('ao voltar continua a desenhar', pausado.phase, PHASE.drawing);
@@ -167,8 +167,8 @@ check('com o tempo onde ficou', secondsLeft(pausado, at(300)), 40);
 check('e volta a andar', secondsLeft(pausado, at(310)), 30);
 
 step('13. Fora da ronda nao se adivinha');
-check('em espera, recusa', registerGuess(createGame(3, 60), 'ana', 'gato', T0).reason, 'NOT_DRAWING');
-check('em resultado, recusa', registerGuess(jogo, 'carla', 'gato', at(65)).reason, 'NOT_DRAWING');
+check('em espera, recusa', registerGuess(createGame(3, 60), 'ana', 'gato', 2, T0).reason, 'NOT_DRAWING');
+check('em resultado, recusa', registerGuess(jogo, 'carla', 'gato', 2, at(65)).reason, 'NOT_DRAWING');
 
 console.log(`\n${checks} verificacoes, ${failures.length} falhas.`);
 

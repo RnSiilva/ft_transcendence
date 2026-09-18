@@ -19,7 +19,7 @@ function Terms() {
         </span>
       </h1>
       <p className="kicker">{t('legal.kicker')}</p>
-      {Array.from({ length: 7 }, (_, i) => (
+      {Array.from({ length: 8 }, (_, i) => (
         <div className="legal-section" key={i}>
           <h2>{t(`terms.s${i + 1}.title`)}</h2>
           <p>{t(`terms.s${i + 1}.text`)}</p>

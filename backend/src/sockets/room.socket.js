@@ -6,6 +6,7 @@
 
 const rooms = require('../game/rooms');
 const { forgetMember, reclaimInGame } = require('./round.socket');
+const { removeMemberFromVotes } = require('./report.socket');
 
 /** Clients pass a callback to learn whether their request worked. */
 function reply(ack, payload)
@@ -49,6 +50,7 @@ function startAbsenceSweeper(io, everyMs = 1000)
 
 		dropped.forEach(({ room, memberId }) =>
 		{
+			removeMemberFromVotes(io, room, memberId);
 			forgetMember(room, memberId);
 			announceTo(io, room);
 		});
@@ -142,6 +144,7 @@ function registerRoomHandlers(io, socket)
 
 		if (room)
 		{
+			removeMemberFromVotes(io, room, socket.id);
 			forgetMember(room, socket.id);
 			socket.leave(room.code);
 		}
@@ -155,7 +158,10 @@ function registerRoomHandlers(io, socket)
 	// exit, and that one removes them at once.
 	socket.on('disconnect', () =>
 	{
-		announce(rooms.markAbsent(socket.id));
+		const room = rooms.markAbsent(socket.id);
+		if (room)
+			removeMemberFromVotes(io, room, socket.id);
+		announce(room);
 	});
 }
 

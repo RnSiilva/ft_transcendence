@@ -338,22 +338,10 @@ function Profile() {
         </div>
         <div className="rank-list">
           {ranking.map((row, i) => (
-            // Clicking opens the profile (self → /profile; others → public),
-            // as already happened in the friends list.
+            // The row is no longer a button; the PlayerHoverCard handles clicks and hovers.
             <div
-              className={`rank-row pos${i + 1} clickable`}
+              className={`rank-row pos${i + 1}`}
               key={row.userId}
-              role="button"
-              tabIndex={0}
-              onClick={() =>
-                navigate(row.username === user?.username ? '/profile' : `/user/${row.username}`)
-              }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  navigate(row.username === user?.username ? '/profile' : `/user/${row.username}`)
-                }
-              }}
             >
               <span className="rank-medal">{i + 1}º</span>
               <div className="mini-avatar">
@@ -367,7 +355,16 @@ function Profile() {
                   row.username.charAt(0).toUpperCase()
                 )}
               </div>
-              <div className="rank-name">{row.username}</div>
+              <div className="rank-name">
+                <PlayerHoverCard
+                  username={row.username}
+                  to={row.username === user?.username ? '/profile' : `/user/${row.username}`}
+                  avatarUrl={row.avatarUrl}
+                  showActions={false}
+                >
+                  {row.username}
+                </PlayerHoverCard>
+              </div>
               <div className="rank-pts">
                 {row.points} <span>{t('rank.points')}</span>
               </div>

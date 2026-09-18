@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 
-export type FinalScore = { name: string; points: number }
+export type FinalScore = { name: string; points: number; avatarUrl?: string | null }
 
 const TIERS = ['rank-gold', 'rank-silver', 'rank-bronze']
 const MEDALS = ['\u{1F947}', '\u{1F948}', '\u{1F949}']
@@ -13,6 +13,7 @@ function toRanks(scores: FinalScore[]) {
     tier: TIERS[i] ?? 'rank-plain',
     trophy: i === 0,
     initial: score.name.charAt(0).toUpperCase(),
+    avatarUrl: score.avatarUrl,
     name: score.name,
     medal: MEDALS[i] ?? '',
     score: score.points,
@@ -80,7 +81,17 @@ function EndGameOverlay({ onClose, scores }: Props) {
                 {entry.trophy && <div className="rank-card-trophy">🏆</div>}
                 <div className="rank-card-number">#{entry.rank}</div>
                 <div className="rank-card-user">
-                  <div className="mini-avatar">{entry.initial}</div>
+                  <div className="mini-avatar">
+                    {entry.avatarUrl ? (
+                      <img
+                        src={entry.avatarUrl}
+                        alt=""
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      entry.initial
+                    )}
+                  </div>
                   <div className="rank-name">{entry.name}</div>
                 </div>
               </div>

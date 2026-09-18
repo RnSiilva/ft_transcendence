@@ -9,6 +9,12 @@ const { io } = require('socket.io-client');
 
 const URL = process.env.DEMO_URL || 'http://localhost:4000';
 const PASSWORD = 'TestPass123';
+const runTag = Date.now().toString(36).slice(-6);
+const testUsers = {
+	ana: `testana_${runTag}`,
+	bruno: `testbruno_${runTag}`,
+	carla: `testcarla_${runTag}`,
+};
 
 let checks = 0;
 const failures = [];
@@ -75,9 +81,9 @@ function step(title)
 
 async function main()
 {
-	const ana = await connect(await session('testana'));
-	const bruno = await connect(await session('testbruno'));
-	const carla = await connect(await session('testcarla'));
+	const ana = await connect(await session(testUsers.ana));
+	const bruno = await connect(await session(testUsers.bruno));
+	const carla = await connect(await session(testUsers.carla));
 
 	const created = await ask(ana, 'room:create', {});
 	const { code } = created.room;
@@ -97,17 +103,17 @@ async function main()
 	check('a votacao abre', started.ok, true);
 
 	const aviso = await opened;
-	check('o Bruno ve a votacao', aviso.name, 'testcarla');
+	check('o Bruno ve a votacao', aviso.name, testUsers.carla);
 	check('denunciar ja conta como um voto', aviso.votes, 1);
 	check('com dois votantes, precisa de 2', aviso.needed, 2);
 	check('a Carla so sabe que foi denunciada', await flagged, true);
 
-	step('3. Nao se abre uma segunda votacao ao mesmo tempo');
+	step('3. Podem existir votacoes diferentes ao mesmo tempo');
 	const second = await ask(bruno, 'report:start', { targetId: ana.id });
-	check('recusada', second.code, 'VOTE_ALREADY_OPEN');
+	check('a segunda votacao abre', second.ok, true);
 
 	step('4. Quem e denunciado nao vota');
-	const ownVote = await ask(carla, 'report:vote');
+	const ownVote = await ask(carla, 'report:vote', { targetId: carla.id });
 	check('recusado', ownVote.code, 'CANNOT_VOTE_ON_SELF');
 
 	step('5. O segundo voto expulsa');
@@ -117,14 +123,14 @@ async function main()
 	// tem de estar montada antes de votar e nao depois.
 	const after = waitFor(ana, 'room:state', 2000);
 
-	await ask(bruno, 'report:vote');
+	await ask(bruno, 'report:vote', { targetId: carla.id });
 
 	check('a Carla e avisada de que saiu', await expelled, true);
 	check('a sala sabe que foi expulsa', (await closed).expelled, true);
-	check('ficam a Ana e o Bruno', (await after).members.map((m) => m.name), ['testana', 'testbruno']);
+	check('ficam a Ana e o Bruno', (await after).members.map((m) => m.name), [testUsers.ana, testUsers.bruno]);
 
 	step('6. Sem votacao aberta nao se vota');
-	const noVote = await ask(ana, 'report:vote');
+	const noVote = await ask(ana, 'report:vote', { targetId: carla.id });
 	check('recusado', noVote.code, 'NO_VOTE_OPEN');
 
 	step('7. Com dois na sala nao se abre votacao');

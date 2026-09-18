@@ -735,6 +735,13 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
   grid-template-areas:"board chat" "score score";
 }
 .game-grid.guessing{grid-template-columns:minmax(0,1fr) 350px;}
+/* On short desktop viewports, the drawing palette sits above the board and
+   the sticky scoreboard can otherwise overlap its lower edge. */
+@media (min-width:961px){
+  .game-grid:not(.guessing) #draw-canvas{
+    max-height:max(120px, calc(100vh - 430px));
+  }
+}
 .score-panel{
   grid-area:score;margin:0;display:flex;align-items:center;gap:30px;flex-wrap:wrap;
   position:sticky;bottom:10px;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.45);
@@ -859,6 +866,11 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
   background:var(--canvas-2);border:1px solid var(--line-strong);border-radius:14px;
   padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:acerto-pop .35s;
 }
+.report-toasts{
+  position:fixed;right:16px;bottom:96px;z-index:130;max-width:250px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.report-toasts .report-toast{position:static;}
 .report-toast p{margin:0 0 6px;font-size:13.5px;line-height:1.45;}
 .report-votes{font-family:var(--mono);color:var(--chalk-dim);}
 .report-warned{color:var(--yellow);font-weight:700;}

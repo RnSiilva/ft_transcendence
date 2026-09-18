@@ -155,14 +155,14 @@ async function main()
 		settings: { roundSeconds: 30, theme: 'animals', language: 'en' },
 	});
 	check('definicoes validas passam', configured.room.settings, {
-		rounds: 3, roundSeconds: 30, theme: 'animals', language: 'en',
+		rounds: 3, roundSeconds: 30, theme: 'animals', language: 'en', maxPlayers: 6,
 	});
 
 	const nonsense = await ask(bruno, 'room:create', {
 		settings: { roundSeconds: 9999, theme: 'piratas', language: 'klingon' },
 	});
 	check('definicoes invalidas caem no valor por omissao', nonsense.room.settings, {
-		rounds: 3, roundSeconds: 60, theme: 'general', language: 'pt',
+		rounds: 3, roundSeconds: 60, theme: 'general', language: 'pt', maxPlayers: 6,
 	});
 
 	step('3. Bruno e Carla entram na sala da Ana');
