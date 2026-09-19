@@ -107,6 +107,9 @@ function Profile() {
     // request, accepted, rejected, removed) — reloads the list without an F5.
     function onFriendsChanged() {
       void loadFriends(isAlive)
+      // Re-check server-side achievements (e.g. "first friend") in real time,
+      // so a newly unlocked badge shows without needing an F5.
+      void refresh()
     }
 
     socket.on('presence:update', onPresenceUpdate)
@@ -116,7 +119,7 @@ function Profile() {
       socket.off('presence:update', onPresenceUpdate)
       socket.off('friends:changed', onFriendsChanged)
     }
-  }, [user])
+  }, [user, refresh])
 
   async function handleLogout() {
     await logout()
