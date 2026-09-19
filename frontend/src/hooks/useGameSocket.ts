@@ -60,6 +60,8 @@ export type RoundState =
 	maskedWord: string
 	/** Only filled once the round is over; until then everyone sees the mask. */
 	word: string | null
+	/** Set while the drawer is picking a word: who is choosing and time left. */
+	choosing: { drawerId: string; drawerName: string; secondsLeft: number } | null
 	scores: RoundScore[]
 }
 

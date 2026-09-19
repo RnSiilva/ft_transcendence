@@ -79,6 +79,10 @@ async function beginRound(io, room, game)
 		options,
 		seconds: CHOOSE_MS / 1000,
 	});
+
+	// Everyone else gets the round state carrying `choosing` (who is picking and
+	// the countdown), so their screen can show a "X is choosing a word" modal.
+	announce(io, room, game);
 }
 
 async function startChosenTurn(io, room, game, word)
@@ -137,7 +141,13 @@ async function tickRoom(io, room)
 		}
 
 		if (Date.now() >= game.choosing.deadline)
+		{
 			await startChosenTurn(io, room, game, game.choosing.options[0]);
+			return;
+		}
+
+		// Keep the "X is choosing a word" modal countdown live for everyone.
+		announce(io, room, game);
 		return;
 	}
 

@@ -248,6 +248,16 @@ function snapshot(game, members, now = Date.now())
 		secondsLeft: secondsLeft(game, now),
 		maskedWord: game.word ? maskWord(game.word) : '',
 		word: revealed ? game.word : null,
+		// While the drawer is picking a word, everyone else is told WHO is
+		// choosing and how long is left, so a modal can mirror the 10s countdown
+		// and close when the word is chosen (game.choosing is cleared).
+		choosing: game.choosing
+			? {
+				drawerId: game.choosing.drawerId,
+				drawerName: (members.find((m) => m.id === game.choosing.drawerId) || {}).name || '',
+				secondsLeft: Math.max(0, Math.ceil((game.choosing.deadline - now) / 1000)),
+			}
+			: null,
 		scores: game.phase === PHASE.finished ? game.finalStandings : liveScores,
 	};
 }
