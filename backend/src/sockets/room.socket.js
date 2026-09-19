@@ -67,16 +67,12 @@ function registerRoomHandlers(io, socket)
 {
 	const announce = (room) => announceTo(io, room);
 
-	// A reload arrives as a new connection. If a seat is being held for this
-	// account, take it back instead of starting over.
-	const reclaimed = rooms.reclaimSeat(socket.id, socket.user);
-	if (reclaimed)
-	{
-		reclaimInGame(io, reclaimed.room, reclaimed.oldMemberId, socket.id);
-		socket.join(reclaimed.room.code);
-		socket.emit('room:state', rooms.serialiseRoom(reclaimed.room));
-		announce(reclaimed.room);
-	}
+	// We do NOT auto-reclaim the held seat on connect. A socket can reconnect on
+	// ANY page (e.g. the profile), and reclaiming here would count the player as
+	// "back in the game" without them actually returning to the room. The seat is
+	// reclaimed only when the player really re-enters the room — the game page
+	// emits 'room:join' (which calls seizeSeat) on mount, reload and reconnect.
+	// Until that happens, the 15s reconnect grace keeps running as it should.
 
 	socket.on('room:create', (payload = {}, ack) =>
 	{
