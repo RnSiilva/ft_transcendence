@@ -403,9 +403,10 @@ function Game() {
   // My points in this match, for the topbar.
   const myPoints = game.round?.scores.find((s) => s.name === selfName)?.points ?? 0
 
-  // Name of whoever is drawing this turn — shown to everyone above the board so
-  // players can see who holds the pen (anti-cheat: everyone knows who draws).
-  const drawerName = scoreRows.find((m) => m.isDrawer)?.name ?? ''
+  // Name of whoever is drawing this turn — shown to every guesser above the
+  // board so they can see who holds the pen (anti-cheat: everyone knows who
+  // draws). Read from the server scores, which carry the isDrawer flag.
+  const drawerName = game.round?.scores.find((s) => s.isDrawer)?.name ?? ''
 
   // Live scores until the game ends; then a frozen snapshot takes over so the
   // final podium never re-ranks as players close the overlay and leave.
@@ -465,11 +466,6 @@ function Game() {
 
       <div className={isMe ? 'game-grid' : 'game-grid guessing'}>
         <div className={fullscreen ? 'canvas-box fullscreen' : 'canvas-box'}>
-          {drawerName && !finished && (
-            <div className="drawer-banner">
-              ✏️ {isMe ? t('game.yourturndraw') : `${drawerName} ${t('game.isdrawing')}`}
-            </div>
-          )}
           <div className="tools">
             {isMe ? (
               <>
@@ -507,7 +503,9 @@ function Game() {
                 <span className="pts">+{acertoVisible.points} {t('game.points')}</span>
               </div>
             ) : (
-              <span className="turn-notice guess">🎯 {t('game.guess.notice')}</span>
+              <span className="turn-notice guess">
+                {drawerName ? `🖌️ ${drawerName} ${t('game.isdrawing')}` : `🎯 ${t('game.guess.notice')}`}
+              </span>
             )}
           </div>
           {/* Pencil cursor only while drawing; a normal arrow while guessing. */}

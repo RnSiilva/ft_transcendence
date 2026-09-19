@@ -388,7 +388,6 @@ function Profile() {
               <div className="room-name">{t(`room.cat.${(game.theme || '').toLowerCase()}`)}</div>
               <div className="room-meta">
                 {new Date(game.finishedAt).toLocaleDateString()} {new Date(game.finishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                {' · '}{t('history.room')} {game.roomCode}
                 {' · '}{game.rounds} {t('room.create.rounds')}
                 {game.opponents && game.opponents.length > 0 && (
                   <div style={{ marginTop: 4, fontStyle: 'italic', opacity: 0.8 }}>

@@ -916,8 +916,6 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 /* Player who guessed the word correctly this turn: name and points in green. */
 .score-row.correct .nm{color:var(--green);}
 .score-row.correct .pts{color:var(--green);}
-/* Banner above the board: shows who is drawing this turn (visible to everyone). */
-.drawer-banner{display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--display);font-weight:700;font-size:14px;padding:6px 12px;margin-bottom:8px;background:rgba(255,201,60,0.18);border:1.5px solid var(--yellow);border-radius:10px;}
 .drawing-tag{color:var(--yellow);font-weight:400;font-size:11.5px;}
 
 .canvas-box{background:var(--canvas-2);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
