@@ -387,7 +387,9 @@ function Profile() {
             <div>
               <div className="room-name">{t(`room.cat.${(game.theme || '').toLowerCase()}`)}</div>
               <div className="room-meta">
-                {new Date(game.finishedAt).toLocaleDateString()} · {game.rounds} {t('room.create.rounds')}
+                {new Date(game.finishedAt).toLocaleDateString()} {new Date(game.finishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {' · '}{t('history.room')} {game.roomCode}
+                {' · '}{game.rounds} {t('room.create.rounds')}
                 {game.opponents && game.opponents.length > 0 && (
                   <div style={{ marginTop: 4, fontStyle: 'italic', opacity: 0.8 }}>
                     vs: {game.opponents.map(o => o.username).join(', ')}
@@ -397,10 +399,8 @@ function Profile() {
             </div>
             <div>
               <span className="status">
-                <span className={game.won ? 'status-dot on' : 'status-dot off'}>
-                  {game.won ? '●' : '○'}
-                </span>
-                <span>{game.won ? t('history.win') : t('history.loss')}</span>
+                <span>{game.position <= 3 ? ['🥇', '🥈', '🥉'][game.position - 1] : '🏅'}</span>
+                <span>{t('history.place')} #{game.position}/{game.players}</span>
               </span>
               <span className="rank-pts">
                 {game.points} <span>{t('rank.points')}</span>

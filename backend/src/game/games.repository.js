@@ -121,26 +121,34 @@ async function historyOf(userId, limit = 20)
 		where: { userId },
 		orderBy: { finishedAt: 'desc' },
 		take: limit,
-		include: { game: { select: { theme: true, language: true, rounds: true, scores: { select: { points: true, won: true, user: { select: { id: true, username: true, avatarUrl: true } } } } } } },
+		include: { game: { select: { roomCode: true, theme: true, language: true, rounds: true, scores: { select: { points: true, won: true, user: { select: { id: true, username: true, avatarUrl: true } } } } } } },
 	});
 
-	return rows.map((row) => ({
-		points: row.points,
-		won: row.won,
-		finishedAt: row.finishedAt,
-		theme: row.game.theme,
-		language: row.game.language,
-		rounds: row.game.rounds,
-		opponents: row.game.scores
-			.filter((s) => s.user.id !== userId)
-			.map((s) => ({
-				id: s.user.id,
-				username: s.user.username,
-				avatarUrl: s.user.avatarUrl,
-				points: s.points,
-				won: s.won,
-			})),
-	}));
+	return rows.map((row) => {
+		const allScores = row.game.scores;
+		// Position in that match: 1 + how many players scored strictly more.
+		const position = 1 + allScores.filter((s) => s.points > row.points).length;
+		return {
+			points: row.points,
+			won: row.won,
+			position,
+			players: allScores.length,
+			roomCode: row.game.roomCode,
+			finishedAt: row.finishedAt,
+			theme: row.game.theme,
+			language: row.game.language,
+			rounds: row.game.rounds,
+			opponents: allScores
+				.filter((s) => s.user.id !== userId)
+				.map((s) => ({
+					id: s.user.id,
+					username: s.user.username,
+					avatarUrl: s.user.avatarUrl,
+					points: s.points,
+					won: s.won,
+				})),
+		};
+	});
 }
 
 module.exports = { saveGame, leaderboard, historyOf };

@@ -5,6 +5,9 @@ const API = import.meta.env.VITE_API_URL ?? '/api'
 export type PlayedGame = {
   points: number
   won: boolean
+  position: number
+  players: number
+  roomCode: string
   finishedAt: string
   theme: string
   language: string

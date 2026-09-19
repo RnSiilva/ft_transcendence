@@ -219,6 +219,26 @@ function snapshot(game, members, now = Date.now())
 {
 	const revealed = game.phase === PHASE.result || game.phase === PHASE.finished;
 
+	const liveScores = members
+		.map((member) => ({
+			id: member.id,
+			userId: member.userId,
+			name: member.name,
+			avatarUrl: member.avatarUrl,
+			points: game.totals.get(member.id) || 0,
+			isDrawer: member.id === game.drawerId,
+			guessed: hasGuessed(game, member.id),
+		}))
+		.sort((a, b) => b.points - a.points);
+
+	// When the game ends, freeze the standings on the FIRST finished snapshot
+	// (all players are still present at that instant). From then on the podium is
+	// identical for everyone and never re-ranks as players close it and leave —
+	// and it survives an F5, because the server keeps serving this frozen list.
+	if (game.phase === PHASE.finished && !game.finalStandings) {
+		game.finalStandings = liveScores;
+	}
+
 	return {
 		phase: game.phase,
 		round: game.round,
@@ -228,17 +248,7 @@ function snapshot(game, members, now = Date.now())
 		secondsLeft: secondsLeft(game, now),
 		maskedWord: game.word ? maskWord(game.word) : '',
 		word: revealed ? game.word : null,
-		scores: members
-			.map((member) => ({
-				id: member.id,
-				userId: member.userId,
-				name: member.name,
-				avatarUrl: member.avatarUrl,
-				points: game.totals.get(member.id) || 0,
-				isDrawer: member.id === game.drawerId,
-				guessed: hasGuessed(game, member.id),
-			}))
-			.sort((a, b) => b.points - a.points),
+		scores: game.phase === PHASE.finished ? game.finalStandings : liveScores,
 	};
 }
 
