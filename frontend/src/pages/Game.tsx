@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
-import EndGameOverlay from '../components/EndGameOverlay'
+import EndGameOverlay, { type FinalScore } from '../components/EndGameOverlay'
 import PlayerHoverCard from '../components/PlayerHoverCard'
 import { useAuth } from '../hooks/useAuth'
 import { useGameSocket } from '../hooks/useGameSocket'
@@ -72,6 +72,9 @@ function Game() {
   const [activeColor, setActiveColor] = useState(COLORS[0])
   const [chatText, setChatText] = useState('')
   const [endgameClosed, setEndgameClosed] = useState(false)
+  // Final podium is frozen when the game ends, so it stays fixed even as
+  // players close the overlay and leave (no live re-ranking).
+  const [frozenScores, setFrozenScores] = useState<FinalScore[] | null>(null)
 
   // If we arrived without ?room= but there is a recent room, restore it in the
   // URL BEFORE the socket connects: the server holds the seat for 15 s (reclaimSeat)
@@ -195,6 +198,24 @@ function Game() {
   // says it is over, and disappears because the player closed it.
   const finished = game.round?.phase === 'finished'
   const endgameOpen = finished && !endgameClosed
+
+  // Freeze the final scores once the game ends, so the podium stays fixed even
+  // as players close the overlay and leave the room (no live re-ranking).
+  useEffect(() => {
+    if (!finished) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFrozenScores((prev) => (prev ? null : prev))
+      return
+    }
+    const snap = game.round?.scores?.map((s) => ({
+      name: s.name,
+      points: s.points,
+      avatarUrl: s.avatarUrl,
+    })) ?? []
+    if (!snap.length) return
+    setFrozenScores((prev) => prev ?? snap)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -382,11 +403,14 @@ function Game() {
   // My points in this match, for the topbar.
   const myPoints = game.round?.scores.find((s) => s.name === selfName)?.points ?? 0
 
-  const finalScores = game.round?.scores.map((s) => ({
+  // Live scores until the game ends; then a frozen snapshot takes over so the
+  // final podium never re-ranks as players close the overlay and leave.
+  const liveScores: FinalScore[] = game.round?.scores.map((s) => ({
     name: s.name,
     points: s.points,
     avatarUrl: s.avatarUrl,
   })) ?? []
+  const finalScores = frozenScores ?? liveScores
 
   // If the server refuses, the reason goes to the chat: the silence was what
   // made this look broken.

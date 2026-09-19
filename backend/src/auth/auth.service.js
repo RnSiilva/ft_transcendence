@@ -226,15 +226,24 @@ async function deleteUser(userId) {
 }
 
 async function findOrCreate42User(profile) {
-  let user = await prisma.user.findUnique({ where: { intraId: profile.id } });
+  const user = await prisma.user.findUnique({ where: { intraId: profile.id } });
   if (user) return user;
 
-  user = await prisma.user.findUnique({ where: { email: profile.email } });
-  if (user) {
-    return prisma.user.update({
-      where: { id: user.id },
-      data: { intraId: profile.id },
-    });
+  // An account already uses this email. Only link the 42 identity to it when it
+  // has NO password (i.e. it was not manually registered): a password-protected
+  // account belongs to a real user and must never be taken over by a 42 login,
+  // even if the email matches.
+  const sameEmail = await prisma.user.findUnique({ where: { email: profile.email } });
+  if (sameEmail) {
+    if (sameEmail.passwordHash === null) {
+      return prisma.user.update({
+        where: { id: sameEmail.id },
+        data: { intraId: profile.id },
+      });
+    }
+    const err = new Error('EMAIL_IN_USE');
+    err.code = 'EMAIL_IN_USE';
+    throw err;
   }
 
   let username = profile.login;

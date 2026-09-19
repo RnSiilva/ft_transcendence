@@ -911,6 +911,11 @@ footer.site .line2 a:hover{opacity:1;color:var(--chalk);text-decoration:underlin
 .score-row .mini-avatar{width:28px;height:28px;border-radius:50%;background:var(--canvas);border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;font-family:var(--display);flex:none;}
 .score-row .nm{flex:1;font-weight:600;}
 .score-row .pts{font-family:var(--mono);color:var(--chalk-dim);}
+/* Player who is drawing this turn: highlighted row. */
+.score-row.drawing{background:rgba(255,201,60,0.15);border-radius:8px;}
+/* Player who guessed the word correctly this turn: name and points in green. */
+.score-row.correct .nm{color:var(--green);}
+.score-row.correct .pts{color:var(--green);}
 .drawing-tag{color:var(--yellow);font-weight:400;font-size:11.5px;}
 
 .canvas-box{background:var(--canvas-2);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
