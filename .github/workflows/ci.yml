@@ -1,9 +1,6 @@
-# CI do SketchGuess: corre em toda a PR contra a main.
-# A PR falha se o frontend não compilar (tsc + vite build) ou se qualquer
-# suite test:* do backend falhar contra um stack real (mariadb + backend).
-#
-# NOTA (pedido do Renan): depois do primeiro merge disto, validar o CI de
-# propósito — partir um teste numa PR, ver a PR ficar vermelha, e reverter.
+# SketchGuess CI: runs on every PR against main.
+# The PR fails if the frontend does not compile (tsc + vite build) or if any
+# backend test:* suite fails against a real stack (mariadb + backend).
 name: CI
 
 on:
@@ -31,23 +28,23 @@ jobs:
         run: npm run build
 
   backend-tests:
-    name: Backend (todas as suites test:*)
+    name: Backend (all test:* suites)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # O .env real nunca vai para o git; o example chega para os testes
-      # (as credenciais da 42 são placeholders — nenhuma suite usa OAuth).
-      - name: Preparar .env
+      # The real .env never goes to git; the example is enough for the tests
+      # (the 42 credentials are placeholders — no suite uses OAuth).
+      - name: Prepare .env
         run: cp .env.example .env
 
-      - name: Arrancar mariadb + backend
+      - name: Start mariadb + backend
         run: docker compose up -d --build mariadb backend
 
-      - name: Esperar pelo backend
+      - name: Wait for the backend
         run: timeout 240 sh -c 'until docker logs backend 2>&1 | grep -q "Backend running"; do sleep 3; done'
 
-      - name: Correr todas as suites
+      - name: Run all suites
         run: |
           set -e
           for suite in words scoring round rooms report lobby; do
@@ -55,10 +52,10 @@ jobs:
             docker exec backend npm run "test:$suite"
           done
 
-      - name: Logs em caso de falha
+      - name: Logs on failure
         if: failure()
         run: docker logs backend | tail -100
 
-      - name: Desligar
+      - name: Shut down
         if: always()
         run: docker compose down -v

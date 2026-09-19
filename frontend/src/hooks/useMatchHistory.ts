@@ -9,6 +9,13 @@ export type PlayedGame = {
   theme: string
   language: string
   rounds: number
+  opponents: {
+    id: number
+    username: string
+    avatarUrl: string | null
+    points: number
+    won: boolean
+  }[]
 }
 
 /** The games the signed in player has finished, newest first. */

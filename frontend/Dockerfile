@@ -9,4 +9,10 @@ COPY . .
 
 EXPOSE 5173
 
-CMD ["npm", "run", "dev"]
+# If NODE_ENV is production, build the static files and serve them using 'serve'.
+# Otherwise, use the Vite dev server for hot-reloading.
+CMD if [ "$NODE_ENV" = "production" ]; then \
+      npm run build && ./node_modules/.bin/serve -s dist -l 5173; \
+    else \
+      npm run dev; \
+    fi

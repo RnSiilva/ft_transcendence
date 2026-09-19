@@ -121,7 +121,7 @@ async function historyOf(userId, limit = 20)
 		where: { userId },
 		orderBy: { finishedAt: 'desc' },
 		take: limit,
-		include: { game: { select: { theme: true, language: true, rounds: true } } },
+		include: { game: { select: { theme: true, language: true, rounds: true, scores: { select: { points: true, won: true, user: { select: { id: true, username: true, avatarUrl: true } } } } } } },
 	});
 
 	return rows.map((row) => ({
@@ -131,6 +131,15 @@ async function historyOf(userId, limit = 20)
 		theme: row.game.theme,
 		language: row.game.language,
 		rounds: row.game.rounds,
+		opponents: row.game.scores
+			.filter((s) => s.user.id !== userId)
+			.map((s) => ({
+				id: s.user.id,
+				username: s.user.username,
+				avatarUrl: s.user.avatarUrl,
+				points: s.points,
+				won: s.won,
+			})),
 	}));
 }
 

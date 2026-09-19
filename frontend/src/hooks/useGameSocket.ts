@@ -28,6 +28,7 @@ export type RoomMember =
 	isDrawer: boolean
 	/** Milliseconds left before a disconnected player loses their seat. */
 	msToDrop: number | null
+	avatarUrl?: string | null
 }
 
 type RoomState =
@@ -44,6 +45,7 @@ export type RoundScore =
 	points: number
 	isDrawer: boolean
 	guessed: boolean
+	avatarUrl?: string | null
 }
 
 export type RoundState =
@@ -70,6 +72,7 @@ export type ReportVote =
 	name: string
 	votes: number
 	needed: number
+	secondsLeft: number
 }
 
 type Ack = { ok: boolean; room?: RoomState; error?: string; code?: string }
@@ -111,7 +114,8 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [round, setRound] = useState<RoundState | null>(null)
 	const [secretWord, setSecretWord] = useState<string | null>(null)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
-	const [reportVote, setReportVote] = useState<ReportVote | null>(null)
+	const [reportVotes, setReportVotes] = useState<ReportVote[]>([])
+	const [votedReportIds, setVotedReportIds] = useState<Set<string>>(new Set())
 	const [flagged, setFlagged] = useState(false)
 	const [expelled, setExpelled] = useState(false)
 	// The room closed mid-game (only one player left): no one gets the points.
@@ -126,9 +130,6 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	const [lastCorrect, setLastCorrect] = useState<
 		{ name: string; points: number; position: number; at: number } | null
 	>(null)
-	// report:closed only carries the targetId, and the name is read in a listener.
-	const voteRef = useRef<ReportVote | null>(null)
-
 	useEffect(() =>
 	{
 		// Same origin: nginx proxies /socket.io/ through to the backend.
@@ -187,6 +188,19 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 					setDropped(true)
 					return
 				}
+
+				// A link to a full or non-existent room should show an error,
+				// rather than silently dumping the user into a brand new empty room.
+								if (
+					answer.code === 'ROOM_FULL' ||
+					answer.code === 'ROOM_NOT_FOUND' ||
+					answer.code === 'ROOM_BANNED'
+				)
+				{
+					setError(answer.code)
+					return
+				}
+
 				answer = await request('room:create', {})
 			}
 
@@ -316,27 +330,35 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		// never learn how many have voted against them.
 		socket.on('report:open', (vote: ReportVote) =>
 		{
-			voteRef.current = vote
-			setReportVote(vote)
+			setReportVotes((all) => [...all.filter((item) => item.targetId !== vote.targetId), vote])
+		})
+
+		socket.on('report:tick', ({ targetId, secondsLeft }: { targetId: string; secondsLeft: number }) =>
+		{
+			setReportVotes((all) => all.map((vote) =>
+				vote.targetId === targetId ? { ...vote, secondsLeft } : vote))
 		})
 
 		socket.on('report:flagged', () => setFlagged(true))
 
-		socket.on('report:closed', ({ expelled: out }: { expelled: boolean }) =>
+		socket.on('report:closed', ({ targetId, targetName, expelled: out }: { targetId: string; targetName: string; expelled: boolean }) =>
 		{
-			const name = voteRef.current?.name
-			voteRef.current = null
-			setReportVote(null)
+			setReportVotes((all) => all.filter((vote) => vote.targetId !== targetId))
+			setVotedReportIds((all) => {
+				const next = new Set(all)
+				next.delete(targetId)
+				return next
+			})
 			setFlagged(false)
 
-			if (out && name)
-				setMessages((all) => [...all, { name: '', text: `${name} ${tRef.current('game.chat.expelledmsg')}`, system: true }])
+			if (out && targetName)
+				setMessages((all) => [...all, { name: '', text: `${targetName} ${tRef.current('game.chat.expelledmsg')}`, system: true }])
 		})
 
 		socket.on('report:expelled', () =>
 		{
-			voteRef.current = null
-			setReportVote(null)
+			setReportVotes([])
+			setVotedReportIds(new Set())
 			setFlagged(false)
 			setExpelled(true)
 		})
@@ -374,13 +396,26 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 		sendStroke: (stroke: Stroke) => socketRef.current?.emit('draw:stroke', stroke),
 		sendClear: () => socketRef.current?.emit('draw:clear'),
 		sendChat: (text: string) => socketRef.current?.emit('chat:message', { text }),
-		/** The vote in progress. Never reaches the player being voted on. */
-		reportVote,
+		addNotice: (text: string) => setMessages((all) => [...all, { name: '', text, system: true }]),
+		/** Votes in progress. Never includes the player being voted on. */
+		reportVotes,
+		/** True if this user already started or joined this vote. */
+		hasVoted: (targetId: string) => votedReportIds.has(targetId),
 		/** You are the reported one: the warning only, no tally, no buttons. */
 		flagged,
 		expelled,
-		startReport: (targetId: string) => ask('report:start', { targetId }),
-		voteExpel: () => ask('report:vote', {}),
+		startReport: async (targetId: string) =>
+		{
+			const answer = await ask('report:start', { targetId })
+			if (answer.ok)
+				setVotedReportIds((all) => new Set(all).add(targetId))
+			return answer
+		},
+		voteExpel: (targetId: string) =>
+		{
+			setVotedReportIds((all) => new Set(all).add(targetId))
+			return ask('report:vote', { targetId })
+		},
 		/** The 3 words to choose from (only the drawer has them) and the answer. */
 		choices,
 		sendChoice: (word: string) =>

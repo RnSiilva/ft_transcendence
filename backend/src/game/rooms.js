@@ -91,6 +91,7 @@ function cleanSettings(raw)
 
 	const roundSeconds = Number(wanted.roundSeconds);
 	const rounds = Number(wanted.rounds);
+	const maxPlayers = Number(wanted.maxPlayers) || MAX_MEMBERS;
 
 	return {
 		rounds: ROUND_COUNTS.includes(rounds) ? rounds : DEFAULT_SETTINGS.rounds,
@@ -101,6 +102,7 @@ function cleanSettings(raw)
 		language: LANGUAGES.includes(wanted.language)
 			? wanted.language
 			: DEFAULT_SETTINGS.language,
+		maxPlayers: Math.max(3, Math.min(maxPlayers, MAX_MEMBERS)),
 	};
 }
 
@@ -113,7 +115,7 @@ function identityOf(user)
 	if (!user || typeof user !== 'object')
 		throw fail('Authentication required', 'UNAUTHENTICATED');
 
-	return { userId: user.id, name: cleanName(user.username) };
+	return { userId: user.id, name: cleanName(user.username), avatarUrl: user.avatarUrl || null };
 }
 
 function addMember(room, memberId, identity)
@@ -122,6 +124,7 @@ function addMember(room, memberId, identity)
 		id: memberId,
 		userId: identity.userId,
 		name: identity.name,
+		avatarUrl: identity.avatarUrl,
 		disconnectedAt: null,
 	});
 	memberRoom.set(memberId, room.code);
@@ -141,6 +144,7 @@ function createRoom(memberId, user, settings)
 		creatorId: memberId, // Fixed, never changes after creation.
 		// drawerId: null,
 		strokes: [],
+		bannedUserIds: new Set(),
 		settings: cleanSettings(settings),
 		// Private room: password set by the creator (kept outside `settings`
 		// so it is never serialised to clients). null = open room.
@@ -176,7 +180,10 @@ function joinRoom(memberId, rawCode, user, password)
 		if (room.password && String(password ?? '') !== room.password)
 			throw fail('Wrong password', 'WRONG_PASSWORD');
 
-		if (room.members.size >= MAX_MEMBERS)
+		if (room.bannedUserIds?.has(identity.userId))
+			throw fail('Banned', 'ROOM_BANNED');
+
+		if (room.members.size >= (room.settings.maxPlayers || MAX_MEMBERS))
 			throw fail('Room is full', 'ROOM_FULL');
 
 		// One seat per account. Two tabs would otherwise take two turns with
@@ -418,6 +425,7 @@ function serialiseRoom(room, now = Date.now())
 			id: member.id,
 			userId: member.userId,
 			name: member.name,
+			avatarUrl: member.avatarUrl,
 			// Non-null while someone is away: the others can show the wait.
 			msToDrop: absenceLeft(member, now),
 		})),

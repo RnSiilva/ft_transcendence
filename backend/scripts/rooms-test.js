@@ -25,9 +25,9 @@ function check(label, actual, expected)
 
 	const ok = JSON.stringify(actual) === JSON.stringify(expected);
 	if (!ok)
-		failures.push(`${label}\n      esperado: ${JSON.stringify(expected)}\n      recebido: ${JSON.stringify(actual)}`);
+		failures.push(`${label}\n      expected: ${JSON.stringify(expected)}\n      received: ${JSON.stringify(actual)}`);
 
-	console.log(`   ${ok ? 'OK  ' : 'FALHA'} ${label}`);
+	console.log(`   ${ok ? 'OK  ' : 'FAIL'} ${label}`);
 	return ok;
 }
 
@@ -54,11 +54,11 @@ async function session(username)
 		: registered;
 
 	if (!response.ok)
-		throw new Error(`nao consegui sessao para ${username}: ${response.status}`);
+		throw new Error(`could not get a session for ${username}: ${response.status}`);
 
 	const cookie = response.headers.getSetCookie().find((c) => c.startsWith('token='));
 	if (!cookie)
-		throw new Error(`sem cookie de sessao para ${username}`);
+		throw new Error(`no session cookie for ${username}`);
 
 	return cookie.split(';')[0];
 }
@@ -123,7 +123,7 @@ function step(title)
 
 async function main()
 {
-	console.log(`A ligar a ${URL}`);
+	console.log(`Connecting to ${URL}`);
 
 	const cookies = {
 		testana: await session('testana'),
@@ -131,57 +131,56 @@ async function main()
 		testcarla: await session('testcarla'),
 	};
 
-	step('0. Sem sessao nao se entra');
+	step('0. No session, no entry');
 	const anonymous = await connect('').catch((err) => err);
-	check('a ligacao sem cookie e recusada', anonymous instanceof Error, true);
+	check('a connection without a cookie is refused', anonymous instanceof Error, true);
 
 	const ana = await connect(cookies.testana);
 	const bruno = await connect(cookies.testbruno);
 	const carla = await connect(cookies.testcarla);
 
-	step('1. A Ana cria a sala');
+	step('1. Ana creates the room');
 	const created = await ask(ana, 'room:create', {});
 	if (!created.ok)
 		throw new Error(created.error);
 
 	const { code } = created.room;
-	console.log(`   codigo: ${code}`);
-	check('o codigo tem 6 caracteres', code.length, 6);
-	check('o nome vem da sessao, nao do cliente', names(created.room), ['testana']);
-	check('a Ana e a criadora da sala', created.room.creatorId, ana.id);
+	console.log(`   code: ${code}`);
+	check('the code has 6 characters', code.length, 6);
+	check('the name comes from the session, not the client', names(created.room), ['testana']);
+	check('Ana is the room creator', created.room.creatorId, ana.id);
 
-	step('2. As definicoes vem do cliente mas sao validadas');
+	step('2. Settings come from the client but are validated');
 	const configured = await ask(bruno, 'room:create', {
 		settings: { roundSeconds: 30, theme: 'animals', language: 'en' },
 	});
-	check('definicoes validas passam', configured.room.settings, {
-		rounds: 3, roundSeconds: 30, theme: 'animals', language: 'en',
+	check('valid settings pass', configured.room.settings, {
+		rounds: 3, roundSeconds: 30, theme: 'animals', language: 'en', maxPlayers: 6,
 	});
 
 	const nonsense = await ask(bruno, 'room:create', {
 		settings: { roundSeconds: 9999, theme: 'piratas', language: 'klingon' },
 	});
-	check('definicoes invalidas caem no valor por omissao', nonsense.room.settings, {
-		rounds: 3, roundSeconds: 60, theme: 'general', language: 'pt',
+	check('invalid settings fall back to the defaults', nonsense.room.settings, {
+		rounds: 3, roundSeconds: 60, theme: 'general', language: 'pt', maxPlayers: 6,
 	});
 
-	step('3. Bruno e Carla entram na sala da Ana');
+	step('3. Bruno and Carla join Ana\'s room');
 	await ask(bruno, 'room:join', { code });
 	const withCarla = await ask(carla, 'room:join', { code });
-	check('estao os tres, por ordem de entrada', names(withCarla.room), ['testana', 'testbruno', 'testcarla']);
+	check('all three are present, in join order', names(withCarla.room), ['testana', 'testbruno', 'testcarla']);
 
-	step('4. Codigo que nao existe e recusado');
+	step('4. A code that does not exist is refused');
 	const missing = await ask(bruno, 'room:join', { code: 'ZZZZZZ' });
-	check('a entrada e recusada', missing.ok, false);
-	check('com o motivo certo', missing.code, 'ROOM_NOT_FOUND');
+	check('entry is refused', missing.ok, false);
+	check('with the right reason', missing.code, 'ROOM_NOT_FOUND');
 
-	step('5. A mesma conta nao ocupa dois lugares: a ligacao nova retoma o lugar');
-	// Regra atualizada (2026-09-17, autorizada pelo Thiago): a ligacao nova
-	// FICA com o lugar (room:replaced dispensa a antiga) — resolve os
-	// "zombies" de telemovel que trancavam o dono fora da sala. Continua a
-	// haver um unico lugar por conta.
-	// room:replaced nao traz payload, por isso o waitFor generico (que
-	// resolve com o payload) nao serve — marca-se true/false a mao.
+	step('5. The same account does not hold two seats: the new connection takes over the seat');
+	// The new connection KEEPS the seat (room:replaced dismisses the old one),
+	// which clears the phone "zombies" that used to lock the owner out of the
+	// room. There is still a single seat per account.
+	// room:replaced carries no payload, so the generic waitFor (which resolves
+	// with the payload) does not fit — mark true/false by hand.
 	const replacedFlag = (socket) => new Promise((resolve) =>
 	{
 		const timer = setTimeout(() => resolve(false), 2000);
@@ -191,29 +190,29 @@ async function main()
 	const replacedPromise = replacedFlag(bruno);
 	const secondTab = await connect(cookies.testbruno);
 	const duplicate = await ask(secondTab, 'room:join', { code });
-	check('a segunda ligacao entra', duplicate.ok, true);
-	check('sem lugar duplicado', names(duplicate.room), ['testana', 'testbruno', 'testcarla']);
-	check('a ligacao antiga e dispensada (room:replaced)', await replacedPromise, true);
-	// Devolve o lugar a ligacao original para os passos seguintes.
+	check('the second connection joins', duplicate.ok, true);
+	check('no duplicated seat', names(duplicate.room), ['testana', 'testbruno', 'testcarla']);
+	check('the old connection is dismissed (room:replaced)', await replacedPromise, true);
+	// Give the seat back to the original connection for the next steps.
 	const seatBackPromise = replacedFlag(secondTab);
 	await ask(bruno, 'room:join', { code });
 	await seatBackPromise;
 	secondTab.close();
-	// Deixa assentar os room:state das trocas de lugar antes do passo 6,
-	// senao o waitFor da Ana apanha um broadcast atrasado do passo 5.
+	// Let the room:state broadcasts from the seat swaps settle before step 6,
+	// otherwise Ana's waitFor catches a late broadcast from step 5.
 	await new Promise((resolve) => setTimeout(resolve, 500));
 
-	step('6. Sair da sala atualiza quem fica pra todos');
+	step('6. Leaving the room updates who remains for everyone');
 	const afterLeavingPromise = waitFor(ana, 'room:state', 2000);
 	await ask(bruno, 'room:leave');
 	const afterLeaving = await afterLeavingPromise;
-	check('a sala fica com a Ana e a Carla', names(afterLeaving), ['testana', 'testcarla']);
+	check('the room is left with Ana and Carla', names(afterLeaving), ['testana', 'testcarla']);
 
-	console.log(`\n${checks} verificacoes, ${failures.length} falhas.`);
+	console.log(`\n${checks} checks, ${failures.length} failures.`);
 
 	if (failures.length > 0)
 	{
-		console.error('\nFalhou:');
+		console.error('\nFailed:');
 		failures.forEach((f) => console.error(`   - ${f}`));
 	}
 
@@ -223,6 +222,6 @@ async function main()
 
 main().catch((err) =>
 {
-	console.error('\nRebentou:', err.message);
+	console.error('\nCrashed:', err.message);
 	process.exit(1);
 });

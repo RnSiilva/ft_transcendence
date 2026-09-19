@@ -44,3 +44,5 @@ npm-debug.log*
 *.pem
 *.key
 aws/
+# Changelog interno — fora da entrega
+ATUALIZAÇOES.md

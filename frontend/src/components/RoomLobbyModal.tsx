@@ -18,7 +18,7 @@ import { getSocket } from '../socket'
  *    'lobby:close'/'lobby:closed'; 'lobby:expired' after the 5 minutes.
  */
 
-type LobbyPlayer = { id: string; name: string; isAdmin: boolean }
+type LobbyPlayer = { id: string; name: string; isAdmin: boolean; avatarUrl?: string | null }
 type LobbyPhase = 'waiting_players' | 'waiting_creator'
 
 type Props = {
@@ -90,7 +90,7 @@ function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 6, onClose, onSt
   useEffect(() => {
     const socket = getSocket()
 
-    type Member = { id: string; userId: number; name: string }
+    type Member = { id: string; userId: number; name: string; avatarUrl?: string | null }
     type SyncAnswer = {
       ok: boolean
       room?: { members: Member[] }
@@ -105,6 +105,7 @@ function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 6, onClose, onSt
         members.map((m) => ({
           id: m.id,
           name: m.name,
+          avatarUrl: m.avatarUrl,
           isAdmin: creatorUserId !== null && m.userId === creatorUserId,
         })),
       )
@@ -242,13 +243,15 @@ function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 6, onClose, onSt
     if (isAdmin) {
       // If the server refuses the close (e.g. it no longer recognizes us as
       // creator), at least leave the room — the sweeper closes it for the rest.
-      socket.emit('lobby:close', {}, (answer?: { ok: boolean }) => {
-        if (!answer?.ok) socket.emit('room:leave')
+      socket.timeout(3000).emit('lobby:close', {}, (err: unknown, answer?: { ok: boolean }) => {
+        if (err || !answer?.ok) socket.emit('room:leave')
+        onClose()
       })
     } else {
-      socket.emit('room:leave')
+      socket.timeout(3000).emit('room:leave', {}, () => {
+        onClose()
+      })
     }
-    onClose()
   }
 
   const minutes = secondsLeft === null ? '–' : Math.floor(secondsLeft / 60)
@@ -274,10 +277,20 @@ function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 6, onClose, onSt
         <div className="lobby-list">
           {players.map((player) => (
             <div className="lobby-row" key={player.id}>
-              <div className="mini-avatar">{player.name.charAt(0).toUpperCase()}</div>
+              <div className="mini-avatar">
+                {player.avatarUrl ? (
+                  <img
+                    src={player.avatarUrl}
+                    alt=""
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  player.name.charAt(0).toUpperCase()
+                )}
+              </div>
               <div className="lobby-name">
                 {/* Hover card: stats + add friend (hidden if already friends) */}
-                <PlayerHoverCard username={player.name} isSelf={player.name === selfName}>
+                <PlayerHoverCard username={player.name} avatarUrl={player.avatarUrl} isSelf={player.name === selfName}>
                   {player.name}
                 </PlayerHoverCard>
                 {player.isAdmin && <span className="lobby-admin-tag">{t('lobby.admin')}</span>}
@@ -356,7 +369,7 @@ function RoomLobbyModal({ roomName, code, isAdmin, maxPlayers = 6, onClose, onSt
       {expired && !starting && (
         <div className="modal-overlay show lobby-inner">
           <div className="modal-panel lobby-small">
-            <h2>{t('rooms.title')}</h2>
+            <h2>{roomName}</h2>
             <p className="roomlang-text">{t('lobby.expired')}</p>
             <div className="modal-actions">
               <button type="button" className="btn btn-primary" onClick={onClose}>

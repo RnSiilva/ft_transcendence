@@ -18,7 +18,7 @@ import type { Lang } from '../i18n/translations'
  * (backend/src/sockets/lobby.socket.js).
  */
 
-type RoomInfo = { code: string; name: string; players: number; max: number; lang: Lang; locked?: boolean }
+type RoomInfo = { code: string; name: string; players: number; max: number; lang: Lang; locked?: boolean; started?: boolean }
 
 type LobbyState = { name: string; code: string; isAdmin: boolean; max: number }
 
@@ -81,6 +81,15 @@ function Rooms() {
           setPassRoom(null)
           setPassValue('')
           setPassError(false)
+
+          if (room.started) {
+            // The game page reclaims this seat using the room code. Disconnect
+            // first so the lobby socket does not occupy a second seat.
+            getSocket().disconnect()
+            navigate(`/game?room=${answer.room.code}`)
+            return
+          }
+
           setLobby({ name: room.name, code: answer.room.code, isAdmin: false, max: room.max })
         } else if (answer?.code === 'WRONG_PASSWORD') {
           // Wrong (or missing) password: show/keep the password prompt.
@@ -124,7 +133,12 @@ function Rooms() {
           // lobby:open adds the room to the public list and holds the round
           // engine until the creator clicks Start.
           getSocket().emit('lobby:open')
-          setLobby({ name: `Sala de ${selfName}`, code: answer.room.code, isAdmin: true, max: 6 })
+          setLobby({
+            name: settings.name || `Sala de ${selfName}`,
+            code: answer.room.code,
+            isAdmin: true,
+            max: settings.maxPlayers || 6
+          })
         } else {
           setJoinError(true)
         }
@@ -177,6 +191,11 @@ function Rooms() {
               <div className="room-meta">
                 {room.players}/{room.max} <span>{t('profile.rooms.players')}</span> ·{' '}
                 {room.lang.toUpperCase()}
+                {room.started && (
+                  <>
+                    {' '}· <span className="phc-error" style={{ color: 'var(--blue)' }}>{t('rooms.alreadystarted')}</span>
+                  </>
+                )}
               </div>
             </div>
             <button

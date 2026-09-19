@@ -125,7 +125,7 @@ const hasGuessed = (game, memberId) =>
  * A wrong message is not an error — it is just chat, and the caller passes it
  * on to the room as such.
  */
-function registerGuess(game, memberId, text, now = Date.now())
+function registerGuess(game, memberId, text, guesserCount, now = Date.now())
 {
 	if (game.phase !== PHASE.drawing)
 		return { correct: false, reason: 'NOT_DRAWING' };
@@ -139,9 +139,28 @@ function registerGuess(game, memberId, text, now = Date.now())
 	if (!matchesWord(text, game.word))
 		return { correct: false, reason: 'WRONG' };
 
+	const oldDrawerPoints = scoreDrawer({
+		secondsLeftPerGuess: game.correct.map((e) => e.secondsLeft),
+		guesserCount,
+		roundSeconds: game.roundSeconds,
+	});
+
 	const left = secondsLeft(game, now);
 
 	game.correct.push({ memberId, secondsLeft: left });
+
+	const newDrawerPoints = scoreDrawer({
+		secondsLeftPerGuess: game.correct.map((e) => e.secondsLeft),
+		guesserCount,
+		roundSeconds: game.roundSeconds,
+	});
+
+	const drawerDelta = newDrawerPoints - oldDrawerPoints;
+	if (drawerDelta > 0 && game.drawerId)
+	{
+		game.totals.set(game.drawerId, (game.totals.get(game.drawerId) || 0) + drawerDelta);
+		game.drawerTurnPoints = (game.drawerTurnPoints || 0) + drawerDelta;
+	}
 
 	const points = scoreGuess({
 		secondsLeft: left,
@@ -172,8 +191,11 @@ function endTurn(game, guesserCount)
 		roundSeconds: game.roundSeconds,
 	});
 
-	if (game.drawerId)
-		game.totals.set(game.drawerId, (game.totals.get(game.drawerId) || 0) + drawerPoints);
+	const delta = drawerPoints - (game.drawerTurnPoints || 0);
+	if (game.drawerId && delta !== 0)
+		game.totals.set(game.drawerId, (game.totals.get(game.drawerId) || 0) + delta);
+
+	game.drawerTurnPoints = 0; // reset for next turn
 
 	// Over only once the last person of the last round has drawn.
 	const lastTurn = game.turn >= game.turnsPerRound;
@@ -211,6 +233,7 @@ function snapshot(game, members, now = Date.now())
 				id: member.id,
 				userId: member.userId,
 				name: member.name,
+				avatarUrl: member.avatarUrl,
 				points: game.totals.get(member.id) || 0,
 				isDrawer: member.id === game.drawerId,
 				guessed: hasGuessed(game, member.id),

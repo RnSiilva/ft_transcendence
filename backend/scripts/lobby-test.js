@@ -4,13 +4,12 @@
  * live on the server (sockets/lobby.socket.js), so they are verifiable
  * without a browser — same pattern as rooms-test.js.
  *
- * REGRA FINAL da equipa (2026-09-16): mínimo de 3 para INICIAR; a meio da
- * partida pode continuar-se com 2; se ficar só 1, o round.socket fecha a
- * sala de imediato e ninguém guarda pontos.
+ * Rule: a minimum of 3 to START; mid-game it can continue with 2; if only 1
+ * remains, round.socket closes the room immediately and nobody keeps points.
  *
- * A expiração dos 5 minutos é testada à parte, em modo unitário: o módulo
- * exporta sweepOnce(io, now) exatamente para se poder avançar o relógio
- * sem esperar 5 minutos.
+ * The 5-minute expiry is tested separately, in unit mode: the module exports
+ * sweepOnce(io, now) precisely so the clock can be advanced without waiting
+ * 5 minutes.
  *
  *   docker exec backend npm run test:lobby
  */
@@ -29,15 +28,15 @@ function check(label, actual, expected)
 
 	const ok = JSON.stringify(actual) === JSON.stringify(expected);
 	if (!ok)
-		failures.push(`${label}\n      esperado: ${JSON.stringify(expected)}\n      recebido: ${JSON.stringify(actual)}`);
+		failures.push(`${label}\n      expected: ${JSON.stringify(expected)}\n      received: ${JSON.stringify(actual)}`);
 
-	console.log(`   ${ok ? 'OK  ' : 'FALHA'} ${label}`);
+	console.log(`   ${ok ? 'OK  ' : 'FAIL'} ${label}`);
 	return ok;
 }
 
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
-/** Resolve com o payload do próximo `event`, ou com `fallback` após ms. */
+/** Resolves with the payload of the next `event`, or with `fallback` after ms. */
 function nextEvent(socket, event, ms = 2500, fallback = null)
 {
 	return new Promise((resolve) =>
@@ -74,11 +73,11 @@ async function session(username)
 		: registered;
 
 	if (!response.ok)
-		throw new Error(`nao consegui sessao para ${username}: ${response.status}`);
+		throw new Error(`could not get a session for ${username}: ${response.status}`);
 
 	const cookie = response.headers.getSetCookie().find((c) => c.startsWith('token='));
 	if (!cookie)
-		throw new Error(`sem cookie para ${username}`);
+		throw new Error(`no cookie for ${username}`);
 
 	return cookie.split(';')[0];
 }
@@ -104,68 +103,68 @@ const ask = (socket, event, payload = {}) =>
 
 async function socketSuite()
 {
-	console.log('\n== lobby via sockets reais ==');
+	console.log('\n== lobby via real sockets ==');
 
 	const cookies = await Promise.all(['lobby_ana', 'lobby_bea', 'lobby_carla', 'lobby_dida'].map(session));
 	const [A, B, C, D] = await Promise.all(cookies.map(connect));
 
-	// A cria a sala e abre-a em modo de espera.
+	// A creates the room and opens it in waiting mode.
 	const created = await ask(A, 'room:create', { settings: { language: 'pt' } });
-	check('criador abre a sala', created.ok, true);
+	check('creator opens the room', created.ok, true);
 	const code = created.room.code;
 	A.emit('lobby:open');
 
 	const phaseAlone = await nextEvent(A, 'lobby:phase');
-	check('fase inicial e "waiting_players"', phaseAlone && phaseAlone.phase, 'waiting_players');
+	check('initial phase is "waiting_players"', phaseAlone && phaseAlone.phase, 'waiting_players');
 
-	// Sozinho, iniciar nao pode funcionar: ninguem recebe room:start.
+	// Alone, starting cannot work: nobody receives room:start.
 	A.emit('lobby:start', {}, () => {});
-	check('sala nao inicia com 1 jogador', await nextEvent(A, 'room:start', 1500, 'nada'), 'nada');
+	check('the room does not start with 1 player', await nextEvent(A, 'room:start', 1500, 'nada'), 'nada');
 
-	// B entra: 2 ainda e abaixo do minimo de 3.
+	// B joins: 2 is still below the minimum of 3.
 	const phaseToB = nextEvent(B, 'lobby:phase', 4000);
 	const readyEarly = nextEvent(A, 'lobby:ready', 2500, 'nada');
 	await ask(B, 'room:join', { code });
-	check('com 2 a fase continua "waiting_players"', (await phaseToB).phase, 'waiting_players');
-	check('com 2 o criador ainda NAO recebe lobby:ready', await readyEarly, 'nada');
+	check('with 2 the phase stays "waiting_players"', (await phaseToB).phase, 'waiting_players');
+	check('with 2 the creator still does NOT receive lobby:ready', await readyEarly, 'nada');
 
 	A.emit('lobby:start', {}, () => {});
-	check('sala nao inicia com 2 jogadores', await nextEvent(A, 'room:start', 1500, 'nada'), 'nada');
+	check('the room does not start with 2 players', await nextEvent(A, 'room:start', 1500, 'nada'), 'nada');
 
-	// C entra: atinge os 3 -> fase muda para todos e o criador e avisado.
+	// C joins: reaches 3 -> phase changes for everyone and the creator is notified.
 	const phaseToAll = nextEvent(B, 'lobby:phase', 4000);
 	const readyToA = nextEvent(A, 'lobby:ready', 4000);
 	const readyToB = nextEvent(B, 'lobby:ready', 4000, 'nada');
 	await ask(C, 'room:join', { code });
 
-	check('ao 3.o todos recebem a fase "waiting_creator"', (await phaseToAll).phase, 'waiting_creator');
-	check('criador recebe lobby:ready ao atingir os 3', Boolean(await readyToA), true);
-	check('lobby:ready NAO vai aos restantes', await readyToB, 'nada');
+	check('at the 3rd, everyone receives the "waiting_creator" phase', (await phaseToAll).phase, 'waiting_creator');
+	check('the creator receives lobby:ready on reaching 3', Boolean(await readyToA), true);
+	check('lobby:ready does NOT go to the rest', await readyToB, 'nada');
 
-	// D entra para servir de alvo do kick (sobrando 3 para iniciar depois).
+	// D joins to serve as the kick target (leaving 3 to start afterwards).
 	await ask(D, 'room:join', { code });
 	await wait(300);
 
-	// lobby:start so funciona vindo do criador.
+	// lobby:start only works when it comes from the creator.
 	B.emit('lobby:start', {}, () => {});
-	check('lobby:start de nao-criador nao inicia', await nextEvent(B, 'room:start', 1500, 'nada'), 'nada');
+	check('lobby:start from a non-creator does not start', await nextEvent(B, 'room:start', 1500, 'nada'), 'nada');
 
-	// lobby:kick so do criador, e nunca contra si mesmo.
+	// lobby:kick only from the creator, and never against oneself.
 	const kickByB = await ask(B, 'lobby:kick', { memberId: D.id });
-	check('kick por nao-criador e recusado', kickByB.ok, false);
+	check('a kick by a non-creator is refused', kickByB.ok, false);
 
 	const kickSelf = await ask(A, 'lobby:kick', { memberId: A.id });
-	check('criador nao se pode expulsar a si mesmo', kickSelf.ok, false);
+	check('the creator cannot expel themselves', kickSelf.ok, false);
 
 	const kickedD = nextEvent(D, 'lobby:kicked', 3000, 'nada');
 	const kickByA = await ask(A, 'lobby:kick', { memberId: D.id });
-	check('kick pelo criador funciona', kickByA.ok, true);
-	check('expulso recebe lobby:kicked', await kickedD, true);
+	check('a kick by the creator works', kickByA.ok, true);
+	check('the expelled member receives lobby:kicked', await kickedD, true);
 
-	// Iniciar pelo criador (ficaram 3) chega a toda a gente.
+	// Starting by the creator (3 remain) reaches everyone.
 	const startToB = nextEvent(B, 'room:start', 3000, 'nada');
 	A.emit('lobby:start', {}, () => {});
-	check('lobby:start do criador emite room:start a todos', await startToB, true);
+	check('lobby:start from the creator emits room:start to everyone', await startToB, true);
 
 	A.disconnect(); B.disconnect(); C.disconnect(); D.disconnect();
 	await Promise.all(cookies.map(cleanup));
@@ -173,9 +172,9 @@ async function socketSuite()
 
 async function expirySuite()
 {
-	console.log('\n== expiracao dos 5 minutos (unitario, com o relogio avancado) ==');
+	console.log('\n== 5-minute expiry (unit mode, with the clock advanced) ==');
 
-	// Modulos frescos NESTE processo: nao mexem no servidor que esta a correr.
+	// Fresh modules in THIS process: they do not touch the running server.
 	const rooms = require('../src/game/rooms');
 	const lobby = require('../src/sockets/lobby.socket');
 
@@ -198,14 +197,14 @@ async function expirySuite()
 	});
 	room.lobbyWaiting = true;
 
-	// Aos 4m59s a sala ainda vive.
+	// At 4m59s the room is still alive.
 	lobby.sweepOnce(fakeIo, room.createdAt.getTime() + 299 * 1000);
-	check('aos 4m59s a sala ainda existe', Boolean(rooms.getRoom(room.code)), true);
+	check('at 4m59s the room still exists', Boolean(rooms.getRoom(room.code)), true);
 
-	// Aos 5m00s expira: aviso emitido e sala esvaziada.
+	// At 5m00s it expires: notice emitted and room emptied.
 	lobby.sweepOnce(fakeIo, room.createdAt.getTime() + 300 * 1000);
-	check('aos 5m00s emite lobby:expired', emitted.includes(`${room.code}:lobby:expired`), true);
-	check('a sala foi esvaziada e apagada', rooms.getRoom(room.code) ?? 'apagada', 'apagada');
+	check('at 5m00s it emits lobby:expired', emitted.includes(`${room.code}:lobby:expired`), true);
+	check('the room was emptied and deleted', rooms.getRoom(room.code) ?? 'apagada', 'apagada');
 }
 
 (async () =>
@@ -213,16 +212,16 @@ async function expirySuite()
 	await socketSuite();
 	await expirySuite();
 
-	console.log(`\n${checks - failures.length}/${checks} verificacoes passaram`);
+	console.log(`\n${checks - failures.length}/${checks} checks passed`);
 	if (failures.length)
 	{
-		console.log('\nFalhas:');
+		console.log('\nFailures:');
 		failures.forEach((f) => console.log(`   ${f}`));
 		process.exit(1);
 	}
 	process.exit(0);
 })().catch((err) =>
 {
-	console.error('erro no teste:', err.message);
+	console.error('test error:', err.message);
 	process.exit(1);
 });

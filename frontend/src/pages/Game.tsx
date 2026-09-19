@@ -8,8 +8,8 @@ import { useGameSocket } from '../hooks/useGameSocket'
 
 const COLORS = ['#15161B', '#FF4B3E', '#3EC1D3', '#FFC93C', '#6BCB77']
 
-type ChatMessage = { name: string; text: string; system?: boolean }
 type Acerto = { word: string; place: number; points: number; turnKey: string }
+
 
 // Correct-guess confetti: ~80 little pieces in the project colours, each with
 // a random position, delay, size and rotation (pure CSS, no library).
@@ -62,10 +62,9 @@ function Trophy({ place }: { place: number }) {
 function Game() {
   const { t } = useLanguage()
   const navigate = useNavigate()
-  // Real session identity: the name/points come from the authenticated account;
-  // 'utilizador_demo' is only a fallback when there is no session (local dev).
+  // Real identity of the session: the name/points come from the authenticated account.
   const { user } = useAuth()
-  const selfName = user?.username ?? 'utilizador_demo'
+  const selfName = user?.username ?? ''
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const chatLogRef = useRef<HTMLDivElement | null>(null)
   const drawingRef = useRef(false)
@@ -131,17 +130,29 @@ function Game() {
   // ---- real correct guess: server's 'round:correct' + what I typed ----
   // The server never sends the word on a correct guess (that would hand it to
   // the others); the one shown in MY banner is the one I typed myself.
-  const [notices, setNotices] = useState<ChatMessage[]>([])
   const [acerto, setAcerto] = useState<Acerto | null>(null)
   const [confettiAt, setConfettiAt] = useState<number | null>(null)
   const lastGuessRef = useRef('')
   // Identifies the current turn; the banner only lives within the turn it was born in.
   const turnKey = game.round ? `${game.round.round}-${game.round.turn}` : ''
   const seenCorrectRef = useRef(0)
+
+  const [correctPlayers, setCorrectPlayers] = useState<{ turnKey: string; names: Set<string> }>({
+    turnKey: '',
+    names: new Set(),
+  })
+
   useEffect(() => {
     const hit = game.lastCorrect
     if (!hit || hit.at === seenCorrectRef.current) return
     seenCorrectRef.current = hit.at
+
+    setCorrectPlayers((prev) => {
+      const names = prev.turnKey === turnKey ? new Set(prev.names) : new Set<string>()
+      names.add(hit.name)
+      return { turnKey, names }
+    })
+
     if (hit.name !== selfName) return
     setAcerto({
       word: lastGuessRef.current.toUpperCase(),
@@ -230,11 +241,13 @@ function Game() {
       // Only the current drawer may use the board. The server rejects
       // strokes from anyone else too — this just avoids the dead cursor.
       if (!gameRef.current.isDrawer && !isMeRef.current) return
+      if (gameRef.current.round?.phase !== 'drawing') return
       drawingRef.current = true
       lastPointRef.current = pos(e)
     }
     function move(e: MouseEvent | TouchEvent) {
       if (!drawingRef.current) return
+      if (gameRef.current.round?.phase !== 'drawing') return
       const p = pos(e)
       const from = lastPointRef.current
       ctx!.strokeStyle = colorRef.current
@@ -324,12 +337,10 @@ function Game() {
     }
   }, [])
 
-  const shownMessages: ChatMessage[] = [...game.messages, ...notices]
-
   useEffect(() => {
     const log = chatLogRef.current
     if (log) log.scrollTop = log.scrollHeight
-  }, [shownMessages.length])
+  }, [game.messages.length])
 
   function selectColor(color: string) {
     colorRef.current = color
@@ -360,13 +371,22 @@ function Game() {
   const scoreRows = game.members.map((member) => ({
     id: member.id,
     name: member.name,
+    avatarUrl: member.avatarUrl,
     isDrawer: member.isDrawer,
     msToDrop: member.msToDrop,
     pts: game.round?.scores.find((s) => s.id === member.id)?.points ?? 0,
+    guessed: (correctPlayers.turnKey === turnKey && correctPlayers.names.has(member.name))
+      || (game.round?.scores.find((s) => s.id === member.id)?.guessed ?? false),
   }))
 
   // My points in this match, for the topbar.
   const myPoints = game.round?.scores.find((s) => s.name === selfName)?.points ?? 0
+
+  const finalScores = game.round?.scores.map((s) => ({
+    name: s.name,
+    points: s.points,
+    avatarUrl: s.avatarUrl,
+  })) ?? []
 
   // If the server refuses, the reason goes to the chat: the silence was what
   // made this look broken.
@@ -380,14 +400,24 @@ function Game() {
       ? t('game.report.needplayers')
       : t('game.report.failed')
 
-    setNotices((all) => [...all, { name: '', text: reason, system: true }])
+    game.addNotice(reason)
   }
 
   return (
     <div className="game-wrap">
       <div className="game-topbar">
         <div className="who">
-          <div className="mini-avatar">{selfName.charAt(0).toUpperCase()}</div>
+          <div className="mini-avatar">
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            ) : (
+              selfName.charAt(0).toUpperCase()
+            )}
+          </div>
           {selfName} — <span>{myPoints}</span> <span>{t('game.points')}</span>
         </div>
         <div className="pill-stat">
@@ -451,10 +481,10 @@ function Game() {
           <canvas id="draw-canvas" ref={canvasRef} className={isMe ? 'drawing' : ''} />
         </div>
 
-        <div className="chat-box">
+          <div className="chat-box">
             <h3>{t('game.chat.heading')}</h3>
             <div className="chat-log" ref={chatLogRef}>
-              {shownMessages.map((message, i) => (
+              {game.messages.map((message, i) => (
                 <div className="msg" key={i}>
                   {message.system ? <i>{message.text}</i> : <><b>{message.name}:</b> {message.text}</>}
                 </div>
@@ -496,13 +526,25 @@ function Game() {
                   'score-row',
                   member.isDrawer ? 'drawing' : '',
                   member.name === selfName ? 'self' : '',
+                  member.guessed ? 'correct' : '',
                 ].join(' ').trim()}
               >
-                <div className="mini-avatar">{member.name.charAt(0).toUpperCase()}</div>
+                <div className="mini-avatar">
+                  {member.avatarUrl ? (
+                    <img
+                      src={member.avatarUrl}
+                      alt=""
+                      style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    member.name.charAt(0).toUpperCase()
+                  )}
+                </div>
                 <div className="nm">
                   {/* Hovering/tapping the name opens the card: stats + friend + report */}
                   <PlayerHoverCard
                     username={member.name}
+                    avatarUrl={member.avatarUrl}
                     isSelf={member.name === selfName}
                     onReport={() => startReport(member.id)}
                   >
@@ -659,19 +701,25 @@ function Game() {
         </div>
       )}
 
-      {game.reportVote && (
-        <div className="report-toast">
-          <p className="report-question">
-            🚩 <b>{t('lobby.kick')} {game.reportVote.name}?</b>
-          </p>
-          <p className="report-votes">
-            {game.reportVote.votes}/{game.reportVote.needed} {t('game.report.votes')}
-          </p>
-          <div className="report-actions">
-            <button type="button" className="btn btn-danger btn-sm" onClick={() => game.voteExpel()}>
-              {t('lobby.kick')}
-            </button>
-          </div>
+      {game.reportVotes.length > 0 && (
+        <div className="report-toasts">
+          {game.reportVotes.map((vote) => (
+            <div className="report-toast" key={vote.targetId}>
+              <p className="report-question">
+                🚩 <b>{t('lobby.kick')} {vote.name}?</b>
+              </p>
+              <p className="report-votes">
+                {vote.votes}/{vote.needed} {t('game.report.votes')} · {vote.secondsLeft}s
+              </p>
+              {!game.hasVoted(vote.targetId) && (
+                <div className="report-actions">
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => game.voteExpel(vote.targetId)}>
+                    {t('lobby.kick')}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -720,6 +768,26 @@ function Game() {
         </div>
       )}
 
+      {game.error && (
+        <div className="modal-overlay show">
+          <div className="modal-panel lobby-small">
+            <h2>{t('rooms.access.title')}</h2>
+            <p className="roomlang-text">
+              {game.error === 'ROOM_BANNED'
+                ? t('rooms.access.banned')
+                : game.error === 'ROOM_NOT_FOUND'
+                  ? t('rooms.access.notfound')
+                  : t('rooms.access.full')}
+            </p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/rooms')}>
+                {t('endgame.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {game.expelled && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
@@ -754,7 +822,7 @@ function Game() {
               navigate('/rooms')
             }
           }}
-          scores={game.round?.scores.map((s) => ({ name: s.name, points: s.points })) ?? []}
+          scores={finalScores}
         />
       )}
     </div>

@@ -24,6 +24,7 @@ const API_ERROR_KEYS: Record<string, string> = {
   'Username must be 3–20 characters': 'errors.usernameLength',
   'Username may only contain letters, numbers, underscores, and hyphens': 'errors.usernameInvalid',
   'Password must be at least 8 characters and contain a letter and a number': 'errors.passwordRequirements',
+  'New password must be at least 8 characters and contain a letter and a number': 'errors.passwordRequirements',
   'Passwords do not match': 'errors.passwordsDoNotMatch',
 }
 

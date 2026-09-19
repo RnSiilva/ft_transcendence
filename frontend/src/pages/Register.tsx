@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ChangeEvent } from 'react'
+import React, { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
@@ -35,7 +35,7 @@ function Register() {
     return <Navigate to="/profile" replace />
   }
 
-  function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
+  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
@@ -67,7 +67,7 @@ function Register() {
     return errs
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
 
     const clientErrors = validate(email, username, password, confirmPassword)
@@ -177,7 +177,7 @@ function Register() {
           </div>
 
           <div className="field">
-            <label>{t('login.password')} (confirmação)</label>
+            <label>{t('register.confirmpassword')}</label>
             <input
               type="password"
               placeholder="••••••••"

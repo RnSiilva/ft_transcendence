@@ -71,7 +71,14 @@ function publicRooms()
 		.filter((room) =>
 		{
 			const lobby = lobbies.get(room.code);
-			return lobby && lobby.waiting;
+			if (!lobby)
+				return false;
+			
+			const max = room.settings.maxPlayers || rooms.MAX_MEMBERS;
+			const isFull = room.members.size >= max;
+			
+			// Show rooms that are waiting, or rooms that started but still have slots
+			return lobby.waiting || (lobby.started && !isFull);
 		})
 		.map((room) =>
 		{
@@ -80,10 +87,11 @@ function publicRooms()
 				code: room.code,
 				name: lobby.roomName,
 				players: room.members.size,
-				max: rooms.MAX_MEMBERS,
+				max: room.settings.maxPlayers || rooms.MAX_MEMBERS,
 				lang: room.settings.language,
 				// A padlock in the list; the password itself never leaves the server.
 				locked: Boolean(room.password),
+				started: lobby.started,
 			};
 		});
 }
@@ -214,15 +222,19 @@ function registerLobbyHandlers(io, socket)
 {
 	// Runs AFTER the room:create handler registered earlier in index.js, so
 	// the room already exists when this listener is called.
-	socket.on('room:create', () =>
+	socket.on('room:create', (payload = {}) =>
 	{
 		const room = rooms.getRoomOf(socket.id);
 		if (!room || lobbies.has(room.code))
 			return;
 
+		const settings = payload.settings || {};
+		const customName = typeof settings.name === 'string' ? settings.name.trim().slice(0, 30) : '';
+		const roomName = customName || `${socket.user.username}'s room`;
+
 		lobbies.set(room.code, {
 			creatorUserId: socket.user.id,
-			roomName: `Sala de ${socket.user.username}`,
+			roomName,
 			waiting: false,
 			started: false,
 			promptAt: null,
@@ -327,7 +339,8 @@ function registerLobbyHandlers(io, socket)
 	{
 		const { room, lobby } = lobbyOf(socket.id);
 		const allowed = room && isCreator(socket, lobby)
-			&& room.members.size >= READY_MIN_PLAYERS;
+			&& room.members.size >= READY_MIN_PLAYERS
+			&& lobby.waiting && !lobby.started;
 
 		if (!allowed)
 		{

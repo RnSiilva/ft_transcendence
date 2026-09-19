@@ -8,6 +8,7 @@
 const cookie = require('cookie');
 
 const { verifyToken } = require('../auth/auth.middleware');
+const { getUserById } = require('../auth/auth.service');
 
 function userFromHandshake(socket)
 {
@@ -18,15 +19,27 @@ function userFromHandshake(socket)
 	return verifyToken(cookie.parse(header).token);
 }
 
-function requireAuthenticatedSocket(socket, next)
+async function requireAuthenticatedSocket(socket, next)
 {
-	const user = userFromHandshake(socket);
+	const jwtUser = userFromHandshake(socket);
 
-	if (!user)
+	if (!jwtUser)
 		return next(new Error('UNAUTHORIZED'));
 
-	socket.user = user;
-	next();
+	try {
+		const dbUser = await getUserById(jwtUser.id);
+		if (!dbUser)
+			return next(new Error('UNAUTHORIZED'));
+
+		socket.user = { 
+			id: dbUser.id, 
+			username: dbUser.username, 
+			avatarUrl: dbUser.avatarUrl 
+		};
+		next();
+	} catch (err) {
+		return next(new Error('UNAUTHORIZED'));
+	}
 }
 
 module.exports = { requireAuthenticatedSocket, userFromHandshake };
