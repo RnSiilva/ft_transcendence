@@ -389,6 +389,7 @@ export function useGameSocket(canvasRef: React.RefObject<HTMLCanvasElement | nul
 	return {
 		code: room?.code ?? null,
 		members: room?.members ?? [],
+		selfId,
 		isDrawer,
 		error, // ALREADY_IN_ROOM: the room is already open in another tab
 		round,

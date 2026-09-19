@@ -642,7 +642,7 @@ function Game() {
       {/* Everyone else while the drawer picks: same modal, but a notice only
           (no clickable words), sharing the exact same 10s countdown — it closes
           for all when the word is chosen or the time runs out. */}
-      {game.round?.choosing && !game.choices && (
+      {game.round?.choosing && game.round.choosing.drawerId !== game.selfId && (
         <div className="modal-overlay show">
           <div className="modal-panel lobby-small">
             <h2>{game.round.choosing.drawerName} {t('game.choosing.title')}</h2>
