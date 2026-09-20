@@ -15,6 +15,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import About from './pages/About'
 import Rooms from './pages/Rooms'
+import PublicProfile from './pages/PublicProfile'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
 function App() {
@@ -30,7 +31,14 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/about" element={<About />} />
-            <Route path="/game" element={<Game />} />
+            <Route
+              path="/game"
+              element={
+                <ProtectedRoute>
+                  <Game />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/rules" element={<Rules />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
@@ -47,6 +55,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Rooms />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/user/:username"
+              element={
+                <ProtectedRoute>
+                  <PublicProfile />
                 </ProtectedRoute>
               }
             />

@@ -107,13 +107,16 @@ function logout(req, res) {
   return res.status(200).json({ message: 'Logged out' });
 }
 
-// GET /auth/me (protected by requireAuth middleware)
-// Reads req.user.id from JWT and returns current user's profile and game statistics (used on page refresh)
+// GET /auth/me (optionalAuth middleware: req.user is the session user or null)
+// Returns the current user's profile and game statistics (used on page refresh),
+// or 200 {user:null} when there is no session — logged-out is a state, not an error.
 async function me(req, res) {
   try {
+    if (!req.user) return res.status(200).json({ user: null });
     await checkAchievements(req.user.id);
     const user = await getUserById(req.user.id);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    // A valid cookie for an account that no longer exists (e.g. deleted).
+    if (!user) return res.status(200).json({ user: null });
     return res.status(200).json({ user });
   } catch (err) {
     console.error('[me]', err);
@@ -164,7 +167,10 @@ async function deleteAccount(req, res) {
 function loginWith42(req, res) {
   const UID = process.env.FORTYTWO_CLIENT_ID;
   const REDIRECT_URI = encodeURIComponent(process.env.FORTYTWO_CALLBACK_URL);
-  const authUrl = `https://api.intra.42.fr/oauth/authorize?client_id=${UID}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+  // prompt=login forces the 42 login screen every time, instead of silently
+  // reusing an intra session already open in the browser. On shared machines
+  // that silent reuse could log a person into whoever was last authorized on 42.
+  const authUrl = `https://api.intra.42.fr/oauth/authorize?client_id=${UID}&redirect_uri=${REDIRECT_URI}&response_type=code&prompt=login`;
   res.redirect(authUrl);
 }
 
@@ -210,6 +216,9 @@ async function fortyTwoCallback(req, res) {
     res.redirect('/profile');
   } catch (err) {
     console.error('[fortyTwoCallback]', err);
+    // A password-protected account already uses this 42 email: refuse instead of
+    // taking it over (see findOrCreate42User).
+    if (err.code === 'EMAIL_IN_USE') return res.redirect('/login?error=EmailInUse');
     res.redirect('/login?error=OAuthFailed');
   }
 }

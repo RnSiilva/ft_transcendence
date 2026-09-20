@@ -24,7 +24,7 @@ export interface AuthUser {
   gamesPlayed: number;
   wins: number;
   createdAt: string;
-  achievements?: any[];
+  achievements?: { achievement?: { nameKey?: string } }[];
 }
 
 interface UseAuthReturn {
@@ -61,9 +61,36 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
+  // Session check on mount. Done INLINE (not via refresh()) to avoid a
+  // synchronous setState in the effect body: `loading` already starts true, and
+  // the setState calls happen only after the fetch await. The `alive` flag
+  // avoids updating state after the component unmounts.
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
+        if (!alive) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (!alive) return;
+          setUser(data.user);
+          if (data.user?.language) {
+            localStorage.setItem('lang', data.user.language);
+          }
+        } else {
+          setUser(null);
+        }
+      } catch {
+        if (alive) setUser(null);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const updateLanguage = useCallback(async (language: string) => {
     const res = await fetch(`${API}/auth/language`, {

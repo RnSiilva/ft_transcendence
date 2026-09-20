@@ -2,8 +2,8 @@
  * games.repository.js
  * Saves finished games and reads the leaderboards.
  *
- * Nothing is written until the game ends: the team decided that leaving early
- * forfeits everything, so a score only becomes real once there is a final one.
+ * Nothing is written until the game ends: leaving early forfeits everything,
+ * so a score only becomes real once the game has a final result.
  */
 
 const { PrismaClient } = require('@prisma/client');
@@ -58,6 +58,20 @@ async function saveGame({ roomCode, settings, scores })
 			});
 		}
 
+		// Recomputes the stored rank of EVERYONE who has played (ranked by
+		// total points, ties broken by wins). The column started at 0 and was
+		// never updated — the profile and the card showed "#0" forever.
+		const ranked = await tx.user.findMany({
+			where: { gamesPlayed: { gt: 0 } },
+			orderBy: [{ totalPoints: 'desc' }, { wins: 'desc' }],
+			select: { id: true, rank: true },
+		});
+		for (let i = 0; i < ranked.length; i += 1)
+		{
+			if (ranked[i].rank !== i + 1)
+				await tx.user.update({ where: { id: ranked[i].id }, data: { rank: i + 1 } });
+		}
+
 		return game;
 	});
 }
@@ -107,17 +121,34 @@ async function historyOf(userId, limit = 20)
 		where: { userId },
 		orderBy: { finishedAt: 'desc' },
 		take: limit,
-		include: { game: { select: { theme: true, language: true, rounds: true } } },
+		include: { game: { select: { roomCode: true, theme: true, language: true, rounds: true, scores: { select: { points: true, won: true, user: { select: { id: true, username: true, avatarUrl: true } } } } } } },
 	});
 
-	return rows.map((row) => ({
-		points: row.points,
-		won: row.won,
-		finishedAt: row.finishedAt,
-		theme: row.game.theme,
-		language: row.game.language,
-		rounds: row.game.rounds,
-	}));
+	return rows.map((row) => {
+		const allScores = row.game.scores;
+		// Position in that match: 1 + how many players scored strictly more.
+		const position = 1 + allScores.filter((s) => s.points > row.points).length;
+		return {
+			points: row.points,
+			won: row.won,
+			position,
+			players: allScores.length,
+			roomCode: row.game.roomCode,
+			finishedAt: row.finishedAt,
+			theme: row.game.theme,
+			language: row.game.language,
+			rounds: row.game.rounds,
+			opponents: allScores
+				.filter((s) => s.user.id !== userId)
+				.map((s) => ({
+					id: s.user.id,
+					username: s.user.username,
+					avatarUrl: s.user.avatarUrl,
+					points: s.points,
+					won: s.won,
+				})),
+		};
+	});
 }
 
 module.exports = { saveGame, leaderboard, historyOf };

@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
+import { useAuth } from '../hooks/useAuth'
 import HeroLogo from '../components/HeroLogo'
 import HeroIllustration from '../components/HeroIllustration'
 import PencilDivider from '../components/PencilDivider'
-import { useAuth } from '../hooks/useAuth'
 
 function Home() {
   const { t } = useLanguage()
   const navigate = useNavigate()
+  // When logged in, Play skips the login and goes straight to the rooms (lobby).
   const { user } = useAuth()
 
   return (
@@ -33,7 +34,7 @@ function Home() {
           type="button"
           className="btn btn-primary cta-btn"
           style={{ fontSize: 17, padding: '15px 34px' }}
-          onClick={() => navigate(user ? '/rooms' : '/login')} /* access to the rooms if we're logged in, or the login page if we're not */
+          onClick={() => navigate(user ? '/rooms' : '/login')}
         >
           <span>{t('cta.play')}</span>
           {Array.from({ length: 11 }, (_, i) => (
@@ -42,7 +43,7 @@ function Home() {
         </button>
       </div>
 
-      {/* computador desenhado — assinatura de fecho da Home */}
+      {/* sketched computer — closing signature of the Home page */}
       <div className="home-end" aria-hidden="true">
         <PencilDivider />
       </div>

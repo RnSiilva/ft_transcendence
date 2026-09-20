@@ -125,7 +125,7 @@ const hasGuessed = (game, memberId) =>
  * A wrong message is not an error — it is just chat, and the caller passes it
  * on to the room as such.
  */
-function registerGuess(game, memberId, text, now = Date.now())
+function registerGuess(game, memberId, text, guesserCount, now = Date.now())
 {
 	if (game.phase !== PHASE.drawing)
 		return { correct: false, reason: 'NOT_DRAWING' };
@@ -139,9 +139,28 @@ function registerGuess(game, memberId, text, now = Date.now())
 	if (!matchesWord(text, game.word))
 		return { correct: false, reason: 'WRONG' };
 
+	const oldDrawerPoints = scoreDrawer({
+		secondsLeftPerGuess: game.correct.map((e) => e.secondsLeft),
+		guesserCount,
+		roundSeconds: game.roundSeconds,
+	});
+
 	const left = secondsLeft(game, now);
 
 	game.correct.push({ memberId, secondsLeft: left });
+
+	const newDrawerPoints = scoreDrawer({
+		secondsLeftPerGuess: game.correct.map((e) => e.secondsLeft),
+		guesserCount,
+		roundSeconds: game.roundSeconds,
+	});
+
+	const drawerDelta = newDrawerPoints - oldDrawerPoints;
+	if (drawerDelta > 0 && game.drawerId)
+	{
+		game.totals.set(game.drawerId, (game.totals.get(game.drawerId) || 0) + drawerDelta);
+		game.drawerTurnPoints = (game.drawerTurnPoints || 0) + drawerDelta;
+	}
 
 	const points = scoreGuess({
 		secondsLeft: left,
@@ -172,8 +191,11 @@ function endTurn(game, guesserCount)
 		roundSeconds: game.roundSeconds,
 	});
 
-	if (game.drawerId)
-		game.totals.set(game.drawerId, (game.totals.get(game.drawerId) || 0) + drawerPoints);
+	const delta = drawerPoints - (game.drawerTurnPoints || 0);
+	if (game.drawerId && delta !== 0)
+		game.totals.set(game.drawerId, (game.totals.get(game.drawerId) || 0) + delta);
+
+	game.drawerTurnPoints = 0; // reset for next turn
 
 	// Over only once the last person of the last round has drawn.
 	const lastTurn = game.turn >= game.turnsPerRound;
@@ -197,6 +219,26 @@ function snapshot(game, members, now = Date.now())
 {
 	const revealed = game.phase === PHASE.result || game.phase === PHASE.finished;
 
+	const liveScores = members
+		.map((member) => ({
+			id: member.id,
+			userId: member.userId,
+			name: member.name,
+			avatarUrl: member.avatarUrl,
+			points: game.totals.get(member.id) || 0,
+			isDrawer: member.id === game.drawerId,
+			guessed: hasGuessed(game, member.id),
+		}))
+		.sort((a, b) => b.points - a.points);
+
+	// When the game ends, freeze the standings on the FIRST finished snapshot
+	// (all players are still present at that instant). From then on the podium is
+	// identical for everyone and never re-ranks as players close it and leave —
+	// and it survives an F5, because the server keeps serving this frozen list.
+	if (game.phase === PHASE.finished && !game.finalStandings) {
+		game.finalStandings = liveScores;
+	}
+
 	return {
 		phase: game.phase,
 		round: game.round,
@@ -206,16 +248,17 @@ function snapshot(game, members, now = Date.now())
 		secondsLeft: secondsLeft(game, now),
 		maskedWord: game.word ? maskWord(game.word) : '',
 		word: revealed ? game.word : null,
-		scores: members
-			.map((member) => ({
-				id: member.id,
-				userId: member.userId,
-				name: member.name,
-				points: game.totals.get(member.id) || 0,
-				isDrawer: member.id === game.drawerId,
-				guessed: hasGuessed(game, member.id),
-			}))
-			.sort((a, b) => b.points - a.points),
+		// While the drawer is picking a word, everyone else is told WHO is
+		// choosing and how long is left, so a modal can mirror the 10s countdown
+		// and close when the word is chosen (game.choosing is cleared).
+		choosing: game.choosing
+			? {
+				drawerId: game.choosing.drawerId,
+				drawerName: (members.find((m) => m.id === game.choosing.drawerId) || {}).name || '',
+				secondsLeft: Math.max(0, Math.ceil((game.choosing.deadline - now) / 1000)),
+			}
+			: null,
+		scores: game.phase === PHASE.finished ? game.finalStandings : liveScores,
 	};
 }
 

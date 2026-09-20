@@ -5,10 +5,20 @@ const API = import.meta.env.VITE_API_URL ?? '/api'
 export type PlayedGame = {
   points: number
   won: boolean
+  position: number
+  players: number
+  roomCode: string
   finishedAt: string
   theme: string
   language: string
   rounds: number
+  opponents: {
+    id: number
+    username: string
+    avatarUrl: string | null
+    points: number
+    won: boolean
+  }[]
 }
 
 /** The games the signed in player has finished, newest first. */

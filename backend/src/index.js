@@ -9,11 +9,12 @@ const friendsRouter = require('./friends/friends.routes');
 const presence = require('./friends/presence');
 const jwt = require('jsonwebtoken');
 const gameRouter = require('./routes/game.routes');
+const usersRouter = require('./routes/users.routes');
 
 const { registerRoomHandlers, startAbsenceSweeper } = require('./sockets/room.socket');
 const { registerDrawHandlers } = require('./sockets/draw.socket');
 const { registerRoundHandlers, startGameLoop } = require('./sockets/round.socket');
-// Lobby (sala de espera) — módulo à parte do Thiago; ver sockets/lobby.socket.js
+// Lobby (waiting room) — see sockets/lobby.socket.js
 const { registerLobbyHandlers, startLobbySweeper } = require('./sockets/lobby.socket');
 const { registerReportHandlers, startReportSweeper } = require('./sockets/report.socket');
 const { requireAuthenticatedSocket } = require('./sockets/auth.socket');
@@ -48,6 +49,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', authRouter);
 app.use('/friends', friendsRouter);
 app.use('/games', gameRouter);
+app.use('/users', usersRouter); // public profile (visible fields only)
 
 // updates socket.io so rooms and drawing can also send and read cookies
 const io = new Server(server, {
@@ -55,7 +57,16 @@ const io = new Server(server, {
     origin: true,
     credentials: true,
   },
+  // Detects dead connections in ~15 s (the default was ~45 s): a phone
+  // that falls asleep without saying goodbye used to leave a "ghost" in the
+  // room for almost a minute before the reconnection grace period kicked in.
+  pingInterval: 10000,
+  pingTimeout: 5000,
 });
+
+// Routes can reach the socket server via req.app.get('io') — the friends API
+// uses it to tell the OTHER user their list changed (request sent/accepted).
+app.set('io', io);
 
 const PORT = process.env.BACKEND_PORT || 4000;
 
@@ -64,8 +75,8 @@ io.use(requireAuthenticatedSocket);
 
 startAbsenceSweeper(io);
 startGameLoop(io);
-startLobbySweeper(io); // relógio dos 5 minutos das salas em espera
-startReportSweeper(io); // fecha as votações que ninguém terminou
+startLobbySweeper(io); // 5-minute clock for waiting rooms
+startReportSweeper(io); // closes the votes nobody finished
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'as', socket.user.username);
@@ -95,7 +106,12 @@ io.on('connection', (socket) => {
   registerRoomHandlers(io, socket);
   registerDrawHandlers(io, socket);
   registerRoundHandlers(io, socket);
-  registerLobbyHandlers(io, socket); // depois dos de sala: precisa da sala já criada
+  // ORDER DEPENDENCY: registerLobbyHandlers must come AFTER
+  // registerRoomHandlers. The lobby listens to the same events ('room:create',
+  // 'room:join') in its own listeners and Socket.IO calls them in registration
+  // order — only this way, when the lobby listener runs, the room has already
+  // been created/joined by the room handler and getRoomOf(socket.id) finds it.
+  registerLobbyHandlers(io, socket);
   registerReportHandlers(io, socket);
 
   socket.on('disconnect', () => {

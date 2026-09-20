@@ -1,5 +1,5 @@
-// Logotipo "SketchGuess" animado da página inicial (copiado do modelo aprovado).
-// A versão skewed=true é usada no reflexo (letras inclinadas progressivamente).
+// Animated "SketchGuess" logo for the home page.
+// The skewed=true version is used in the reflection (letters progressively slanted).
 
 type GlyphColor = 'c-red' | 'c-blue' | 'c-yellow' | 'c-green'
 

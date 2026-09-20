@@ -9,6 +9,12 @@ const { io } = require('socket.io-client');
 
 const URL = process.env.DEMO_URL || 'http://localhost:4000';
 const PASSWORD = 'TestPass123';
+const runTag = Date.now().toString(36).slice(-6);
+const testUsers = {
+	ana: `testana_${runTag}`,
+	bruno: `testbruno_${runTag}`,
+	carla: `testcarla_${runTag}`,
+};
 
 let checks = 0;
 const failures = [];
@@ -19,9 +25,9 @@ function check(label, actual, expected)
 
 	const ok = JSON.stringify(actual) === JSON.stringify(expected);
 	if (!ok)
-		failures.push(`${label}\n      esperado: ${JSON.stringify(expected)}\n      recebido: ${JSON.stringify(actual)}`);
+		failures.push(`${label}\n      expected: ${JSON.stringify(expected)}\n      received: ${JSON.stringify(actual)}`);
 
-	console.log(`   ${ok ? 'OK  ' : 'FALHA'} ${label}`);
+	console.log(`   ${ok ? 'OK  ' : 'FAIL'} ${label}`);
 	return ok;
 }
 
@@ -44,7 +50,7 @@ async function session(username)
 		: registered;
 
 	if (!response.ok)
-		throw new Error(`sem sessao para ${username}: ${response.status}`);
+		throw new Error(`no session for ${username}: ${response.status}`);
 
 	return response.headers.getSetCookie().find((c) => c.startsWith('token=')).split(';')[0];
 }
@@ -75,67 +81,67 @@ function step(title)
 
 async function main()
 {
-	const ana = await connect(await session('testana'));
-	const bruno = await connect(await session('testbruno'));
-	const carla = await connect(await session('testcarla'));
+	const ana = await connect(await session(testUsers.ana));
+	const bruno = await connect(await session(testUsers.bruno));
+	const carla = await connect(await session(testUsers.carla));
 
 	const created = await ask(ana, 'room:create', {});
 	const { code } = created.room;
 	await ask(bruno, 'room:join', { code });
 	await ask(carla, 'room:join', { code });
-	console.log(`sala ${code} com tres jogadores`);
+	console.log(`room ${code} with three players`);
 
-	step('1. Nao se pode denunciar a si proprio');
+	step('1. You cannot report yourself');
 	const self = await ask(ana, 'report:start', { targetId: ana.id });
-	check('recusado', self.code, 'CANNOT_REPORT_SELF');
+	check('refused', self.code, 'CANNOT_REPORT_SELF');
 
-	step('2. A Ana denuncia a Carla');
+	step('2. Ana reports Carla');
 	const flagged = waitFor(carla, 'report:flagged', 2000);
 	const opened = waitFor(bruno, 'report:open', 2000);
 
 	const started = await ask(ana, 'report:start', { targetId: carla.id });
-	check('a votacao abre', started.ok, true);
+	check('the vote opens', started.ok, true);
 
 	const aviso = await opened;
-	check('o Bruno ve a votacao', aviso.name, 'testcarla');
-	check('denunciar ja conta como um voto', aviso.votes, 1);
-	check('com dois votantes, precisa de 2', aviso.needed, 2);
-	check('a Carla so sabe que foi denunciada', await flagged, true);
+	check('Bruno sees the vote', aviso.name, testUsers.carla);
+	check('reporting already counts as one vote', aviso.votes, 1);
+	check('with two voters, it needs 2', aviso.needed, 2);
+	check('Carla only knows she was reported', await flagged, true);
 
-	step('3. Nao se abre uma segunda votacao ao mesmo tempo');
+	step('3. Different votes can exist at the same time');
 	const second = await ask(bruno, 'report:start', { targetId: ana.id });
-	check('recusada', second.code, 'VOTE_ALREADY_OPEN');
+	check('the second vote opens', second.ok, true);
 
-	step('4. Quem e denunciado nao vota');
-	const ownVote = await ask(carla, 'report:vote');
-	check('recusado', ownVote.code, 'CANNOT_VOTE_ON_SELF');
+	step('4. The reported player does not vote');
+	const ownVote = await ask(carla, 'report:vote', { targetId: carla.id });
+	check('refused', ownVote.code, 'CANNOT_VOTE_ON_SELF');
 
-	step('5. O segundo voto expulsa');
+	step('5. The second vote expels');
 	const expelled = waitFor(carla, 'report:expelled', 2000);
 	const closed = waitFor(ana, 'report:closed', 2000);
-	// O expel manda report:closed e room:state seguidos, por isso a escuta
-	// tem de estar montada antes de votar e nao depois.
+	// The expel emits report:closed and room:state back to back, so the listener
+	// must be set up before voting, not after.
 	const after = waitFor(ana, 'room:state', 2000);
 
-	await ask(bruno, 'report:vote');
+	await ask(bruno, 'report:vote', { targetId: carla.id });
 
-	check('a Carla e avisada de que saiu', await expelled, true);
-	check('a sala sabe que foi expulsa', (await closed).expelled, true);
-	check('ficam a Ana e o Bruno', (await after).members.map((m) => m.name), ['testana', 'testbruno']);
+	check('Carla is told she left', await expelled, true);
+	check('the room knows she was expelled', (await closed).expelled, true);
+	check('Ana and Bruno remain', (await after).members.map((m) => m.name), [testUsers.ana, testUsers.bruno]);
 
-	step('6. Sem votacao aberta nao se vota');
-	const noVote = await ask(ana, 'report:vote');
-	check('recusado', noVote.code, 'NO_VOTE_OPEN');
+	step('6. With no open vote, there is no voting');
+	const noVote = await ask(ana, 'report:vote', { targetId: carla.id });
+	check('refused', noVote.code, 'NO_VOTE_OPEN');
 
-	step('7. Com dois na sala nao se abre votacao');
+	step('7. With two in the room no vote opens');
 	const tooFew = await ask(ana, 'report:start', { targetId: bruno.id });
-	check('recusado', tooFew.code, 'NEED_MORE_PLAYERS');
+	check('refused', tooFew.code, 'NEED_MORE_PLAYERS');
 
-	console.log(`\n${checks} verificacoes, ${failures.length} falhas.`);
+	console.log(`\n${checks} checks, ${failures.length} failures.`);
 
 	if (failures.length > 0)
 	{
-		console.error('\nFalhou:');
+		console.error('\nFailed:');
 		failures.forEach((f) => console.error(`   - ${f}`));
 	}
 
@@ -145,6 +151,6 @@ async function main()
 
 main().catch((err) =>
 {
-	console.error('\nRebentou:', err.message);
+	console.error('\nCrashed:', err.message);
 	process.exit(1);
 });

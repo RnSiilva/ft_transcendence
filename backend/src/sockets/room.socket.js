@@ -6,6 +6,7 @@
 
 const rooms = require('../game/rooms');
 const { forgetMember, reclaimInGame } = require('./round.socket');
+const { removeMemberFromVotes } = require('./report.socket');
 
 /** Clients pass a callback to learn whether their request worked. */
 function reply(ack, payload)
@@ -49,6 +50,7 @@ function startAbsenceSweeper(io, everyMs = 1000)
 
 		dropped.forEach(({ room, memberId }) =>
 		{
+			removeMemberFromVotes(io, room, memberId);
 			forgetMember(room, memberId);
 			announceTo(io, room);
 		});
@@ -65,16 +67,12 @@ function registerRoomHandlers(io, socket)
 {
 	const announce = (room) => announceTo(io, room);
 
-	// A reload arrives as a new connection. If a seat is being held for this
-	// account, take it back instead of starting over.
-	const reclaimed = rooms.reclaimSeat(socket.id, socket.user);
-	if (reclaimed)
-	{
-		reclaimInGame(reclaimed.room, reclaimed.oldMemberId, socket.id);
-		socket.join(reclaimed.room.code);
-		socket.emit('room:state', rooms.serialiseRoom(reclaimed.room));
-		announce(reclaimed.room);
-	}
+	// We do NOT auto-reclaim the held seat on connect. A socket can reconnect on
+	// ANY page (e.g. the profile), and reclaiming here would count the player as
+	// "back in the game" without them actually returning to the room. The seat is
+	// reclaimed only when the player really re-enters the room — the game page
+	// emits 'room:join' (which calls seizeSeat) on mount, reload and reconnect.
+	// Until that happens, the 15s reconnect grace keeps running as it should.
 
 	socket.on('room:create', (payload = {}, ack) =>
 	{
@@ -97,8 +95,26 @@ function registerRoomHandlers(io, socket)
 	{
 		try
 		{
+			// The account reclaims its own seat (rooms.seizeSeat): if this user
+			// already has a seat in the room through ANOTHER connection (a phone
+			// zombie, an old tab), the new connection takes it over — points and
+			// turn preserved — and the old one is dropped. Without this, the seat's
+			// owner was locked out with 'ALREADY_IN_ROOM'.
+			const seized = rooms.seizeSeat(socket.id, payload.code, socket.user);
+			if (seized)
+			{
+				reclaimInGame(io, seized.room, seized.oldMemberId, socket.id);
+				const old = io.sockets.sockets.get(seized.oldMemberId);
+				old?.emit('room:replaced');
+				old?.leave(seized.room.code);
+				socket.join(seized.room.code);
+				ok(ack, seized.room);
+				announce(seized.room);
+				return;
+			}
+
 			const previous = rooms.getRoomOf(socket.id);
-			const room = rooms.joinRoom(socket.id, payload.code, socket.user);
+			const room = rooms.joinRoom(socket.id, payload.code, socket.user, payload.password);
 
 			// Otherwise strokes from the previous room keep arriving.
 			if (previous && previous.code !== room.code)
@@ -124,6 +140,7 @@ function registerRoomHandlers(io, socket)
 
 		if (room)
 		{
+			removeMemberFromVotes(io, room, socket.id);
 			forgetMember(room, socket.id);
 			socket.leave(room.code);
 		}
@@ -137,7 +154,10 @@ function registerRoomHandlers(io, socket)
 	// exit, and that one removes them at once.
 	socket.on('disconnect', () =>
 	{
-		announce(rooms.markAbsent(socket.id));
+		const room = rooms.markAbsent(socket.id);
+		if (room)
+			removeMemberFromVotes(io, room, socket.id);
+		announce(room);
 	});
 }
 

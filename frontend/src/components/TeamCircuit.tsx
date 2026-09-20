@@ -5,9 +5,9 @@ import pedroPhoto from '../assets/team/pedro.jpeg'
 import thiagoPhoto from '../assets/team/thiago.png'
 import carlosPhoto from '../assets/team/carlos.png'
 
-// Secção "Equipa" da Home — mistura personalizada de 3 animações (Uiverse:
-// Vosoone/circuito, Javierrocadev/cartão, vikas7754/LinkedIn em camadas):
-// chip ao centro com traços a fluir na cor de cada membro até ao seu cartão.
+// Home "Team" section — a custom blend of 3 Uiverse animations (Vosoone's
+// circuit, Javierrocadev's card, vikas7754's layered LinkedIn): a chip at the
+// center with traces flowing in each member's color toward their card.
 
 type Member = {
   name: string
@@ -17,7 +17,7 @@ type Member = {
   color: string
   colorDark: string
   initial: string
-  photo?: string // foto local (ex.: import de src/assets/team/); sem foto mostra a inicial
+  photo?: string // local photo (e.g. import from src/assets/team/); no photo shows the initial
 }
 
 const MEMBERS: Member[] = [
@@ -33,8 +33,8 @@ const MASCOT_D =
 const LINKEDIN_ICON_D =
   'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z'
 
-// 2 traços por membro: começam na borda do SVG (lado do cartão) e entram nos
-// pinos do chip. Cores = cor do membro; delays desfasados para "vida".
+// 2 traces per member: they start at the SVG edge (card side) and enter the
+// chip pins. Colors = member's color; staggered delays for "life".
 const TRACES = [
   { d: 'M8 90 H150 V210 H326', member: 0, delay: '0s', dot: [8, 90] },
   { d: 'M8 160 H190 V230 H326', member: 0, delay: '.5s', dot: [8, 160] },
@@ -48,8 +48,8 @@ const TRACES = [
 
 const PIN_YS = [205, 225, 245, 265]
 
-// Versão vertical do circuito (telemóvel): 2 cartões em cima, chip no meio
-// (texto horizontal), 2 cartões em baixo. Traços sobem/descem para os pinos.
+// Vertical version of the circuit (mobile): 2 cards on top, chip in the middle
+// (horizontal text), 2 cards at the bottom. Traces go up/down to the pins.
 const V_TRACES = [
   { d: 'M90 8 V60 H160 V130', member: 0, delay: '0s', dot: [90, 8] },
   { d: 'M140 8 V95 H190 V130', member: 0, delay: '.5s', dot: [140, 8] },

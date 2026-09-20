@@ -1,0 +1,61 @@
+# SketchGuess CI: runs on every PR against main.
+# The PR fails if the frontend does not compile (tsc + vite build) or if any
+# backend test:* suite fails against a real stack (mariadb + backend).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend (tsc + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+
+  backend-tests:
+    name: Backend (all test:* suites)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The real .env never goes to git; the example is enough for the tests
+      # (the 42 credentials are placeholders — no suite uses OAuth).
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Start mariadb + backend
+        run: docker compose up -d --build mariadb backend
+
+      - name: Wait for the backend
+        run: timeout 240 sh -c 'until docker logs backend 2>&1 | grep -q "Backend running"; do sleep 3; done'
+
+      - name: Run all suites
+        run: |
+          set -e
+          for suite in words scoring round rooms report lobby; do
+            echo "== npm run test:$suite =="
+            docker exec backend npm run "test:$suite"
+          done
+
+      - name: Logs on failure
+        if: failure()
+        run: docker logs backend | tail -100
+
+      - name: Shut down
+        if: always()
+        run: docker compose down -v

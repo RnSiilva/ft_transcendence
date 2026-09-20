@@ -33,8 +33,16 @@ function isUserOnline(userId) {
   return userSockets.has(id) && userSockets.get(id).size > 0;
 }
 
+/* Live socket IDs for a user (empty array when offline). Lets the friends
+   API push "something changed" to the other side of a request in real time. */
+function getUserSocketIds(userId) {
+  if (!userId) return [];
+  return [...(userSockets.get(Number(userId)) || [])];
+}
+
 module.exports = {
   markUserOnline,
   markUserOffline,
   isUserOnline,
+  getUserSocketIds,
 };

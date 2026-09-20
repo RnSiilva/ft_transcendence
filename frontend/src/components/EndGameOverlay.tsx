@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 
-export type FinalScore = { name: string; points: number }
+export type FinalScore = { name: string; points: number; avatarUrl?: string | null }
 
 const TIERS = ['rank-gold', 'rank-silver', 'rank-bronze']
 const MEDALS = ['\u{1F947}', '\u{1F948}', '\u{1F949}']
@@ -13,6 +13,7 @@ function toRanks(scores: FinalScore[]) {
     tier: TIERS[i] ?? 'rank-plain',
     trophy: i === 0,
     initial: score.name.charAt(0).toUpperCase(),
+    avatarUrl: score.avatarUrl,
     name: score.name,
     medal: MEDALS[i] ?? '',
     score: score.points,
@@ -22,8 +23,8 @@ function toRanks(scores: FinalScore[]) {
 const TROPHY_D =
   'M62.11,53.93c22.582-3.125,22.304-23.471,18.152-29.929-4.166-6.444-10.36-2.153-10.36-2.153v-4.166H30.099v4.166s-6.194-4.291-10.36,2.153c-4.152,6.458-4.43,26.804,18.152,29.929l5.236,7.777v8.249s-.944,4.597-4.833,4.986c-3.903,.389-7.791,4.028-7.791,7.374h38.997c0-3.347-3.889-6.986-7.791-7.374-3.889-.389-4.833-4.986-4.833-4.986v-8.249l5.236-7.777Zm7.388-24.818s2.833-3.097,5.111-1.347c2.292,1.75,2.292,15.86-8.999,18.138l3.889-16.791Zm-44.108-1.347c2.278-1.75,5.111,1.347,5.111,1.347l3.889,16.791c-11.291-2.278-11.291-16.388-8.999-18.138Z'
 
-// O componente é montado de novo a cada abertura (ver Game.tsx), por isso a
-// animação recomeça sempre do zero, como no modelo aprovado.
+// The component is remounted on every open (see Game.tsx), so the animation
+// always restarts from scratch.
 type Props = { onClose: () => void; scores: FinalScore[] }
 
 function EndGameOverlay({ onClose, scores }: Props) {
@@ -37,7 +38,7 @@ function EndGameOverlay({ onClose, scores }: Props) {
   useEffect(() => {
     const raf = requestAnimationFrame(() => setPlaying(true))
     const messageTimer = setTimeout(() => setShowMessage(true), 750)
-    // Um cartão de cada vez, em cascata. Depende só de quantos são.
+    // One card at a time, cascading. Depends only on how many there are.
     const cardTimers = Array.from({ length: total }, (_, i) =>
       setTimeout(() => setExpandedCount(i + 1), 1100 + i * 220)
     )
@@ -80,7 +81,17 @@ function EndGameOverlay({ onClose, scores }: Props) {
                 {entry.trophy && <div className="rank-card-trophy">🏆</div>}
                 <div className="rank-card-number">#{entry.rank}</div>
                 <div className="rank-card-user">
-                  <div className="mini-avatar">{entry.initial}</div>
+                  <div className="mini-avatar">
+                    {entry.avatarUrl ? (
+                      <img
+                        src={entry.avatarUrl}
+                        alt=""
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      entry.initial
+                    )}
+                  </div>
                   <div className="rank-name">{entry.name}</div>
                 </div>
               </div>
